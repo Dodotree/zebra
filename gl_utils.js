@@ -1,15 +1,48 @@
 'use strict';
 
+// Simple implementation of the pub/sub pattern to decouple components
+class EventEmitter {
+
+    constructor() {
+      this.events = {};
+    }
+  
+    on(event, callback) {
+      if (!this.events[event]) {
+        this.events[event] = [];
+      }
+      this.events[event].push(callback);
+    }
+  
+    remove(event, listener) {
+      if (this.events[event]) {
+        const index = this.events[event].indexOf(listener);
+        if (~index) {
+          this.events[event].splice(index, 1);
+        }
+      }
+    }
+  
+    emit(event) {
+      const events = this.events[event];
+      if (events) {
+        events.forEach((event) => event());
+      }
+    }
+  
+  }
+
 // Abstracts away the requestAnimationFrame in an effort to provide a clock instance
 // to sync various parts of an application
-class Clock extends EventEmitter {
+export class Clock extends EventEmitter {
 
     constructor() {
         super();
 
-        this.requestAnimationFrame = (window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-            window.webkitRequestAnimationFrame || window.msRequestAnimationFrame);
-        this.cancelAnimationFrame = (window.cancelAnimationFrame || window.mozCancelAnimationFrame);
+        // gives "illegal invocation" error 
+        //this.requestAnimationFrame = (window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+        //    window.webkitRequestAnimationFrame || window.msRequestAnimationFrame);
+        // this.cancelAnimationFrame = (window.cancelAnimationFrame || window.mozCancelAnimationFrame);
 
         this.isRunning = true;
 
@@ -29,7 +62,7 @@ class Clock extends EventEmitter {
         if (this.isRunning) {
             this.emit('tick');
         }
-        this.requestAnimationFrame(this.tick);
+        requestAnimationFrame(this.tick);
     }
 
     start() {
@@ -43,7 +76,7 @@ class Clock extends EventEmitter {
 
 
 
-const utils = {
+export const utils = {
 
     getCanvas(id) {
         const canvas = document.getElementById(id);
@@ -68,12 +101,12 @@ const utils = {
 
 
     getGLContext(canvas) {
-        const gl = canvas.getContext('webgl2');
+        const gl = canvas.getContext('webgl2', {
+            antialias: false,
+            willReadFrequently: true
+          });
+        console.log('gl context', gl);
         return gl || console.assert(gl && gl instanceof WebGLRenderingContext, "WebGL is NOT available");
-
-        // Depth: The extension tells us if we can use single component R32F texture format.
-        // webgl2 gl.color_buffer_float_ext = gl.getExtension('EXT_color_buffer_float');
-        // webgl gl.getExtension("OES_texture_float");
     },
 
     // Given a WebGL context and an id for a shader script, return a compiled shader
@@ -121,7 +154,7 @@ const utils = {
 
 // Program constructor that takes a WebGL context and script tag IDs
 // to extract vertex and fragment shader source code from the page
-class Program {
+export class Program {
 
     constructor(gl, vertexShaderId, fragmentShaderId) {
         this.gl = gl;
@@ -135,13 +168,13 @@ class Program {
         gl.attachShader(this.program, utils.getShader(gl, fragmentShaderId));
         gl.linkProgram(this.program);
 
-        if (!this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS)) {
-            return console.error('Could not initialize shaders.');
+        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+            return console.error('Could not initialize shaders.' + gl.getProgramInfoLog(this.program));
         }
 
-        console.log('constructed program status', this.gl.getProgramParameter(this.program, this.gl.LINK_STATUS));
+        console.log('constructed program status', gl.getProgramParameter(this.program, gl.LINK_STATUS));
 
-        this.gl.useProgram(this.program);
+        gl.useProgram(this.program);
     }
 
 
@@ -156,24 +189,23 @@ class Program {
         this.setUniformLocations(uniforms);
     }
 
-
+    // called from .load(a,u)
     // Set references to attributes onto the program instance
     setAttributeLocations(attributes) {
         attributes.forEach(attribute => {
             this[attribute] = this.gl.getAttribLocation(this.program, attribute);
+            // gl.enableVertexAttribArray(attributes[attributeName]); // from webgl prev version
         });
     }
 
-
+    // called from .load(a,u)
     setUniformLocations(uniforms) {
         uniforms.forEach(uniform => {
-            console.log(uniform);
             this[uniform] = this.gl.getUniformLocation(this.program, uniform);
-            console.log(this[uniform]);
+            // gl.enableVertexAttribArray(attributes[uniformName]); // from webgl prev version
         });
 
         this.uniforms = uniforms;
-        console.log('set uniforms', uniforms);
         this.logUniforms();
     }
 
@@ -194,6 +226,67 @@ class Program {
         this.uniforms.forEach(uniform => {
             console.log('given >>', uniform, this[uniform]);
         });
+    }
+
+}
+
+
+
+// Encapsulates creating of WebGL textures
+export class Textures {
+
+    constructor(gl) {
+        this.gl = gl;
+        this.textures = [];
+        this.glTextures = [];
+        console.log('textures constructed', this.gl)
+    }
+
+    init( slot, options = {source:null, flip:false, mipmap:false, params:{}}){
+        this.textures[slot] = options;
+        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
+        this.glTextures[slot] = this.gl.createTexture();
+        this.video = options.source;
+        console.log(this.video);
+    // could be onload version where it's needed
+    //     this.image = new Image();
+    //     this.image.onload = () => this.handleLoadedTexture(slot);
+
+    //     if (options.source) {
+    //         this.image.src = source;
+    //     }
+    // }
+    // // Configure texture
+    // handleLoadedTexture(slot) {
+
+        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
+        // Bind
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
+        // Configure
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.video);
+
+        for (const [key, value] of Object.entries(this.textures[slot].params)) {
+            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl[key], this.gl[value]);
+        }
+
+        if (this.textures[slot].mipmap) this.gl.generateMipmap(this.gl.TEXTURE_2D);
+
+        // Clean
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+    }
+
+    update(slot) {
+
+        if (this.video.readyState < 3) return; // not ready to display pixels
+        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
+        if (this.textures[slot].flip) this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
+        //# next line fails in Safari if input video is NOT from same domain/server as this html code
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, this.video);
+
+        // from 3d camera example
+        // webgl2 this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R32F, this.gl.RED, this.gl.FLOAT, this.video);
+        // webgl gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.RGBA, gl.FLOAT, video);
     }
 
 }

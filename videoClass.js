@@ -1,3 +1,5 @@
+import { glVideo } from './glVideo.js';
+
 export class VideoClass extends HTMLElement {
     constructor() {
         super();
@@ -57,9 +59,6 @@ export class VideoClass extends HTMLElement {
     }
 
 
-
-
-
     /**
    * `CustomElement` lifecycle callback. Invoked each time the custom element is appended into a
    * document-connected element.
@@ -116,13 +115,13 @@ export class VideoClass extends HTMLElement {
         let mediaDevices = [];
         // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
         try {
-            testStream = await navigator.mediaDevices.getUserMedia({audio: false, video: true})
-        }catch (err) {
+            testStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true })
+        } catch (err) {
             this.log.value += '\n\nInitiating test stream error\n' + JSON.stringify(err, null, 2);
         }
         try {
             mediaDevices = await navigator.mediaDevices.enumerateDevices()
-        }catch (error) {
+        } catch (error) {
             this.log.value += '\n\nError while fetching available streaming devices info\n' + JSON.stringify(error, null, 2);
         }
 
@@ -168,6 +167,8 @@ export class VideoClass extends HTMLElement {
         this.video.autoplay = true;
         this.video.playsInline = true;
         this.video.preload = 'auto';
+        this.video.loop = true;
+        this.video.crossOrigin = "anonymous";
 
         // this is going to change depending on selected camera resolution
         this.video.style.display = 'block'; // fix bottom margin 4px
@@ -175,6 +176,13 @@ export class VideoClass extends HTMLElement {
         this.video.style.height = `${480 / this.pixelRatio}px`;
 
         this.appendChild(this.video);
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'vCanvas';
+        canvas.width = 640 / this.pixelRatio;
+        canvas.height = 480 / this.pixelRatio;
+
+        this.appendChild(canvas);
 
         // if you want it to play in the background there's nothing else to setup
         if (this.backgroundPlayOk) return;
@@ -202,8 +210,27 @@ export class VideoClass extends HTMLElement {
             observer.observe(this);
         }
 
+        this.initGL();
         // <button id="capture"> Capture </button>
         // <canvas id="myCanvas" width="480" height="270"></canvas>
+    }
+
+    initGL() {
+        const glV = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
+        glV.init(0, {
+            source: this.video,
+            flip: false,
+            mipmap: false,
+            params: {
+                TEXTURE_WRAP_T: 'CLAMP_TO_EDGE',
+                TEXTURE_WRAP_S: 'CLAMP_TO_EDGE',
+                TEXTURE_MAG_FILTER: 'NEAREST',
+                TEXTURE_MIN_FILTER: 'NEAREST'
+            }
+        },
+            { s: 0 },
+            { v: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), i: new Uint16Array([0, 1, 2, 0, 2, 3]) }
+        );
     }
 
     onCameraChange(event) {
@@ -261,3 +288,35 @@ export class VideoClass extends HTMLElement {
     }
 
 }
+
+
+
+/**
+ *       const depthConstraints = {
+            audio: false,
+        video:{
+          // R200 related hack: prefer depth (width = 628) to IR (width = 641) stream.
+          width: {ideal:628, max:640},
+
+          // SR300 depth camera enables capture at 110 frames per second.
+          frameRate: {ideal:110},
+        }
+      }
+ */
+/**
+ *    // Color stream tracks have larger resolution than depth stream tracks.
+      // If we cannot use deviceId to select, for now, we need to misuse width.
+      ideal_width = ids.length == 1 ? ideal_width : 1280;
+
+      const depthColorConstraints = ideal_width ?
+      {
+        video: {
+          width: {ideal:ideal_width},
+          deviceId: {exact: ids},
+        },
+      } : {
+        video: {
+          deviceId: {exact: ids},
+        },
+      }
+ */
