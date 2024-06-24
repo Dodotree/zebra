@@ -216,6 +216,19 @@ export class VideoClass extends HTMLElement {
     }
 
     initGL() {
+/**
+ *        V0                 V1
+        (0, 0)              (1, 0)
+        X---------------------X
+        |                     |
+        |                     |
+        |       (0, 0)        |
+        |                     |
+        |                     |
+        X---------------------X 
+        (0, 1)              (1, 1)
+        V3                 V2
+ */
         const glV = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
         glV.init(0, {
             source: this.video,

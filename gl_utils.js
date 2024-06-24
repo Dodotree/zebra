@@ -220,8 +220,6 @@ export class Program {
         for (let i = 0; i < numUniforms; ++i) {
             const info = this.gl.getActiveUniform(this.program, i);
             let loct = this.gl.getUniformLocation(this.program, info.name);
-            console.log('XX >> name:', info.name, 'type:', info.type, 'size:', info.size);
-            console.log('XX val>>', this.gl.getUniform(this.program, loct));
         }
         this.uniforms.forEach(uniform => {
             console.log('given >>', uniform, this[uniform]);
@@ -280,7 +278,6 @@ export class Textures {
         if (this.video.readyState < 3) return; // not ready to display pixels
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
-        if (this.textures[slot].flip) this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
         //# next line fails in Safari if input video is NOT from same domain/server as this html code
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, this.gl.RGB, this.gl.UNSIGNED_BYTE, this.video);
 
