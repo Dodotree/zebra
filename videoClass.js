@@ -299,8 +299,8 @@ export class VideoClass extends HTMLElement {
                     this.video.style.height = `${settings.height / this.pixelRatio}px`;
 
                     const canvas = document.getElementById('vCanvas');
-                    canvas.width = settings.width / this.pixelRatio;
-                    canvas.height = settings.height / this.pixelRatio;
+                    canvas.style.width = `${settings.width / this.pixelRatio}px`;
+                    canvas.style.height = `${settings.height / this.pixelRatio}px`;
 
                     // track capabilities look the same as stream capabilities, don't know about all environments
                     // capabilities not always available, but can provide native resolution and aspect ratio
@@ -340,15 +340,15 @@ export class VideoClass extends HTMLElement {
     onResolutionChange(event) {
         this.stopDeviceTracks(this.currentStream);
 
-        const [ w, h ] = event.target.value.split('x');
-        if( (w+0).isNan || (h+0).isNan) {
-            this.log.value = 'Error: resolution should be in format "width x height"'; 
+        const [w, h] = event.target.value.split('x');
+        if ((w + 0).isNan || (h + 0).isNan) {
+            this.log.value = 'Error: resolution should be in format "width x height"';
             return;
         }
 
-        this.constraints.video.width = { ideal: w};
-        this.constraints.video.height = { ideal: h};
-        console.log(this.constraints, 'resolution changing to', this.resolution);
+        this.constraints.video.width = { ideal: w };
+        this.constraints.video.height = { ideal: h };
+        console.log(this.constraints, 'resolution changing from', this.currentResolution);
 
         navigator.mediaDevices
             .getUserMedia(this.constraints)
@@ -363,11 +363,13 @@ export class VideoClass extends HTMLElement {
                     this.video.style.width = `${settings.width / this.pixelRatio}px`;
                     this.video.style.height = `${settings.height / this.pixelRatio}px`;
 
+
                     const canvas = document.getElementById('vCanvas');
-                    canvas.width = settings.width / this.pixelRatio;
-                    canvas.height = settings.height / this.pixelRatio;
+                    canvas.style.width = `${settings.width / this.pixelRatio}px`;
+                    canvas.style.height = `${settings.height / this.pixelRatio}px`;
 
                     this.currentResolution = `${settings.width}x${settings.height}`;
+                    console.log(this.constraints, 'resolution changed to', this.currentResolution);
                 });
             })
             .catch(error => {
