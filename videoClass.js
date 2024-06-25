@@ -184,12 +184,6 @@ export class VideoClass extends HTMLElement {
         });
         this.appendChild(this.video);
 
-        this.appendChild(utilsUI.get({
-            tag: "canvas",
-            attrs: { id: 'vCanvas', width: 640 / this.pixelRatio, height: 480 / this.pixelRatio }
-        }));
-
-
         // if you want it to play in the background there's nothing else to setup
         if (this.backgroundPlayOk) return;
 
@@ -216,40 +210,9 @@ export class VideoClass extends HTMLElement {
             observer.observe(this);
         }
 
-        this.initGL();
-
         // <button id="capture"> Capture </button>
-        // <canvas id="myCanvas" width="480" height="270"></canvas>
     }
 
-    initGL() {
-        /**
-         *       V0              V1
-                (0, 0)         (1, 0)
-                X-----------------X
-                |                 |
-                |     (0, 0)      |
-                |                 |
-                X-----------------X 
-                (0, 1)         (1, 1)
-                V3               V2
-         */
-        const glV = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
-        glV.init(0, {
-            source: this.video,
-            flip: false,
-            mipmap: false,
-            params: {
-                TEXTURE_WRAP_T: 'CLAMP_TO_EDGE',
-                TEXTURE_WRAP_S: 'CLAMP_TO_EDGE',
-                TEXTURE_MAG_FILTER: 'NEAREST',
-                TEXTURE_MIN_FILTER: 'NEAREST'
-            }
-        },
-            { s: 0 },
-            { v: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), i: new Uint16Array([0, 1, 2, 0, 2, 3]) }
-        );
-    }
 
     onCameraChange(event) {
 
@@ -298,9 +261,18 @@ export class VideoClass extends HTMLElement {
                     this.video.style.width = `${settings.width / this.pixelRatio}px`;
                     this.video.style.height = `${settings.height / this.pixelRatio}px`;
 
-                    const canvas = document.getElementById('vCanvas');
-                    canvas.style.width = `${settings.width / this.pixelRatio}px`;
-                    canvas.style.height = `${settings.height / this.pixelRatio}px`;
+                    // canvas context should have right dimensions
+                    // it's easier to replace canvas than try to update context of existing one
+                    this.appendChild(utilsUI.get({
+                        tag: "canvas",
+                        attrs: { 
+                            id: 'vCanvas',
+                            width: settings.width,
+                            height: settings.height,
+                            style: `width: ${settings.width / this.pixelRatio}px; height: ${settings.height / this.pixelRatio}px;`
+                        }
+                    }));
+                    this.initGL();
 
                     // track capabilities look the same as stream capabilities, don't know about all environments
                     // capabilities not always available, but can provide native resolution and aspect ratio
@@ -363,10 +335,22 @@ export class VideoClass extends HTMLElement {
                     this.video.style.width = `${settings.width / this.pixelRatio}px`;
                     this.video.style.height = `${settings.height / this.pixelRatio}px`;
 
+                    // removing canvas with webgl class should include unsubscribing from events
+                    // TO DO: possibly make it into a custom element
+                    document.getElementById('vCanvas').remove();
 
-                    const canvas = document.getElementById('vCanvas');
-                    canvas.style.width = `${settings.width / this.pixelRatio}px`;
-                    canvas.style.height = `${settings.height / this.pixelRatio}px`;
+                    // canvas context should have right dimensions
+                    // it's easier to replace canvas than try to update context of existing one
+                    this.appendChild(utilsUI.get({
+                        tag: "canvas",
+                        attrs: { 
+                            id: 'vCanvas',
+                            width: settings.width,
+                            height: settings.height,
+                            style: `width: ${settings.width / this.pixelRatio}px; height: ${settings.height / this.pixelRatio}px;`
+                        }
+                    }));
+                    this.initGL();
 
                     this.currentResolution = `${settings.width}x${settings.height}`;
                     console.log(this.constraints, 'resolution changed to', this.currentResolution);
@@ -375,6 +359,36 @@ export class VideoClass extends HTMLElement {
             .catch(error => {
                 this.log.value += `\n\nGot user media error for constrains ${JSON.stringify(this.constraints)}:\n ${JSON.stringify(error, null, 2)}`;
             });
+    }
+
+
+    initGL() {
+        /**
+         *       V0              V1
+                (0, 0)         (1, 0)
+                X-----------------X
+                |                 |
+                |     (0, 0)      |
+                |                 |
+                X-----------------X 
+                (0, 1)         (1, 1)
+                V3               V2
+         */
+        const glV = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
+        glV.init(0, {
+            source: this.video,
+            flip: false,
+            mipmap: false,
+            params: {
+                TEXTURE_WRAP_T: 'CLAMP_TO_EDGE',
+                TEXTURE_WRAP_S: 'CLAMP_TO_EDGE',
+                TEXTURE_MAG_FILTER: 'NEAREST',
+                TEXTURE_MIN_FILTER: 'NEAREST'
+            }
+        },
+            { s: 0 },
+            { v: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), i: new Uint16Array([0, 1, 2, 0, 2, 3]) }
+        );
     }
 
     play() {
