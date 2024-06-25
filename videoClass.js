@@ -107,7 +107,7 @@ export class VideoClass extends HTMLElement {
 
         this.log = utilsUI.get({
             tag: "textarea",
-            attrs: {id: 'log', value: '', style: `width: 640px; height: 260px; display:block;`}
+            attrs: { id: 'log', value: '', style: `width: 640px; height: 260px; display:block;` }
         });
         this.appendChild(this.log);
 
@@ -136,22 +136,22 @@ export class VideoClass extends HTMLElement {
         this.appendChild(utilsUI.get({
             tag: "label",
             text: "Select Camera:",
-            attrs: {htmlFor: 'camera-select'}
+            attrs: { htmlFor: 'camera-select' }
         }));
         this.select = utilsUI.get({
             tag: "select",
-            attrs: {id: 'camera-select'}
+            attrs: { id: 'camera-select' }
         });
         this.select.appendChild(utilsUI.get({
             tag: "option",
             text: "None",
-            attrs: {value: 'none'}  
+            attrs: { value: 'none' }
         }));
         mediaDevices.forEach((mediaDevice, count) => {
             this.select.appendChild(utilsUI.get({
                 tag: "option",
                 text: mediaDevice.label || `Camera ${count++}`,
-                attrs: {value: mediaDevice.deviceId}  
+                attrs: { value: mediaDevice.deviceId }
             }));
             if (mediaDevice.getCapabilities) {
                 this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
@@ -163,10 +163,12 @@ export class VideoClass extends HTMLElement {
         // now we can release the test stream
         this.stopDeviceTracks(testStream);
 
-        this.appendChild(utilsUI.get({
-            tag: "fieldset",
-            attrs: {id: 'resolution-group'}
-        }));
+        const resHolder = utilsUI.get({
+            tag: "select",
+            attrs: { id: 'resolution-select' }
+        });
+        this.appendChild(resHolder);
+        resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
         this.video = utilsUI.get({
             tag: "video",
@@ -184,7 +186,7 @@ export class VideoClass extends HTMLElement {
 
         this.appendChild(utilsUI.get({
             tag: "canvas",
-            attrs: {id: 'vCanvas', width: 640 / this.pixelRatio, height: 480 / this.pixelRatio}
+            attrs: { id: 'vCanvas', width: 640 / this.pixelRatio, height: 480 / this.pixelRatio }
         }));
 
 
@@ -261,20 +263,20 @@ export class VideoClass extends HTMLElement {
             video: { deviceId: { exact: this.select.value } },
             audio: false
         };
-        if (deviceLabel.indexOf("RealSense")>-1){
-            if(deviceLabel.indexOf("SR300")>-1 ) {
-                if(deviceLabel.indexOf("RGB")>-1) {
+        if (deviceLabel.indexOf("RealSense") > -1) {
+            if (deviceLabel.indexOf("SR300") > -1) {
+                if (deviceLabel.indexOf("RGB") > -1) {
                     constraints.video.width = { ideal: 1280 };
-                }else{
+                } else {
                     constraints.video.frameRate = { ideal: 110 };
                 }
             }
-            if(deviceLabel.indexOf("R200")>-1 && deviceLabel.indexOf("RGB")==-1) {
-                constraints.video.width = { ideal: 628, max: 640 };  
+            if (deviceLabel.indexOf("R200") > -1 && deviceLabel.indexOf("RGB") == -1) {
+                constraints.video.width = { ideal: 628, max: 640 };
             }
         }
-        if (deviceLabel.indexOf("RealSense")>-1 && deviceLabel.indexOf("R200")>-1) {
-            
+        if (deviceLabel.indexOf("RealSense") > -1 && deviceLabel.indexOf("R200") > -1) {
+
         }
         this.log.value = `\nSelected ${deviceLabel}`;
         this.log.value += `\nGet constrains ${JSON.stringify(constraints)}`;
@@ -306,39 +308,23 @@ export class VideoClass extends HTMLElement {
                     // variations of that, but I doubt it's convenient. Maybe an input for custom resolution. 
                     let capabilities = track.getCapabilities ? track.getCapabilities() : {};
 
-                    const resHolder = document.getElementById('resolution-group');
+                    const resHolder = document.getElementById('resolution-select');
                     resHolder.innerHTML = '';
                     const defaultRes = `${settings.width}x${settings.height}`;
+                    this.currentResolution = defaultRes;
+                    this.constraints = constraints;
                     const betterRes = `${capabilities.width.max}x${capabilities.height.max}`;
+
                     resHolder.appendChild(utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: 'radio', 
-                            name: 'resolution',
-                            id: defaultRes, 
-                            value: defaultRes, 
-                            checked: 'checked'
-                        }  
-                    }));
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "label",
+                        tag: "option",
                         text: defaultRes,
-                        attrs: {htmlFor: defaultRes}
+                        attrs: { value: defaultRes }
                     }));
                     resHolder.appendChild(utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: 'radio', 
-                            name: 'resolution',
-                            id: betterRes, 
-                            value: betterRes, 
-                        }  
-                    }));
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "label",
+                        tag: "option",
                         text: betterRes,
-                        attrs: {htmlFor: betterRes}
-                    }));
+                        attrs: { value: betterRes }
+                    }));;
 
                     this.log.value += `\n\nTrack ${track.kind} ${track.label}`;
                     this.log.value += '\n\nTrack  Settings>>:\n' + JSON.stringify(settings, null, 2);
@@ -347,7 +333,45 @@ export class VideoClass extends HTMLElement {
                 })
             })
             .catch(error => {
-                this.log.value += `\n\nGet user media error for constrains ${JSON.stringify(constraints)}:\n ${JSON.stringify(error, null, 2)}`;
+                this.log.value += `\n\nGot user media error for constrains ${JSON.stringify(constraints)}:\n ${JSON.stringify(error, null, 2)}`;
+            });
+    }
+
+    onResolutionChange(event) {
+        this.stopDeviceTracks(this.currentStream);
+
+        const [ w, h ] = event.target.value.split('x');
+        if( (w+0).isNan || (h+0).isNan) {
+            this.log.value = 'Error: resolution should be in format "width x height"'; 
+            return;
+        }
+
+        this.constraints.video.width = { ideal: w};
+        this.constraints.video.height = { ideal: h};
+        console.log(this.constraints, 'resolution changing to', this.resolution);
+
+        navigator.mediaDevices
+            .getUserMedia(this.constraints)
+            .then(stream => {
+                this.currentStream = stream;
+                this.video.srcObject = stream;
+                stream.getTracks().forEach(track => {
+                    // constrains are more like wishes, not necessarily granted
+                    //settings should provide width and height, and aspect ratio
+                    //video frame should be set to size/pixelRatio
+                    let settings = track.getSettings();
+                    this.video.style.width = `${settings.width / this.pixelRatio}px`;
+                    this.video.style.height = `${settings.height / this.pixelRatio}px`;
+
+                    const canvas = document.getElementById('vCanvas');
+                    canvas.width = settings.width / this.pixelRatio;
+                    canvas.height = settings.height / this.pixelRatio;
+
+                    this.currentResolution = `${settings.width}x${settings.height}`;
+                });
+            })
+            .catch(error => {
+                this.log.value += `\n\nGot user media error for constrains ${JSON.stringify(this.constraints)}:\n ${JSON.stringify(error, null, 2)}`;
             });
     }
 
