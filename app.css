@@ -1,3 +1,7 @@
+#camera-select,
+#resolution-group {
+  padding: 20px;
+}
 
 footer {
   background: #333e5a;

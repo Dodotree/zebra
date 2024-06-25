@@ -105,10 +105,10 @@ export class VideoClass extends HTMLElement {
      */
     async onInit() {
 
-        this.log = utilsUI.get({
-            tag: "textarea",
-            attrs: {id: 'log', value: '', style: `width: 640px; height: 260px; display:block;`}
-        });
+        this.log = document.createElement('textarea');
+        this.log.id = 'log';
+        this.log.value = '';
+        this.log.style = `width: 640px; height: 260px; display:block;`;
         this.appendChild(this.log);
 
         let testStream = null;
@@ -125,68 +125,68 @@ export class VideoClass extends HTMLElement {
             this.log.value += '\n\nError while fetching available streaming devices info\n' + JSON.stringify(error, null, 2);
         }
 
-        //TO DO
+
         const supportedOptions = navigator.mediaDevices.getSupportedConstraints();
+        console.log(mediaDevices);
 
         const mqString = `(resolution: ${window.devicePixelRatio}dppx)`;
         const media = matchMedia(mqString);
-        //media.addEventListener("change", updatePixelRatio.bind(this)); //TO DO: in case of multiple displays
+        //media.addEventListener("change", updatePixelRatio.bind(this));
         this.pixelRatio = window.devicePixelRatio;
 
-        this.appendChild(utilsUI.get({
-            tag: "label",
-            text: "Select Camera:",
-            attrs: {htmlFor: 'camera-select'}
-        }));
-        this.select = utilsUI.get({
-            tag: "select",
-            attrs: {id: 'camera-select'}
-        });
-        this.select.appendChild(utilsUI.get({
-            tag: "option",
-            text: "None",
-            attrs: {value: 'none'}  
-        }));
+        const label = document.createElement('label');
+        label.htmlFor = 'camera-select';
+        const labelText = document.createTextNode('Select Camera:');
+        label.appendChild(labelText);
+        this.appendChild(label);
+        this.select = document.createElement('select');
+        this.select.id = 'camera-select'
+        const blankOption = document.createElement('option');
+        blankOption.value = 'none';
+        const blankText = document.createTextNode('None');
+        blankOption.appendChild(blankText);
+        this.select.appendChild(blankOption);
         mediaDevices.forEach((mediaDevice, count) => {
-            this.select.appendChild(utilsUI.get({
-                tag: "option",
-                text: mediaDevice.label || `Camera ${count++}`,
-                attrs: {value: mediaDevice.deviceId}  
-            }));
+            const option = document.createElement('option');
+            option.value = mediaDevice.deviceId;
+            const label = mediaDevice.label || `Camera ${count++}`;
+            const textNode = document.createTextNode(label);
+            option.appendChild(textNode);
+            this.select.appendChild(option);
             if (mediaDevice.getCapabilities) {
-                this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
+                console.log(count, mediaDevice.getCapabilities());
             }
         });
         this.appendChild(this.select);
         this.select.addEventListener('change', this.onCameraChange.bind(this));
 
-        // now we can release the test stream
         this.stopDeviceTracks(testStream);
 
-        this.appendChild(utilsUI.get({
-            tag: "fieldset",
-            attrs: {id: 'resolution-group'}
-        }));
+        this.video = document.createElement('video');
+        this.video.controls = true;
+        this.video.autoplay = true;
+        this.video.playsInline = true;
+        this.video.preload = 'auto';
+        this.video.loop = true;
+        this.video.crossOrigin = "anonymous";
 
-        this.video = utilsUI.get({
-            tag: "video",
-            attrs: {
-                controls: true,
-                autoplay: true,
-                playsInline: true,
-                preload: 'auto',
-                loop: true,
-                crossOrigin: "anonymous",
-                style: `display: block; width: ${640 / this.pixelRatio}px; height: ${480 / this.pixelRatio}px;`
-            }
-        });
+        // this is going to change depending on selected camera resolution
+        this.video.style.display = 'block'; // fix bottom margin 4px
+        this.video.style.width = `${640 / this.pixelRatio}px`;
+        this.video.style.height = `${480 / this.pixelRatio}px`;
+
         this.appendChild(this.video);
 
-        this.appendChild(utilsUI.get({
-            tag: "canvas",
-            attrs: {id: 'vCanvas', width: 640 / this.pixelRatio, height: 480 / this.pixelRatio}
-        }));
+        const canvas = document.createElement('canvas');
+        canvas.id = 'vCanvas';
+        canvas.width = 640 / this.pixelRatio;
+        canvas.height = 480 / this.pixelRatio;
 
+        this.appendChild(canvas);
+
+        const resolutionGroup = document.createElement('fieldset');
+        resolutionGroup.id = 'resolution-group';
+        this.insertBefore(resolutionGroup, this.video);
 
         // if you want it to play in the background there's nothing else to setup
         if (this.backgroundPlayOk) return;
@@ -215,7 +215,6 @@ export class VideoClass extends HTMLElement {
         }
 
         this.initGL();
-
         // <button id="capture"> Capture </button>
         // <canvas id="myCanvas" width="480" height="270"></canvas>
     }
@@ -261,20 +260,12 @@ export class VideoClass extends HTMLElement {
             video: { deviceId: { exact: this.select.value } },
             audio: false
         };
-        if (deviceLabel.indexOf("RealSense")>-1){
-            if(deviceLabel.indexOf("SR300")>-1 ) {
-                if(deviceLabel.indexOf("RGB")>-1) {
-                    constraints.video.width = { ideal: 1280 };
-                }else{
-                    constraints.video.frameRate = { ideal: 110 };
-                }
-            }
-            if(deviceLabel.indexOf("R200")>-1 && deviceLabel.indexOf("RGB")==-1) {
-                constraints.video.width = { ideal: 628, max: 640 };  
-            }
+        if (deviceLabel.indexOf("RealSense")>-1 && deviceLabel.indexOf("RGB")>-1) {
+            constraints.video.frameRate = { ideal: 110 };
+            constraints.video.width = { ideal: 1280 };
         }
         if (deviceLabel.indexOf("RealSense")>-1 && deviceLabel.indexOf("R200")>-1) {
-            
+            constraints.video.width = { ideal: 628, max: 640 };
         }
         this.log.value = `\nSelected ${deviceLabel}`;
         this.log.value += `\nGet constrains ${JSON.stringify(constraints)}`;
@@ -300,50 +291,17 @@ export class VideoClass extends HTMLElement {
                     canvas.width = settings.width / this.pixelRatio;
                     canvas.height = settings.height / this.pixelRatio;
 
-                    // track capabilities look the same as stream capabilities, don't know about all environments
-                    // capabilities not always available, but can provide native resolution and aspect ratio
+                    // capabilities not always available,but can provide native resolution and aspect ratio
                     // next is providing options to switch. It's possible to "scan" for common
                     // variations of that, but I doubt it's convenient. Maybe an input for custom resolution. 
                     let capabilities = track.getCapabilities ? track.getCapabilities() : {};
 
-                    const resHolder = document.getElementById('resolution-group');
-                    resHolder.innerHTML = '';
-                    const defaultRes = `${settings.width}x${settings.height}`;
-                    const betterRes = `${capabilities.width.max}x${capabilities.height.max}`;
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: 'radio', 
-                            name: 'resolution',
-                            id: defaultRes, 
-                            value: defaultRes, 
-                            checked: 'checked'
-                        }  
-                    }));
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "label",
-                        text: defaultRes,
-                        attrs: {htmlFor: defaultRes}
-                    }));
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: 'radio', 
-                            name: 'resolution',
-                            id: betterRes, 
-                            value: betterRes, 
-                        }  
-                    }));
-                    resHolder.appendChild(utilsUI.get({
-                        tag: "label",
-                        text: betterRes,
-                        attrs: {htmlFor: betterRes}
-                    }));
+
 
                     this.log.value += `\n\nTrack ${track.kind} ${track.label}`;
-                    this.log.value += '\n\nTrack  Settings>>:\n' + JSON.stringify(settings, null, 2);
-                    this.log.value += '\n\nTrack  Capabilities>>:\n' + JSON.stringify(capabilities, null, 2);
-                    this.log.value += '\n\nTrack Stats>>:\n' + JSON.stringify(track.stats, null, 2);
+                    this.log.value += '\n\nSettings>>:\n' + JSON.stringify(settings, null, 2);
+                    this.log.value += '\n\nCapabilities>>:\n' + JSON.stringify(capabilities, null, 2);
+                    this.log.value += '\n\nStats>>:\n' + JSON.stringify(track.stats, null, 2);
                 })
             })
             .catch(error => {
@@ -370,19 +328,3 @@ export class VideoClass extends HTMLElement {
 
 }
 
-// it is convenient but noticeably slower than direct DOM manipulation
-// I can live with that but maybe unwrap before publishing
-const utilsUI = {
-    get(element) {
-        const el = document.createElement(element.tag);
-        if (element.text) {
-            el.appendChild(document.createTextNode(element.text));
-        }
-        if (element.attrs) {
-            Object.keys(element.attrs).forEach(attr => {
-                el.setAttribute(attr, element.attrs[attr]);
-            });
-        }
-        return el;
-    }
-}
