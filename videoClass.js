@@ -111,6 +111,11 @@ export class VideoClass extends HTMLElement {
         });
         this.appendChild(this.log);
 
+        this.appendChild(utilsUI.get({
+            tag: "details",
+            attrs: { id: 'track-capabilities' }
+        }));
+
         let testStream = null;
         let mediaDevices = [];
         // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
@@ -252,6 +257,7 @@ export class VideoClass extends HTMLElement {
             .then(stream => {
                 this.currentStream = stream;
                 this.video.srcObject = stream;
+                this.currentTracks = {};
 
                 stream.getTracks().forEach(track => {
                     // constrains are more like wishes, not necessarily granted
@@ -279,6 +285,13 @@ export class VideoClass extends HTMLElement {
                     // next is providing options to switch. It's possible to "scan" for common
                     // variations of that, but I doubt it's convenient. Maybe an input for custom resolution. 
                     let capabilities = track.getCapabilities ? track.getCapabilities() : {};
+                    const capHolder = document.getElementById('track-capabilities');
+                    capHolder.innerHTML = '';
+                    capHolder.appendChild(utilsUI.get({
+                        tag: "summary",
+                        text: `${track.kind} ${track.label} controls`
+                    }));
+                    capHolder.appendChild(utilsUI.getCapabilitiesUI(track.kind, capabilities, settings, this.controlsCallback.bind(this) ));
 
                     const resHolder = document.getElementById('resolution-select');
                     resHolder.innerHTML = '';
@@ -298,6 +311,7 @@ export class VideoClass extends HTMLElement {
                         attrs: { value: betterRes }
                     }));;
 
+                    this.currentTracks[track.kind] = track;
                     this.log.value += `\n\nTrack ${track.kind} ${track.label}`;
                     this.log.value += '\n\nTrack  Settings>>:\n' + JSON.stringify(settings, null, 2);
                     this.log.value += '\n\nTrack  Capabilities>>:\n' + JSON.stringify(capabilities, null, 2);
@@ -306,6 +320,21 @@ export class VideoClass extends HTMLElement {
             })
             .catch(error => {
                 this.log.value += `\n\nGot user media error for constrains ${JSON.stringify(constraints)}:\n ${JSON.stringify(error, null, 2)}`;
+            });
+    }
+
+    controlsCallback(event) {
+        console.log(this.currentTracks, event.target.form.kind, event.target.name, event.target.value);
+        this.currentTracks[event.target.form.kind].applyConstraints({
+            advanced: [
+                {[event.target.name]: event.target.value}
+            ]})
+            .then(() => {
+                // success
+                console.log('The new device settings are: ', this.currentTracks[event.target.form.kind].getSettings());
+            })
+            .catch(e => {
+                console.error('Failed to set exposure time', e);
             });
     }
 
@@ -419,10 +448,78 @@ const utilsUI = {
             el.appendChild(document.createTextNode(element.text));
         }
         if (element.attrs) {
-            Object.keys(element.attrs).forEach(attr => {
+            for(const attr in element.attrs) {
                 el.setAttribute(attr, element.attrs[attr]);
-            });
+            };
         }
         return el;
+    },
+
+    getCapabilitiesUI(trackKind, capabilities, settings, callback) {
+        const form = document.createElement("form");
+        form.kind = trackKind;
+
+        for(const cKey in capabilities) {
+
+            const pnode = form.appendChild(document.createElement("p"));
+
+            if(Array.isArray(capabilities[cKey]) && capabilities[cKey].length > 0){
+
+                pnode.appendChild(utilsUI.get({
+                    tag: "label",
+                    text: cKey,
+                    attrs: { htmlFor: cKey }
+                }));
+                const sel = pnode.appendChild(utilsUI.get({
+                    tag: "select",
+                    attrs: { name: cKey }
+                }));
+                capabilities[cKey].forEach((option, index) => {
+                    sel.appendChild(utilsUI.get({
+                        tag: "option",
+                        text: option,
+                        attrs: { value: option }
+                    }));
+                });
+                sel.addEventListener('change', callback);
+
+            }else if(Object.keys(capabilities[cKey]).includes('min' && 'max')){
+
+                pnode.appendChild(utilsUI.get({
+                    tag: "label",
+                    text: cKey,
+                    attrs: { htmlFor: cKey + 'Range' }
+                }));
+                const inpRange = pnode.appendChild(utilsUI.get({
+                    tag: "input",                   
+                    attrs: { 
+                        type: 'range', 
+                        name: cKey + 'Range',
+                        min: capabilities[cKey].min, 
+                        max: capabilities[cKey].max,
+                        step: 'step' in capabilities[cKey]? capabilities[cKey].step : 1, 
+                        value: settings[cKey],
+                        oninput: `this.form.${cKey + 'Number'}.value = this.value`
+                    }
+                }));
+                inpRange.addEventListener('input', callback);
+                const inpNum = pnode.appendChild(utilsUI.get({
+                    tag: "input",
+                    attrs: { 
+                        type: 'number',
+                        name: cKey + 'Number',
+                        min: capabilities[cKey].min, 
+                        max: capabilities[cKey].max, 
+                        step: 'step' in capabilities[cKey]? capabilities[cKey].step : 1, 
+                        value: settings[cKey],
+                        oninput: `this.form.${cKey + 'Range'}.value = this.value`
+                    }
+                }));
+                inpNum.addEventListener('input', callback);
+
+            }
+        }
+
+        return form;
     }
 }

@@ -2,6 +2,14 @@
 #resolution-group {
   padding: 20px;
 }
+summary{
+  background-color: #eee;
+}
+#track-capabilities {
+  padding: 20px;
+  column-count: 3;
+  column-gap: 0.3rem;
+}
 
 footer {
   background: #333e5a;
