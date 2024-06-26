@@ -138,6 +138,19 @@ export class VideoClass extends HTMLElement {
         //media.addEventListener("change", updatePixelRatio.bind(this)); //TO DO: in case of multiple displays
         this.pixelRatio = window.devicePixelRatio;
 
+        window.addEventListener("deviceorientation", (event) => {
+            this.log.value +=`\nScreen Orientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
+            this.log.value +=`\nDevice Orientation ${screen.orientation.type}`;
+        });
+        screen.orientation.addEventListener("change", (event) => {
+            const type = event.target.type;
+            const angle = event.target.angle;
+            this.log.value +=`\nScreen Orientation ScreenOrientation change: ${type}, ${angle} degrees.`;
+        });
+        window.addEventListener("orientationchange", (event) => {
+            this.log.value +=`\nWindow Orientation change: ${event.target.screen.orientation.angle} degrees.`;
+        });
+
         this.appendChild(utilsUI.get({
             tag: "label",
             text: "Select Camera:",
