@@ -149,6 +149,7 @@ export class VideoClass extends HTMLElement {
             this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             screen.orientation.addEventListener("change", (event) => {
                 this.angle = screen.orientation.angle;
+                this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
                 this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             });
         } else if ('onorientationchange' in window) { // for some mobile browsers
@@ -160,6 +161,7 @@ export class VideoClass extends HTMLElement {
             this.log.value += `\nWindow orientation ${this.angle} degrees.`;
             window.addEventListener("orientationchange", (event) => {
                 this.angle = widow.orientation;
+                this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
                 this.log.value += `\nWindow orientation change: ${this.angle} degrees.`;
             });
         }
@@ -204,6 +206,8 @@ export class VideoClass extends HTMLElement {
         this.appendChild(resHolder);
         resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
+        const vidW = this.wide ? 640 : 480;
+        const vidH = this.wide ? 480 : 640;
         this.video = utilsUI.get({
             tag: "video",
             attrs: {
@@ -213,7 +217,7 @@ export class VideoClass extends HTMLElement {
                 preload: 'auto',
                 loop: true,
                 crossOrigin: "anonymous",
-                style: `display: block; width: ${640 / this.pixelRatio}px; height: ${480 / this.pixelRatio}px;`
+                style: `display: block; width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`
             }
         });
         this.appendChild(this.video);
@@ -294,8 +298,15 @@ export class VideoClass extends HTMLElement {
                     //settings should provide width and height, and aspect ratio
                     //video frame should be set to size/pixelRatio
                     let settings = track.getSettings();
-                    this.video.style.width = `${settings.width / this.pixelRatio}px`;
-                    this.video.style.height = `${settings.height / this.pixelRatio}px`;
+
+                    let vidW = settings.width;
+                    let vidH = settings.height;
+                    if( (this.wide && vidW < vidH) || (!this.wide && vidW > vidH)){
+                        [vidW, vidH] = [vidH, vidW];
+                    }
+                    console.log(this.wide, 'video dimensions', vidW, vidH);
+                    this.video.style.width = `${vidW / this.pixelRatio}px`;
+                    this.video.style.height = `${vidH / this.pixelRatio}px`;
 
                     // canvas context should have right dimensions
                     // it's easier to replace canvas than try to update context of existing one
@@ -303,9 +314,9 @@ export class VideoClass extends HTMLElement {
                         tag: "canvas",
                         attrs: {
                             id: 'vCanvas',
-                            width: settings.width,
-                            height: settings.height,
-                            style: `width: ${settings.width / this.pixelRatio}px; height: ${settings.height / this.pixelRatio}px;`
+                            width: vidW,
+                            height: vidH,
+                            style: `width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`
                         }
                     }));
                     this.initGL();
