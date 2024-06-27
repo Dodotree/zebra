@@ -18,10 +18,17 @@ summary{
   background-color: #eee;
   padding: 1rem;
 }
+
 #track-capabilities form{
   padding: 20px;
   column-count: 3;
   column-gap: 0.3rem;
+}
+@media (max-width: 768px) {
+  #track-capabilities form{
+    padding: 5px;
+    column-count: 1;
+  }
 }
 
 video, 
