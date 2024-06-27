@@ -1,8 +1,15 @@
+textarea {
+  width: 100%;
+  height: 240px;
+}
 label{
   padding-right: 1.2rem;
 }
 select {
   padding: 1rem;
+}
+details {
+  margin: 1rem;
 }
 details select {
   padding: 0.33rem;
@@ -15,6 +22,12 @@ summary{
   padding: 20px;
   column-count: 3;
   column-gap: 0.3rem;
+}
+
+video, 
+canvas{
+  display:block;
+  margin: 2rem;
 }
 
 footer {
