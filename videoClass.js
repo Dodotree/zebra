@@ -197,6 +197,7 @@ export class VideoClass extends HTMLElement {
         this.appendChild(resHolder);
         resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
+        this.wide = 0;
         const initW = this.wide? 640 : 480;
         const initH = this.wide? 480 : 640;
         this.video = utilsUI.get({
