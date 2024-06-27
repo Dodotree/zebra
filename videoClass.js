@@ -107,7 +107,7 @@ export class VideoClass extends HTMLElement {
 
         this.log = utilsUI.get({
             tag: "textarea",
-            attrs: { id: 'log', value: '', style: `width: 640px; height: 260px; display:block;` }
+            attrs: { id: 'log', value: '' }
         });
         this.appendChild(this.log);
 
