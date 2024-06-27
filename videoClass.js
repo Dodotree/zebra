@@ -166,7 +166,7 @@ export class VideoClass extends HTMLElement {
             });
         }
         this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
-        this.log.value += `\nNarrowing down 4 Orientation ${this.angle} device ${this.deviceWide ? 'Wide' : 'Narrow'} => ${this.wide ? 'Wide' : 'Narrow'} screen`;
+        this.log.value += `\nNarrowing down 5 Orientation ${this.angle} device ${this.deviceWide ? 'Wide' : 'Narrow'} => ${this.wide ? 'Wide' : 'Narrow'} screen`;
 
         this.appendChild(utilsUI.get({
             tag: "label",
