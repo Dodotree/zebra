@@ -142,20 +142,22 @@ export class VideoClass extends HTMLElement {
         this.orientation = 0;
         if( 'onorientationchange' in window) { 
             this.orientation = widow.orientation;
+            this.log.value += `\nOrientation window`;
             window.addEventListener("orientationchange", (event) => {
                 this.orientation = widow.orientation;
                 this.log.value += `\nWindow Orientation change: ${this.orientation} degrees.`;
             });
         } else if(screen && 'orientation' in screen){
             this.orientation = screen.orientation.angle;
+            this.log.value += `\nOrientation screen`;
             screen.orientation.addEventListener("change", (event) => {
                 this.orientation = screen.orientation.angle;
                 this.log.value += `\nScreen Orientation change: ${this.orientation} degrees.`;
             });
         }
-        window.addEventListener("deviceorientation", (event) => {
-            this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
-        });
+        // window.addEventListener("deviceorientation", (event) => {
+        //     this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
+        // });
         this.wide = (this.orientation === 180 || this.orientation === 0);
         this.log.value += `\nOrientation ${this.orientation}`;
 
@@ -181,7 +183,7 @@ export class VideoClass extends HTMLElement {
                 attrs: { value: mediaDevice.deviceId }
             }));
             if (mediaDevice.getCapabilities) {
-                this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
+                // this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
             }
         });
         this.appendChild(this.select);
@@ -197,7 +199,6 @@ export class VideoClass extends HTMLElement {
         this.appendChild(resHolder);
         resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
-        this.wide = 0;
         const initW = this.wide? 640 : 480;
         const initH = this.wide? 480 : 640;
         this.video = utilsUI.get({
