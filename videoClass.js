@@ -139,16 +139,16 @@ export class VideoClass extends HTMLElement {
         this.pixelRatio = window.devicePixelRatio;
 
         window.addEventListener("deviceorientation", (event) => {
-            this.log.value +=`\nScreen Orientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
-            this.log.value +=`\nDevice Orientation ${screen.orientation.type}`;
+            this.log.value += `\nScreen Orientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
+            this.log.value += `\nDevice Orientation ${screen.orientation.type}`;
         });
         screen.orientation.addEventListener("change", (event) => {
             const type = event.target.type;
             const angle = event.target.angle;
-            this.log.value +=`\nScreen Orientation ScreenOrientation change: ${type}, ${angle} degrees.`;
+            this.log.value += `\nScreen Orientation ScreenOrientation change: ${type}, ${angle} degrees.`;
         });
         window.addEventListener("orientationchange", (event) => {
-            this.log.value +=`\nWindow Orientation change: ${event.target.screen.orientation.angle} degrees.`;
+            this.log.value += `\nWindow Orientation change: ${event.target.screen.orientation.angle} degrees.`;
         });
 
         this.appendChild(utilsUI.get({
@@ -236,6 +236,7 @@ export class VideoClass extends HTMLElement {
 
         if (this.select.value === 'none') {
             this.stopDeviceTracks(this.currentStream);
+            document.getElementById('track-capabilities').innerHTML = '';
             return;
         }
 
@@ -284,7 +285,7 @@ export class VideoClass extends HTMLElement {
                     // it's easier to replace canvas than try to update context of existing one
                     this.appendChild(utilsUI.get({
                         tag: "canvas",
-                        attrs: { 
+                        attrs: {
                             id: 'vCanvas',
                             width: settings.width,
                             height: settings.height,
@@ -304,7 +305,7 @@ export class VideoClass extends HTMLElement {
                         tag: "summary",
                         text: `${track.kind} ${track.label} controls`
                     }));
-                    capHolder.appendChild(utilsUI.getCapabilitiesUI(track.kind, capabilities, settings, this.controlsCallback.bind(this) ));
+                    capHolder.appendChild(utilsUI.getCapabilitiesUI(track.kind, capabilities, settings, this.controlsCallback.bind(this)));
 
                     const resHolder = document.getElementById('resolution-select');
                     resHolder.innerHTML = '';
@@ -340,8 +341,9 @@ export class VideoClass extends HTMLElement {
         console.log(this.currentTracks, event.target.form.kind, event.target.name, event.target.value);
         this.currentTracks[event.target.form.kind].applyConstraints({
             advanced: [
-                {[event.target.name]: event.target.value}
-            ]})
+                { [event.target.name]: event.target.value }
+            ]
+        })
             .then(() => {
                 // success
                 console.log('The new device settings are: ', this.currentTracks[event.target.form.kind].getSettings());
@@ -385,7 +387,7 @@ export class VideoClass extends HTMLElement {
                     // it's easier to replace canvas than try to update context of existing one
                     this.appendChild(utilsUI.get({
                         tag: "canvas",
-                        attrs: { 
+                        attrs: {
                             id: 'vCanvas',
                             width: settings.width,
                             height: settings.height,
@@ -461,7 +463,7 @@ const utilsUI = {
             el.appendChild(document.createTextNode(element.text));
         }
         if (element.attrs) {
-            for(const attr in element.attrs) {
+            for (const attr in element.attrs) {
                 el.setAttribute(attr, element.attrs[attr]);
             };
         }
@@ -471,68 +473,118 @@ const utilsUI = {
     getCapabilitiesUI(trackKind, capabilities, settings, callback) {
         const form = document.createElement("form");
         form.kind = trackKind;
+        const buckets = {
+            info: ['deviceId', 'groupId'],
+            box: ['resizeMode', 'aspectRatio', 'width', 'height', 'frameRate'],
+            exposure: ['exposureMode', 'exposureTime', 'exposureCompensation', 'iso', 'whiteBalanceMode'],
+            focus: ['focusMode', 'focusDistance', 'focusRange'],
+            color: ['brightness', 'colorTemperature', 'contrast', 'saturation', 'sharpness'],
+        }
 
-        for(const cKey in capabilities) {
+        const usedSoFar = [];
 
-            const pnode = form.appendChild(document.createElement("p"));
+        for (const buck in buckets) {
+            const bucketNode = document.createElement("fieldset");
+            bucketNode.setAttribute('style', 'break-inside: avoid; page-break-inside: avoid;');
 
-            if(Array.isArray(capabilities[cKey]) && capabilities[cKey].length > 0){
+            buckets[buck].forEach(cKey => {
+                if (cKey in capabilities) {
+                    usedSoFar.push(cKey);
+                    bucketNode.appendChild(utilsUI.getInputUI(cKey, capabilities[cKey], settings[cKey], callback));
+                }
+            })
 
-                pnode.appendChild(utilsUI.get({
-                    tag: "label",
-                    text: cKey,
-                    attrs: { htmlFor: cKey }
-                }));
-                const sel = pnode.appendChild(utilsUI.get({
-                    tag: "select",
-                    attrs: { name: cKey }
-                }));
-                capabilities[cKey].forEach((option, index) => {
-                    sel.appendChild(utilsUI.get({
-                        tag: "option",
-                        text: option,
-                        attrs: { value: option }
-                    }));
-                });
-                sel.addEventListener('change', callback);
-
-            }else if(Object.keys(capabilities[cKey]).includes('min' && 'max')){
-
-                pnode.appendChild(utilsUI.get({
-                    tag: "label",
-                    text: cKey,
-                    attrs: { htmlFor: cKey + 'Range' }
-                }));
-                const inpRange = pnode.appendChild(utilsUI.get({
-                    tag: "input",                   
-                    attrs: { 
-                        type: 'range', 
-                        name: cKey + 'Range',
-                        min: capabilities[cKey].min, 
-                        max: capabilities[cKey].max,
-                        step: 'step' in capabilities[cKey]? capabilities[cKey].step : 1, 
-                        value: settings[cKey],
-                        oninput: `this.form.${cKey + 'Number'}.value = this.value`
-                    }
-                }));
-                inpRange.addEventListener('input', callback);
-                const inpNum = pnode.appendChild(utilsUI.get({
-                    tag: "input",
-                    attrs: { 
-                        type: 'number',
-                        name: cKey + 'Number',
-                        min: capabilities[cKey].min, 
-                        max: capabilities[cKey].max, 
-                        step: 'step' in capabilities[cKey]? capabilities[cKey].step : 1, 
-                        value: settings[cKey],
-                        oninput: `this.form.${cKey + 'Range'}.value = this.value`
-                    }
-                }));
-                inpNum.addEventListener('input', callback);
-
+            if (bucketNode.children.length > 0) {
+                form.appendChild(bucketNode);
             }
         }
 
+        const leftoverKeys = Object.keys(capabilities).filter(key => usedSoFar.indexOf(key) == -1);
+        console.log('leftoverKeys', leftoverKeys);
+        leftoverKeys.forEach(cKey => {
+            if (cKey in capabilities) {
+                usedSoFar.push(cKey);
+                form.appendChild(utilsUI.getInputUI(cKey, capabilities[cKey], settings[cKey], callback));
+            }
+        })
+
+
         return form;
+    },
+
+    getInputUI(cKey, cOptions, cValue, callback) {
+        const pnode = document.createElement("p");
+
+        if (typeof cOptions === 'string' || cOptions instanceof String) { // string or String wrapper
+            // those most likely are not meant to be changed
+            pnode.appendChild(utilsUI.get({
+                tag: "label",
+                text: cKey,
+                attrs: { htmlFor: cKey }
+            }));
+            const inp = pnode.appendChild(utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: 'text',
+                    name: cKey,
+                    value: cValue,
+                    disabled: true
+                }
+            }));
+        } else if (Array.isArray(cOptions) && cOptions.length > 0) {
+
+            pnode.appendChild(utilsUI.get({
+                tag: "label",
+                text: cKey,
+                attrs: { htmlFor: cKey }
+            }));
+            const sel = pnode.appendChild(utilsUI.get({
+                tag: "select",
+                attrs: { name: cKey }
+            }));
+            cOptions.forEach((option, index) => {
+                sel.appendChild(utilsUI.get({
+                    tag: "option",
+                    text: option,
+                    attrs: { value: option }
+                }));
+            });
+            sel.addEventListener('change', callback);
+
+        } else if (Object.keys(cOptions).includes('min' && 'max')) {
+
+            pnode.appendChild(utilsUI.get({
+                tag: "label",
+                text: cKey,
+                attrs: { htmlFor: cKey + 'Range' }
+            }));
+            const inpRange = pnode.appendChild(utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: 'range',
+                    name: cKey + 'Range',
+                    min: cOptions.min,
+                    max: cOptions.max,
+                    step: 'step' in cOptions ? cOptions.step : 1,
+                    value: cValue,
+                    oninput: `this.form.${cKey + 'Number'}.value = this.value`
+                }
+            }));
+            inpRange.addEventListener('input', callback);
+            const inpNum = pnode.appendChild(utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: 'number',
+                    name: cKey + 'Number',
+                    min: cOptions.min,
+                    max: cOptions.max,
+                    step: 'step' in cOptions ? cOptions.step : 1,
+                    value: cValue,
+                    oninput: `this.form.${cKey + 'Range'}.value = this.value`
+                }
+            }));
+            inpNum.addEventListener('input', callback);
+        }
+        return pnode;
     }
 }

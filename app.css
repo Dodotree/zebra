@@ -1,11 +1,17 @@
-#camera-select,
-#resolution-group {
-  padding: 20px;
+label{
+  padding-right: 1.2rem;
+}
+select {
+  padding: 1rem;
+}
+details select {
+  padding: 0.33rem;
 }
 summary{
   background-color: #eee;
+  padding: 1rem;
 }
-#track-capabilities {
+#track-capabilities form{
   padding: 20px;
   column-count: 3;
   column-gap: 0.3rem;
