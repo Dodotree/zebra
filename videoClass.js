@@ -138,18 +138,27 @@ export class VideoClass extends HTMLElement {
         //media.addEventListener("change", updatePixelRatio.bind(this)); //TO DO: in case of multiple displays
         this.pixelRatio = window.devicePixelRatio;
 
-        window.addEventListener("deviceorientation", (event) => {
-            this.log.value += `\nScreen Orientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
-            this.log.value += `\nDevice Orientation ${screen.orientation.type}`;
-        });
-        screen.orientation.addEventListener("change", (event) => {
-            const type = event.target.type;
-            const angle = event.target.angle;
-            this.log.value += `\nScreen Orientation ScreenOrientation change: ${type}, ${angle} degrees.`;
-        });
-        window.addEventListener("orientationchange", (event) => {
-            this.log.value += `\nWindow Orientation change: ${event.target.screen.orientation.angle} degrees.`;
-        });
+        this.angle = 0;
+        if( 'onorientationchange' in window) { 
+            this.angle = widow.orientation;
+            this.log.value += `\nOrientation window`;
+            window.addEventListener("orientationchange", (event) => {
+                this.angle = widow.orientation;
+                this.log.value += `\nWindow Orientation change: ${this.angle} degrees.`;
+            });
+        } else if(screen && 'orientation' in screen){
+            this.angle = screen.orientation.angle;
+            this.log.value += `\nOrientation screen`;
+            screen.orientation.addEventListener("change", (event) => {
+                this.angle = screen.orientation.angle;
+                this.log.value += `\nScreen Orientation change: ${this.angle} degrees.`;
+            });
+        }
+        // window.addEventListener("deviceorientation", (event) => {
+        //     this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
+        // });
+        this.wide = (this.angle === 180 || this.angle === 0);
+        this.log.value += `\nOrientation ${this.angle}`;
 
         this.appendChild(utilsUI.get({
             tag: "label",
