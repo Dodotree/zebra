@@ -139,14 +139,7 @@ export class VideoClass extends HTMLElement {
         this.pixelRatio = window.devicePixelRatio;
 
         this.angle = 0;
-        if( 'onorientationchange' in window) { 
-            this.angle = widow.orientation;
-            this.log.value += `\nOrientation window`;
-            window.addEventListener("orientationchange", (event) => {
-                this.angle = widow.orientation;
-                this.log.value += `\nWindow Orientation change: ${this.angle} degrees.`;
-            });
-        } else if(screen && 'orientation' in screen){
+        if(screen && 'orientation' in screen){
             this.angle = screen.orientation.angle;
             this.log.value += `\nOrientation screen`;
             screen.orientation.addEventListener("change", (event) => {
