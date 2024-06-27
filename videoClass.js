@@ -139,8 +139,12 @@ export class VideoClass extends HTMLElement {
         this.pixelRatio = window.devicePixelRatio;
 
         this.angle = 0;
-        if(screen && 'orientation' in screen){
-            // this.angle = screen.orientation.angle;
+        if (screen && 'orientation' in screen) {
+            try {
+                this.angle = screen.orientation.angle;
+            } catch (e) {
+                this.log.value += `\n\nOrientation screen error: ${JSON.stringify(e)}\n\n`;
+            }
             this.log.value += `\nOrientation screen`;
             screen.orientation.addEventListener("change", (event) => {
                 this.angle = screen.orientation.angle;
@@ -151,7 +155,7 @@ export class VideoClass extends HTMLElement {
         //     this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
         // });
         this.wide = (this.angle === 180 || this.angle === 0);
-        this.log.value += `\nNarrowing down 2 Orientation ${this.angle}`;
+        this.log.value += `\nNarrowing down 3 Orientation ${this.angle}`;
 
         this.appendChild(utilsUI.get({
             tag: "label",
