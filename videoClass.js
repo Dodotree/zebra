@@ -110,6 +110,7 @@ export class VideoClass extends HTMLElement {
             attrs: { id: 'log', value: '' }
         });
         this.appendChild(this.log);
+        this.log.value += 'Initiating...';
 
         this.appendChild(utilsUI.get({
             tag: "details",
