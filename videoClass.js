@@ -159,7 +159,7 @@ export class VideoClass extends HTMLElement {
             this.log.value += `\nWindow orientation ${this.angle} degrees.`;
             window.addEventListener("orientationchange", (event) => {
                 this.angle = widow.orientation;
-                this.log.value += `\nWindow Orientation change: ${this.angle} degrees.`;
+                this.log.value += `\nWindow orientation change: ${this.angle} degrees.`;
             });
         }
         // window.addEventListener("deviceorientation", (event) => {
