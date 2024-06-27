@@ -139,16 +139,17 @@ export class VideoClass extends HTMLElement {
         this.pixelRatio = window.devicePixelRatio;
 
         this.angle = 0;
+        this.deviceWide = screen.width > screen.height;
         if (screen && 'orientation' in screen) {
             try {
                 this.angle = screen.orientation.angle;
             } catch (e) {
                 this.log.value += `\n\nScreen orientation error: ${JSON.stringify(e)}\n\n`;
             }
-            this.log.value += `\nScreen orientation change: ${this.angle} degrees.`;
+            this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             screen.orientation.addEventListener("change", (event) => {
                 this.angle = screen.orientation.angle;
-                this.log.value += `\nScreen orientation change: ${this.angle} degrees.`;
+                this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             });
         } else if ('onorientationchange' in window) { // for some mobile browsers
             try {
@@ -162,11 +163,8 @@ export class VideoClass extends HTMLElement {
                 this.log.value += `\nWindow orientation change: ${this.angle} degrees.`;
             });
         }
-        // window.addEventListener("deviceorientation", (event) => {
-        //     this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
-        // });
-        this.wide = (this.angle === 180 || this.angle === 0);
-        this.log.value += `\nNarrowing down 4 Orientation ${this.angle} => ${this.wide ? 'Wide' : 'Narrow'} screen`;
+        this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
+        this.log.value += `\nNarrowing down 4 Orientation ${this.angle} device ${this.deviceWide ? 'Wide' : 'Narrow'} => ${this.wide ? 'Wide' : 'Narrow'} screen`;
 
         this.appendChild(utilsUI.get({
             tag: "label",
