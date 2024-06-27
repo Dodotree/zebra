@@ -107,7 +107,7 @@ export class VideoClass extends HTMLElement {
 
         this.log = utilsUI.get({
             tag: "textarea",
-            attrs: { id: 'log', value: '', style: `width: 640px; height: 260px; display:block;` }
+            attrs: { id: 'log', value: '' }
         });
         this.appendChild(this.log);
 
@@ -138,18 +138,27 @@ export class VideoClass extends HTMLElement {
         //media.addEventListener("change", updatePixelRatio.bind(this)); //TO DO: in case of multiple displays
         this.pixelRatio = window.devicePixelRatio;
 
+        // this is mainly for iOs since it usually provides w/h in the opposite order
+        this.orientation = 0;
+        if( 'onorientationchange' in window) { 
+            this.orientation = widow.orientation;
+            window.addEventListener("orientationchange", (event) => {
+                this.orientation = widow.orientation;
+                this.log.value += `\nWindow Orientation change: ${this.orientation} degrees.`;
+            });
+        } else if(screen && 'orientation' in screen){
+            this.orientation = screen.orientation.angle;
+            screen.orientation.addEventListener("change", (event) => {
+                this.orientation = screen.orientation.angle;
+                this.log.value += `\nScreen Orientation change: ${this.orientation} degrees.`;
+            });
+        }
         window.addEventListener("deviceorientation", (event) => {
-            this.log.value += `\nScreen Orientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
-            this.log.value += `\nDevice Orientation ${screen.orientation.type}`;
+            this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
         });
-        screen.orientation.addEventListener("change", (event) => {
-            const type = event.target.type;
-            const angle = event.target.angle;
-            this.log.value += `\nScreen Orientation ScreenOrientation change: ${type}, ${angle} degrees.`;
-        });
-        window.addEventListener("orientationchange", (event) => {
-            this.log.value += `\nWindow Orientation change: ${event.target.screen.orientation.angle} degrees.`;
-        });
+        this.wide = (this.orientation === 180 || this.orientation === 0);
+        this.log.value += `\nOrientation ${this.orientation}`;
+
 
         this.appendChild(utilsUI.get({
             tag: "label",
@@ -188,6 +197,8 @@ export class VideoClass extends HTMLElement {
         this.appendChild(resHolder);
         resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
+        const initW = this.wide? 640 : 480;
+        const initH = this.wide? 480 : 640;
         this.video = utilsUI.get({
             tag: "video",
             attrs: {
@@ -197,7 +208,7 @@ export class VideoClass extends HTMLElement {
                 preload: 'auto',
                 loop: true,
                 crossOrigin: "anonymous",
-                style: `display: block; width: ${640 / this.pixelRatio}px; height: ${480 / this.pixelRatio}px;`
+                style: `width: ${initW / this.pixelRatio}px; height: ${initH / this.pixelRatio}px;`
             }
         });
         this.appendChild(this.video);
