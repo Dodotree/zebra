@@ -151,7 +151,7 @@ export class VideoClass extends HTMLElement {
         //     this.log.value += `\ndeviceorientation ${event.alpha} : ${event.beta} : ${event.gamma}`;
         // });
         this.wide = (this.angle === 180 || this.angle === 0);
-        this.log.value += `\nOrientation ${this.angle}`;
+        this.log.value += `\nNarrowing down 2 Orientation ${this.angle}`;
 
         this.appendChild(utilsUI.get({
             tag: "label",
