@@ -173,8 +173,9 @@ export class VideoClass extends HTMLElement {
                 text: mediaDevice.label || `Camera ${count++}`,
                 attrs: { value: mediaDevice.deviceId }
             }));
+            this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}`;
             if (mediaDevice.getCapabilities) {
-                this.log.value += `\nSteam ${count} id=${mediaDevice.deviceId}\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
+                this.log.value += `\nCapabilities>>:\n ${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`;
             }
         });
         this.appendChild(this.select);
