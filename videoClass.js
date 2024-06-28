@@ -56,6 +56,9 @@ export class VideoClass extends HTMLElement {
          * @type {number}
          */
         this.reconnectTID = 0;
+
+        // to make bound callback event listener removable
+        this.controlsCallback = this.controlsCallback.bind(this);
     }
 
 
@@ -149,7 +152,7 @@ export class VideoClass extends HTMLElement {
             this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             screen.orientation.addEventListener("change", (event) => {
                 this.angle = screen.orientation.angle;
-                this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
+                this.wide = (this.angle === 180 || this.angle === 0) ? this.deviceWide : !this.deviceWide;
                 this.log.value += `\nScreen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`;
             });
         } else if ('onorientationchange' in window) { // for some mobile browsers
@@ -161,11 +164,11 @@ export class VideoClass extends HTMLElement {
             this.log.value += `\nWindow orientation ${this.angle} degrees.`;
             window.addEventListener("orientationchange", (event) => {
                 this.angle = widow.orientation;
-                this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
+                this.wide = (this.angle === 180 || this.angle === 0) ? this.deviceWide : !this.deviceWide;
                 this.log.value += `\nWindow orientation change: ${this.angle} degrees.`;
             });
         }
-        this.wide = (this.angle === 180 || this.angle === 0)? this.deviceWide : !this.deviceWide;
+        this.wide = (this.angle === 180 || this.angle === 0) ? this.deviceWide : !this.deviceWide;
         this.log.value += `\nNarrowing down 5 Orientation ${this.angle} device ${this.deviceWide ? 'Wide' : 'Narrow'} => ${this.wide ? 'Wide' : 'Narrow'} screen`;
 
         this.appendChild(utilsUI.get({
@@ -199,11 +202,10 @@ export class VideoClass extends HTMLElement {
         // now we can release the test stream
         this.stopDeviceTracks(testStream);
 
-        const resHolder = utilsUI.get({
+        const resHolder = this.appendChild(utilsUI.get({
             tag: "select",
             attrs: { id: 'resolution-select' }
-        });
-        this.appendChild(resHolder);
+        }));
         resHolder.addEventListener('change', this.onResolutionChange.bind(this));
 
         const vidW = this.wide ? 640 : 480;
@@ -256,7 +258,9 @@ export class VideoClass extends HTMLElement {
 
         if (this.select.value === 'none') {
             this.stopDeviceTracks(this.currentStream);
-            document.getElementById('track-capabilities').innerHTML = '';
+            utilsUI.deleteControlsUI('track-capabilities', this.controlsCallback);
+            document.getElementById('resolution-select').innerHTML = '';
+            this.canvasGL.destroy();
             return;
         }
 
@@ -301,25 +305,16 @@ export class VideoClass extends HTMLElement {
 
                     let vidW = settings.width;
                     let vidH = settings.height;
-                    if( (this.wide && vidW < vidH) || (!this.wide && vidW > vidH)){
+                    if ((this.wide && vidW < vidH) || (!this.wide && vidW > vidH)) {
                         [vidW, vidH] = [vidH, vidW];
                     }
-                    console.log(this.wide, 'video dimensions', vidW, vidH);
+
                     this.video.style.width = `${vidW / this.pixelRatio}px`;
                     this.video.style.height = `${vidH / this.pixelRatio}px`;
 
                     // canvas context should have right dimensions
                     // it's easier to replace canvas than try to update context of existing one
-                    this.appendChild(utilsUI.get({
-                        tag: "canvas",
-                        attrs: {
-                            id: 'vCanvas',
-                            width: vidW,
-                            height: vidH,
-                            style: `width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`
-                        }
-                    }));
-                    this.initGL();
+                    this.initGL(vidW, vidH);
 
                     // track capabilities look the same as stream capabilities, don't know about all environments
                     // capabilities not always available, but can provide native resolution and aspect ratio
@@ -332,8 +327,12 @@ export class VideoClass extends HTMLElement {
                         tag: "summary",
                         text: `${track.kind} ${track.label} controls`
                     }));
-                    capHolder.appendChild(utilsUI.getCapabilitiesUI(track.kind, capabilities, settings, this.controlsCallback.bind(this)));
+                    capHolder.appendChild(utilsUI.getCapabilitiesUI(track.kind, capabilities, settings, this.controlsCallback));
 
+                    // resolution switch is a shortcut to Box options in capabilities
+                    // it requires webGL canvas remaking (so event removals etc. for garbage collection )
+                    // common would be 4:3 and 16:9; 3:2 and 1:1 is something to consider
+                    // overall size affects frame rate, so, no guarantee that it will be granted
                     const resHolder = document.getElementById('resolution-select');
                     resHolder.innerHTML = '';
                     const defaultRes = `${settings.width}x${settings.height}`;
@@ -371,13 +370,13 @@ export class VideoClass extends HTMLElement {
                 { [event.target.name]: event.target.value }
             ]
         })
-            .then(() => {
-                // success
-                console.log('The new device settings are: ', this.currentTracks[event.target.form.kind].getSettings());
-            })
-            .catch(e => {
-                console.error('Failed to set exposure time', e);
-            });
+        .then(() => {
+            // success
+            console.log('The new device settings are: ', this.currentTracks[event.target.form.kind].getSettings());
+        })
+        .catch(e => {
+            console.error('Failed to set exposure time', e);
+        });
     }
 
     onResolutionChange(event) {
@@ -433,7 +432,16 @@ export class VideoClass extends HTMLElement {
     }
 
 
-    initGL() {
+    initGL(vidW, vidH) {
+        this.appendChild(utilsUI.get({
+            tag: "canvas",
+            attrs: {
+                id: 'vCanvas',
+                width: vidW,
+                height: vidH,
+                style: `width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`
+            }
+        }));
         /**
          *       V0              V1
                 (0, 0)         (1, 0)
@@ -445,8 +453,8 @@ export class VideoClass extends HTMLElement {
                 (0, 1)         (1, 1)
                 V3               V2
          */
-        const glV = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
-        glV.init(0, {
+        this.canvasGL = new glVideo('vCanvas', 'depth-vs', 'depth-fs', ['v'], ['s']);
+        this.canvasGL.init(0, {
             source: this.video,
             flip: false,
             mipmap: false,
@@ -495,6 +503,22 @@ const utilsUI = {
             };
         }
         return el;
+    },
+
+    deleteControlsUI(paID, callback) {
+        const pa = document.getElementById(paID);
+        const sles = document.querySelectorAll('.control-select');
+        sles.forEach(select => {
+            select.removeEventListener('change', callback);
+        });
+
+        const inps = document.querySelectorAll('.control-input');
+        inps.forEach(input => {
+            input.removeEventListener('input', callback);
+            input.oninput = null;
+        });
+
+        pa.innerHTML = '';
     },
 
     getCapabilitiesUI(trackKind, capabilities, settings, callback) {
@@ -567,7 +591,7 @@ const utilsUI = {
             }));
             const sel = pnode.appendChild(utilsUI.get({
                 tag: "select",
-                attrs: { name: cKey }
+                attrs: { name: cKey, class: "control-select" }
             }));
             cOptions.forEach((option, index) => {
                 sel.appendChild(utilsUI.get({
@@ -594,6 +618,7 @@ const utilsUI = {
                     max: cOptions.max,
                     step: 'step' in cOptions ? cOptions.step : 1,
                     value: cValue,
+                    class: "control-input",
                     oninput: `this.form.${cKey + 'Number'}.value = this.value`
                 }
             }));
@@ -607,6 +632,7 @@ const utilsUI = {
                     max: cOptions.max,
                     step: 'step' in cOptions ? cOptions.step : 1,
                     value: cValue,
+                    class: "control-input",
                     oninput: `this.form.${cKey + 'Range'}.value = this.value`
                 }
             }));

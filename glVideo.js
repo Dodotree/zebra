@@ -8,6 +8,7 @@ export class glVideo {
 
   constructor(canvasId, vertexShaderId, fragmentShaderId, attrs, uniforms) {
     const canvas = document.getElementById(canvasId);
+    this.canvasId = canvasId;
     this.gl = utils.getGLContext(canvas);
 
     // Depth: The extension tells us if we can use single component R32F texture format.
@@ -60,8 +61,8 @@ export class glVideo {
     // Bind it so we can work on it
     this.gl.bindVertexArray(this.buffers.vertsVAO); // repeat this on each draw()
 
-    const vertsBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertsBuffer);
+    this.vertsBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertsBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, buff_data.v, this.gl.STATIC_DRAW); // vertices VAO
     // Now we additionally provide instructions for VAO to use data later in draw()
     // benefit: one time on init *instead* of each draw()
@@ -69,8 +70,8 @@ export class glVideo {
     this.gl.vertexAttribPointer(this.program.v, 2, this.gl.FLOAT, false, 0, 0);
 
     // Setting up the IBO
-    const indsBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indsBuffer);
+    this.indsBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indsBuffer);
     // here we use indices but only inds.length is needed on each draw()
     this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, buff_data.i, this.gl.STATIC_DRAW);
 
@@ -82,8 +83,8 @@ export class glVideo {
 
   initFramebuffer(slot) {
     // Framebuffer for reading back the texture.
-    var framebuffer = this.gl.createFramebuffer();
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+    this.framebuffer = this.gl.createFramebuffer();
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
     this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.textures.glTextures[slot], 0);
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
@@ -133,6 +134,26 @@ export class glVideo {
       data[i + 3] = 255;
     }
     context_2d.putImageData(img, 0, 0);
+  }
+
+  destroy() {
+    this.clock.stop();
+    this.gl.deleteProgram(this.program.program);
+    this.gl.deleteBuffer(this.buffers.vertsBuffer);
+    this.gl.deleteBuffer(this.buffers.indsBuffer);
+    this.gl.deleteVertexArray(this.buffers.vertsVAO);
+    for (let i = 0; i < this.textures.glTextures.length; i++) {
+      this.gl.deleteTexture(this.textures.glTextures[i]);
+    }
+    if (this.framebuffer) {
+      this.gl.deleteFramebuffer(this.framebuffer);
+    }
+
+    this.gl = null;
+    let delCanvas = document.getElementById(this.canvasId);
+    if (delCanvas !== null) {
+      delCanvas.remove();
+    }
   }
 }
 

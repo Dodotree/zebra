@@ -4,33 +4,33 @@
 class EventEmitter {
 
     constructor() {
-      this.events = {};
+        this.events = {};
     }
-  
+
     on(event, callback) {
-      if (!this.events[event]) {
-        this.events[event] = [];
-      }
-      this.events[event].push(callback);
-    }
-  
-    remove(event, listener) {
-      if (this.events[event]) {
-        const index = this.events[event].indexOf(listener);
-        if (~index) {
-          this.events[event].splice(index, 1);
+        if (!this.events[event]) {
+            this.events[event] = [];
         }
-      }
+        this.events[event].push(callback);
     }
-  
+
+    remove(event, listener) {
+        if (this.events[event]) {
+            const index = this.events[event].indexOf(listener);
+            if (~index) {
+                this.events[event].splice(index, 1);
+            }
+        }
+    }
+
     emit(event) {
-      const events = this.events[event];
-      if (events) {
-        events.forEach((event) => event());
-      }
+        const events = this.events[event];
+        if (events) {
+            events.forEach((event) => event());
+        }
     }
-  
-  }
+
+}
 
 // Abstracts away the requestAnimationFrame in an effort to provide a clock instance
 // to sync various parts of an application
@@ -104,7 +104,7 @@ export const utils = {
         const gl = canvas.getContext('webgl2', {
             antialias: false,
             willReadFrequently: true
-          });
+        });
         console.log('gl context', gl);
         return gl || console.assert(gl && gl instanceof WebGLRenderingContext, "WebGL is NOT available");
     },
@@ -167,6 +167,7 @@ export class Program {
         gl.attachShader(this.program, utils.getShader(gl, vertexShaderId));
         gl.attachShader(this.program, utils.getShader(gl, fragmentShaderId));
         gl.linkProgram(this.program);
+        // gl.validateProgram(this.program);
 
         if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
             return console.error('Could not initialize shaders.' + gl.getProgramInfoLog(this.program));
@@ -240,22 +241,22 @@ export class Textures {
         console.log('textures constructed', this.gl)
     }
 
-    init( slot, options = {source:null, flip:false, mipmap:false, params:{}}){
+    init(slot, options = { source: null, flip: false, mipmap: false, params: {} }) {
         this.textures[slot] = options;
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.glTextures[slot] = this.gl.createTexture();
         this.video = options.source;
         console.log(this.video);
-    // could be onload version where it's needed
-    //     this.image = new Image();
-    //     this.image.onload = () => this.handleLoadedTexture(slot);
+        // could be onload version where it's needed
+        //     this.image = new Image();
+        //     this.image.onload = () => this.handleLoadedTexture(slot);
 
-    //     if (options.source) {
-    //         this.image.src = source;
-    //     }
-    // }
-    // // Configure texture
-    // handleLoadedTexture(slot) {
+        //     if (options.source) {
+        //         this.image.src = source;
+        //     }
+        // }
+        // // Configure texture
+        // handleLoadedTexture(slot) {
 
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         // Bind
