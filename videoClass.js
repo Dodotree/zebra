@@ -336,8 +336,11 @@ export class VideoClass extends HTMLElement {
                     const resHolder = document.getElementById('resolution-select');
                     resHolder.innerHTML = '';
                     const defaultRes = `${settings.width}x${settings.height}`;
+
                     this.currentResolution = defaultRes;
                     this.constraints = constraints;
+                    this.currentSettings = settings;
+
                     const betterRes = `${capabilities.width.max}x${capabilities.height.max}`;
 
                     resHolder.appendChild(utilsUI.get({
@@ -364,19 +367,37 @@ export class VideoClass extends HTMLElement {
     }
 
     controlsCallback(event) {
-        console.log(this.currentTracks, event.target.form.kind, event.target.name, event.target.value);
-        this.currentTracks[event.target.form.kind].applyConstraints({
+        const trackKind = event.target.form.kind;
+        let key = event.target.getAttribute('key');
+            key = key? key : event.target.name;
+        const value = event.target.value;
+        console.log(this.currentTracks, event.target.form.kind, key, value);
+        this.currentTracks[trackKind].applyConstraints({
             advanced: [
-                { [event.target.name]: event.target.value }
+                { [key]: value }
             ]
         })
-        .then(() => {
-            // success
-            console.log('The new device settings are: ', this.currentTracks[event.target.form.kind].getSettings());
-        })
-        .catch(e => {
-            console.error('Failed to set exposure time', e);
-        });
+            .then(() => {               
+                const newSettings = this.currentTracks[trackKind].getSettings();
+                if (newSettings[key] === this.currentSettings[value]) {
+                    this.log.value += `\n\nFailed to set ${key} to ${value}, it stays ${this.currentSettings[key]}`;
+                    log.scrollTop = log.scrollHeight;
+                } else {
+                    // success
+                    this.currentSettings = newSettings;
+                    this.log.value += `\n\nSuccess! ${key} set to ${value}`;
+                    log.scrollTop = log.scrollHeight;
+
+                    if (key === 'width' || key === 'height') {
+                        // make resolution changes
+                        this.currentResolution = `${newSettings.width}x${newSettings.height}`;
+                    }
+                }
+                console.log('The new device settings are: ', this.currentTracks[trackKind].getSettings());
+            })
+            .catch(e => {
+                console.error(`Failed to set ${key} to ${value}`, e);
+            });
     }
 
     onResolutionChange(event) {
@@ -614,6 +635,7 @@ const utilsUI = {
                 attrs: {
                     type: 'range',
                     name: cKey + 'Range',
+                    key: cKey,
                     min: cOptions.min,
                     max: cOptions.max,
                     step: 'step' in cOptions ? cOptions.step : 1,
@@ -628,6 +650,7 @@ const utilsUI = {
                 attrs: {
                     type: 'number',
                     name: cKey + 'Number',
+                    key: cKey,
                     min: cOptions.min,
                     max: cOptions.max,
                     step: 'step' in cOptions ? cOptions.step : 1,
