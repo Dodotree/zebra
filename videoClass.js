@@ -408,12 +408,13 @@ export class VideoClass extends HTMLElement {
                 const newSettings = this.currentTracks[trackKind].getSettings();
                 if (newSettings[key] === this.currentSettings[key]) {
                     this.log(`Nothing changed: ${key} stays ${this.currentSettings[key]}`);
+                    utilsUI.setControlValue(form, key, this.currentSettings[key]);
                 } else {
                     if (newSettings[key] === value) {
                         // success
                         this.log(`Success! ${key} set to ${value}`);
                     } else {
-                        this.log(`Value ${key} changed to ${newSettings[key]} instead of requested ${value}`);
+                        this.log(`Warning: ${key} changed to ${newSettings[key]} instead of requested ${value}`);
                     }
 
                     // out of curiosity check if something else changed
@@ -423,7 +424,6 @@ export class VideoClass extends HTMLElement {
                         this.log(`Something else changes with it`);
                         const sharedKeys = new Set([...Object.keys(this.currentSettings), ...Object.keys(newSettings)]);
                         for (const sKey of sharedKeys) {
-                            if (sKey === key) continue;
                             if (newSettings[sKey] === undefined || this.currentSettings[sKey] === undefined) {
                                 this.log(`Key ${sKey} is missing in one of the settings`);
                                 // total reset needed for controls
@@ -436,17 +436,11 @@ export class VideoClass extends HTMLElement {
                         this.log(`Changes ${JSON.stringify(changes, null, 2)}`);
                     }
 
+                    // important! update currentSettings before updating controls
+                    // otherwise it will trigger another event
                     this.currentSettings = newSettings;
-                    for(const chKey in changes){
-                        if(form[chKey]){
-                            form[chKey].value = changes[chKey];
-                        }
-                        if(form[chKey+'Range']){
-                            form[chKey+'Range'].value = changes[chKey];
-                        }
-                        if(form[chKey+'Number']){
-                            form[chKey+'Number'].value = changes[chKey];
-                        }
+                    for (const chKey in changes) {
+                        utilsUI.setControlValue(form, chKey, changes[chKey]);
                     }
 
                     if (key === 'width' || key === 'height' || key === 'aspectRatio') {
@@ -457,7 +451,7 @@ export class VideoClass extends HTMLElement {
                 }
             })
             .catch(e => {
-                this.log(`Failed to set ${key} to ${value} error: ${JSON.stringify(e, null, 2)}`);
+                this.log(`Failed set ${key} to ${value} error: ${JSON.stringify(e, null, 2)}`);
             });
     }
 
@@ -573,6 +567,18 @@ const utilsUI = {
         });
 
         pa.innerHTML = '';
+    },
+
+    setControlValue(form, key, value) {
+        if (form[key]) {
+            form[key].value = value;
+        }
+        if (form[key + 'Range']) {
+            form[key + 'Range'].value = value;
+        }
+        if (form[key + 'Number']) {
+            form[key + 'Number'].value = value;
+        }
     },
 
     getCapabilitiesUI(trackKind, capabilities, settings, callback) {
