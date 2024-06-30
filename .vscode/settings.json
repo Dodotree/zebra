@@ -1,3 +1,17 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "cSpell.words": [
+        "verts",
+        "inds",
+        "inps",
+        "dppx",
+        "mediump",
+        "denormalize",
+        "linebreak",
+        "autopause",
+        "oninit",
+        "ondisconnect",
+        "CONRADY",
+        "DIstortioncoeffs"
+    ],
 }

@@ -60,7 +60,7 @@ export class Clock extends EventEmitter {
 
     tick() {
         if (this.isRunning) {
-            this.emit('tick');
+            this.emit("tick");
         }
         requestAnimationFrame(this.tick);
     }
@@ -96,16 +96,16 @@ export const utils = {
         };
         expandFullScreen();
         // Resize screen when the browser has triggered the resize event
-        window.addEventListener('resize', expandFullScreen);
+        window.addEventListener("resize", expandFullScreen);
     },
 
 
     getGLContext(canvas) {
-        const gl = canvas.getContext('webgl2', {
+        const gl = canvas.getContext("webgl2", {
             antialias: false,
             willReadFrequently: true
         });
-        console.log('gl context', gl);
+        console.log("gl context", gl);
         return gl || console.assert(gl && gl instanceof WebGLRenderingContext, "WebGL is NOT available");
     },
 
@@ -119,10 +119,10 @@ export const utils = {
         const shaderString = script.text.trim();
 
         let shader;
-        if (script.type === 'x-shader/x-vertex') {
+        if (script.type === "x-shader/x-vertex") {
             shader = gl.createShader(gl.VERTEX_SHADER);
         }
-        else if (script.type === 'x-shader/x-fragment') {
+        else if (script.type === "x-shader/x-fragment") {
             shader = gl.createShader(gl.FRAGMENT_SHADER);
         }
         else {
@@ -161,7 +161,7 @@ export class Program {
         this.program = gl.createProgram();
 
         if (!(vertexShaderId && fragmentShaderId)) {
-            return console.error('No shader IDs were provided');
+            return console.error("No shader IDs were provided");
         }
 
         gl.attachShader(this.program, utils.getShader(gl, vertexShaderId));
@@ -170,10 +170,10 @@ export class Program {
         // gl.validateProgram(this.program);
 
         if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-            return console.error('Could not initialize shaders.' + gl.getProgramInfoLog(this.program));
+            return console.error("Could not initialize shaders." + gl.getProgramInfoLog(this.program));
         }
 
-        console.log('constructed program status', gl.getProgramParameter(this.program, gl.LINK_STATUS));
+        console.log("constructed program status", gl.getProgramParameter(this.program, gl.LINK_STATUS));
 
         gl.useProgram(this.program);
     }
@@ -220,10 +220,10 @@ export class Program {
         const numUniforms = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < numUniforms; ++i) {
             const info = this.gl.getActiveUniform(this.program, i);
-            let loct = this.gl.getUniformLocation(this.program, info.name);
+            let uniformsLocation = this.gl.getUniformLocation(this.program, info.name);
         }
         this.uniforms.forEach(uniform => {
-            console.log('given >>', uniform, this[uniform]);
+            console.log("uniforms given", uniform, this[uniform]);
         });
     }
 
@@ -238,7 +238,7 @@ export class Textures {
         this.gl = gl;
         this.textures = [];
         this.glTextures = [];
-        console.log('textures constructed', this.gl)
+        console.log("textures constructed", this.gl)
     }
 
     init(slot, options = { source: null, flip: false, mipmap: false, params: {} }) {
@@ -247,6 +247,7 @@ export class Textures {
         this.glTextures[slot] = this.gl.createTexture();
         this.video = options.source;
         console.log(this.video);
+        
         // could be onload version where it's needed
         //     this.image = new Image();
         //     this.image.onload = () => this.handleLoadedTexture(slot);

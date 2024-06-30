@@ -1,0 +1,81 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "airbnb-base/legacy",
+        "plugin:wc/recommended",
+        "plugin:lit/recommended"
+    ],
+    "plugins": [
+        "html"
+    ],
+    "overrides": [],
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "rules": {
+        "indent": [
+            "error",
+            4
+        ],
+        "linebreak-style": [
+            "error",
+            "unix"
+        ],
+        "quotes": [
+            "error",
+            "double"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "globals": {
+            "window": true,
+            "document": true,
+            "console": true,
+            "alert": true,
+            "prompt": true,
+            "confirm": true,
+            "localStorage": true,
+            "sessionStorage": true,
+            "XMLHttpRequest": true,
+            "FormData": true,
+            "FileReader": true,
+            "File": true,
+            "Blob": true,
+            "URL": true,
+            "URLSearchParams": true,
+            "Headers": true,
+            "Request": true,
+            "Response": true,
+            "fetch": true,
+            "setTimeout": true,
+            "clearTimeout": true,
+            "setInterval": true,
+            "clearInterval": true,
+            "requestAnimationFrame": true,
+            "cancelAnimationFrame": true,
+            "performance": true,
+            "location": true,
+            "history": true,
+            "screen": true,
+            "navigator": true,
+            "Image": true,
+            "Audio": true,
+            "WebSocket": true,
+            "Worker": true,
+            "MessageChannel": true,
+            "MessagePort": true,
+            "MessageEvent": true,
+            "CustomEvent": true,
+            "Event": true,
+            "EventTarget": true,
+            "Node": true
+        }
+    }
+}

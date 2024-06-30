@@ -14,7 +14,6 @@ class VideoElement extends VideoClass {
         /**
          * @type {{
          *     media: string,
-         *
          *     title: string,
          *     poster: string,
          *     muted: boolean,
@@ -33,11 +32,11 @@ class VideoElement extends VideoClass {
     }
 
     setStatus(mode, status) {
-        const divMode = this.querySelector('.mode').innerText;
-        if (mode === 'error' && divMode !== 'Loading..' && divMode !== 'Loading...') return;
+        const divMode = this.querySelector(".mode").innerText;
+        if (mode === "error" && divMode !== "Loading.." && divMode !== "Loading...") return;
 
-        this.querySelector('.mode').innerText = mode;
-        this.querySelector('.status').innerText = status || '';
+        this.querySelector(".mode").innerText = mode;
+        this.querySelector(".status").innerText = status || "";
     }
 
     /** @param reload {boolean} */
@@ -61,19 +60,19 @@ class VideoElement extends VideoClass {
     }
 
     saveScreenshot() {
-        const anchor = document.createElement('a');
+        const anchor = document.createElement("a");
 
         if (this.video.videoWidth && this.video.videoHeight) {
-            const canvas = document.createElement('canvas');
+            const canvas = document.createElement("canvas");
             canvas.width = this.video.videoWidth;
             canvas.height = this.video.videoHeight;
-            canvas.getContext('2d').drawImage(this.video, 0, 0, canvas.width, canvas.height);
-            anchor.href = canvas.toDataURL('image/jpeg');
+            canvas.getContext("2d").drawImage(this.video, 0, 0, canvas.width, canvas.height);
+            anchor.href = canvas.toDataURL("image/jpeg");
         } else {
             return;
         }
 
-        const ts = new Date().toISOString().substring(0, 19).replaceAll('-', '').replaceAll(':', '');
+        const ts = new Date().toISOString().substring(0, 19).replaceAll("-", "").replaceAll(":", "");
         anchor.download = `snapshot_${ts}.jpeg`;
         anchor.click();
     }
@@ -87,13 +86,13 @@ class VideoElement extends VideoClass {
     }
 }
 
-customElements.define('my-camera', VideoElement);
+customElements.define("my-camera", VideoElement);
 
 const card = {
-    type: 'my-camera',
-    name: 'My Custom Video Element',
+    type: "my-camera",
+    name: "My Custom Video Element",
     preview: false,
-    description: 'Play any camera stream',
+    description: "Play any camera stream",
 };
 // Apple iOS 12 doesn't support `||=`
 if (window.customCards) window.customCards.push(card);
