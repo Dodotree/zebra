@@ -1,88 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Zebra</title>
+        <link rel="stylesheet" href="./app.css" />
+    </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Zebra</title>
-  <link rel="stylesheet" href="./app.css" />
+    <body>
+        <header>
+            <h1>Segmentation of stripes</h1>
+        </header>
 
-</head>
+        <main>
+            <!-- Vertex shader program -->
+            <script id="shader-vs" type="x-shader/x-vertex">
 
-<body>
+                attribute mediump vec2 aVertexPosition;
+                varying mediump vec2 vDirection;
 
-  <header>
-    <h1>Segmentation of stripes</h1>
-  </header>
+                void main( void )
+                {
+                    gl_Position = vec4(aVertexPosition, 1.0, 1.0);
+                    vDirection = aVertexPosition;
+                }
+            </script>
 
-  <main>
+            <script id="shader-fs" type="x-shader/x-fragment">
+                varying mediump vec2 vDirection;
+                uniform sampler2D uSampler;
 
-    <!-- Vertex shader program -->
-    <script id="shader-vs" type="x-shader/x-vertex">
+                void main(void)
+                {
+                  gl_FragColor = texture2D(uSampler, vec2(vDirection.x * 0.5 + 0.5, vDirection.y * 0.5 + 0.5));
+                }
+            </script>
 
-      attribute mediump vec2 aVertexPosition;
-      varying mediump vec2 vDirection;
+            <!-- Vertex shader program -->
+            <script id="depth-vs" type="x-shader/x-vertex">
+                attribute vec2 v;
+                varying vec2 t;
 
-      void main( void ) 
-      {
-          gl_Position = vec4(aVertexPosition, 1.0, 1.0);
-          vDirection = aVertexPosition;
-      }
-    </script>
+                void main()
+                {
+                    gl_Position=vec4(v.x*2.0-1.0,1.0-v.y*2.0,0,1);
+                    t=v;
+                }
+            </script>
 
-    <script id="shader-fs" type="x-shader/x-fragment">
-      varying mediump vec2 vDirection;
-      uniform sampler2D uSampler;
+            <!-- Fragment shader program -->
+            <script id="depth-fs" type="x-shader/x-fragment">
+                precision mediump float;
+                uniform sampler2D s;
+                varying vec2 t;
 
-      void main(void) 
-      {
-        gl_FragColor = texture2D(uSampler, vec2(vDirection.x * 0.5 + 0.5, vDirection.y * 0.5 + 0.5));
-      }
-    </script>
+                void main(void)
+                {
+                    vec4 tex=texture2D(s,t);
+                    gl_FragColor=vec4(tex.r, tex.g, tex.b, tex.a);
+                }
+            </script>
 
+            <script type="module" src="./videoElement.js"></script>
 
+            <script type="module">
+                const card = document.createElement("my-camera");
+                document.body.appendChild(card);
+            </script>
+        </main>
 
-    <!-- Vertex shader program -->
-    <script id="depth-vs" type="x-shader/x-vertex">
-        attribute vec2 v;
-        varying vec2 t;
-
-        void main()
-        {
-            gl_Position=vec4(v.x*2.0-1.0,1.0-v.y*2.0,0,1);
-            t=v;
-        }  
-  </script>
-
-    <!-- Fragment shader program -->
-    <script id="depth-fs" type="x-shader/x-fragment">
-        precision mediump float;
-        uniform sampler2D s;
-        varying vec2 t;
-
-        void main(void) 
-        {
-            vec4 tex=texture2D(s,t);
-            gl_FragColor=vec4(tex.r, tex.g, tex.b, tex.a);
-        }
-  </script>
-
-
-    <script type="module" src="./videoElement.js"></script>
-
-    <script type="module">
-      const card = document.createElement("my-camera");
-      document.body.appendChild(card);
-    </script>
-
-
-
-  </main>
-
-  <footer>
-    <p>Built by KindOfParadox</p>
-  </footer>
-</body>
-
+        <footer>
+            <p>Built by KindOfParadox</p>
+        </footer>
+    </body>
 </html>

@@ -1,48 +1,48 @@
 textarea {
-  width: 100%;
-  height: 240px;
+    width: 100%;
+    height: 240px;
 }
-label{
-  padding-right: 1.2rem;
+label {
+    padding-right: 1.2rem;
 }
 select {
-  padding: 1rem;
+    padding: 1rem;
 }
 details {
-  margin: 1rem;
+    margin: 1rem;
 }
 details select {
-  padding: 0.33rem;
+    padding: 0.33rem;
 }
-summary{
-  background-color: #eee;
-  padding: 1rem;
+summary {
+    background-color: #eee;
+    padding: 1rem;
 }
 
-#track-capabilities form{
-  padding: 20px;
-  column-count: 3;
-  column-gap: 0.3rem;
+#track-capabilities form {
+    padding: 20px;
+    column-count: 3;
+    column-gap: 0.3rem;
 }
 @media (max-width: 768px) {
-  #track-capabilities form{
-    padding: 5px;
-    column-count: 1;
-  }
+    #track-capabilities form {
+        padding: 5px;
+        column-count: 1;
+    }
 }
 
-video, 
-canvas{
-  display:block;
-  margin: 2rem;
+video,
+canvas {
+    display: block;
+    margin: 2rem;
 }
 
 footer {
-  background: #333e5a;
-  color: #fff;
-  text-align: center;
+    background: #333e5a;
+    color: #fff;
+    text-align: center;
 }
 
 footer a {
-  color: #fff;
+    color: #fff;
 }
