@@ -1,6 +1,6 @@
-import Clock from "/utils/Clock.js";
-import Program from "/utils/Program.js";
-import Textures from "/utils/Textures.js";
+import Clock from "./utils/Clock.js";
+import Program from "./utils/Program.js";
+import Textures from "./utils/Textures.js";
 
 // captureButton.addEventListener('click', takeScreenshot);
 

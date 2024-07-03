@@ -1,4 +1,4 @@
-import EventEmitter from "/utils/EventEmitter.js";
+import EventEmitter from "./EventEmitter.js";
 
 // Abstracts away the requestAnimationFrame in an effort to provide a clock instance
 // to sync various parts of an application
