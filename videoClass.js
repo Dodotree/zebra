@@ -183,60 +183,7 @@ export class VideoClass extends HTMLElement {
         // media.addEventListener("change", updatePixelRatio.bind(this));
 
         this.pixelRatio = window.devicePixelRatio;
-
-        this.angle = 0;
-        // eslint-disable-next-line no-restricted-globals
-        this.deviceWide = screen.width > screen.height;
-        // eslint-disable-next-line no-restricted-globals
-        if (screen && "orientation" in screen) {
-            try {
-                // eslint-disable-next-line no-restricted-globals
-                this.angle = screen.orientation.angle;
-            } catch (e) {
-                this.log(
-                    `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
-                );
-            }
-            this.log(
-                // eslint-disable-next-line no-restricted-globals
-                `Screen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`
-            );
-            // eslint-disable-next-line no-restricted-globals
-            screen.orientation.addEventListener("change", () => {
-                // eslint-disable-next-line no-restricted-globals
-                this.angle = screen.orientation.angle;
-                this.wide = this.angle === 180 || this.angle === 0
-                    ? this.deviceWide
-                    : !this.deviceWide;
-                this.log(
-                    // eslint-disable-next-line no-restricted-globals
-                    `Screen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`
-                );
-            });
-        } else if ("onorientationchange" in window) {
-            // for some mobile browsers
-            try {
-                this.angle = window.orientation;
-            } catch (e) {
-                this.log(
-                    `Window orientation error: ${JSON.stringify(e, null, 2)}`
-                );
-            }
-            this.log(`Window orientation ${this.angle} degrees.`);
-            window.addEventListener("orientationchange", () => {
-                this.angle = window.orientation;
-                this.wide = this.angle === 180 || this.angle === 0
-                    ? this.deviceWide
-                    : !this.deviceWide;
-                this.log(`Window orientation change: ${this.angle} degrees.`);
-            });
-        }
-        this.wide = this.angle === 180 || this.angle === 0
-            ? this.deviceWide
-            : !this.deviceWide;
-        this.log(
-            `Orientation ${this.angle} device ${this.deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
-        );
+        this.setOrientation();
 
         this.appendChild(
             utilsUI.get({
@@ -474,9 +421,10 @@ export class VideoClass extends HTMLElement {
 
     setResolution(vidW, vidH) {
         let [w, h] = [vidW, vidH];
-        if ((this.wide && w < h) || (!this.wide && w > h)) {
+        if ((this.wide && w < h) || (!this.wide && w >= h)) {
             [w, h] = [vidH, vidW];
         }
+        this.log(`Resolution ${this.wide ? "Wide" : "Narrow"} w<h? ${w < h}  w>h? ${w >= h}`);
         this.video.style.width = `${vidW / this.pixelRatio}px`;
         this.video.style.height = `${vidH / this.pixelRatio}px`;
         // canvas context should have right dimensions
@@ -620,6 +568,62 @@ export class VideoClass extends HTMLElement {
                 );
                 this.log(`Error: ${JSON.stringify(error, null, 2)}`);
             });
+    }
+
+    setOrientation() {
+        this.angle = 0;
+        // eslint-disable-next-line no-restricted-globals
+        this.deviceWide = screen.width > screen.height;
+        // eslint-disable-next-line no-restricted-globals
+        if (screen && "orientation" in screen) {
+            try {
+                // eslint-disable-next-line no-restricted-globals
+                this.angle = screen.orientation.angle;
+            } catch (e) {
+                this.log(
+                    `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
+                );
+            }
+            this.log(
+                // eslint-disable-next-line no-restricted-globals
+                `Screen orientation: ${this.angle} degrees, ${screen.orientation.type}.`
+            );
+            // eslint-disable-next-line no-restricted-globals
+            screen.orientation.addEventListener("change", () => {
+                // eslint-disable-next-line no-restricted-globals
+                this.angle = screen.orientation.angle;
+                this.wide = this.angle === 180 || this.angle === 0
+                    ? this.deviceWide
+                    : !this.deviceWide;
+                this.log(
+                    // eslint-disable-next-line no-restricted-globals
+                    `Screen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`
+                );
+            });
+        } else if ("onorientationchange" in window) {
+            // for some mobile browsers
+            try {
+                this.angle = window.orientation;
+            } catch (e) {
+                this.log(
+                    `Window orientation error: ${JSON.stringify(e, null, 2)}`
+                );
+            }
+            this.log(`Window orientation: ${this.angle} degrees.`);
+            window.addEventListener("orientationchange", () => {
+                this.angle = window.orientation;
+                this.wide = this.angle === 180 || this.angle === 0
+                    ? this.deviceWide
+                    : !this.deviceWide;
+                this.log(`Window orientation change: ${this.angle} degrees.`);
+            });
+        }
+        this.wide = this.angle === 180 || this.angle === 0
+            ? this.deviceWide
+            : !this.deviceWide;
+        this.log(
+            `Orientation ${this.angle} device ${this.deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
+        );
     }
 
     initGL(w, h) {
