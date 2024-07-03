@@ -424,14 +424,13 @@ export class VideoClass extends HTMLElement {
         if ((this.wide && w < h) || (!this.wide && w >= h)) {
             [w, h] = [vidH, vidW];
         }
-        this.log(`Resolution ${this.wide ? "Wide" : "Narrow"} w<h? ${vidW < vidH}  w>h? ${vidW >= vidH}  ${vidW},${vidH}  => ${w}x${h}`);
-        this.video.style.width = `${vidW / this.pixelRatio}px`;
-        this.video.style.height = `${vidH / this.pixelRatio}px`;
+        this.video.style.width = `${w / this.pixelRatio}px`;
+        this.video.style.height = `${h / this.pixelRatio}px`;
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         // destroy canvas before initGL unless there're none
-        this.initGL(vidW, vidH);
-        this.currentResolution = `${vidW}x${vidH}`;
+        this.initGL(w, h);
+        this.currentResolution = `${w}x${h}`;
         this.log(`Resolution set to ${this.currentResolution}`);
     }
 
