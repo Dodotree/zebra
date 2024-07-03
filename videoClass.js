@@ -424,7 +424,7 @@ export class VideoClass extends HTMLElement {
         if ((this.wide && w < h) || (!this.wide && w >= h)) {
             [w, h] = [vidH, vidW];
         }
-        this.log(`Resolution ${this.wide ? "Wide" : "Narrow"} w<h? ${w < h}  w>h? ${w >= h}`);
+        this.log(`Resolution ${this.wide ? "Wide" : "Narrow"} w<h? ${vidW < vidH}  w>h? ${vidW >= vidH}  ${vidW},${vidH}  => ${w}x${h}`);
         this.video.style.width = `${vidW / this.pixelRatio}px`;
         this.video.style.height = `${vidH / this.pixelRatio}px`;
         // canvas context should have right dimensions
