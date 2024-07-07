@@ -183,6 +183,7 @@ export class VideoClass extends HTMLElement {
         // media.addEventListener("change", updatePixelRatio.bind(this));
 
         this.pixelRatio = window.devicePixelRatio;
+        this.os = utilsUI.getOS();
         this.setOrientation();
 
         this.appendChild(
@@ -291,9 +292,6 @@ export class VideoClass extends HTMLElement {
         this.stopDeviceTracks();
         utilsUI.deleteControlsUI("track-capabilities", this.controlsCallback);
         document.getElementById("resolution-select").innerHTML = "";
-        if (this.canvasGL) {
-            this.canvasGL.destroy();
-        }
 
         if (this.select.value === "none") {
             return;
@@ -304,20 +302,15 @@ export class VideoClass extends HTMLElement {
             video: { deviceId: { exact: this.select.value } },
             audio: false,
         };
-        if (deviceLabel.indexOf("RealSense") > -1) {
-            if (deviceLabel.indexOf("SR300") > -1) {
-                if (deviceLabel.indexOf("RGB") > -1) {
-                    constraints.video.width = { ideal: 1280 };
-                } else {
-                    constraints.video.frameRate = { ideal: 110 };
-                }
-            }
-            if (
-                deviceLabel.indexOf("R200") > -1
-                && deviceLabel.indexOf("RGB") === -1
-            ) {
-                constraints.video.width = { ideal: 628, max: 640 };
-            }
+
+        // default RealSense on first load (ideal defaults)
+        this.device = utilsUI.getDeviceName(deviceLabel);
+        if (this.device === "SR300 RGB") {
+            constraints.video.width = { ideal: 1280 };
+        } else if (this.device === "SR300 Depth") {
+            constraints.video.frameRate = { ideal: 110 };
+        } else if (this.device === "R200 Depth") {
+            constraints.video.width = { ideal: 628, max: 640 };
         }
 
         this.log(`Selected ${deviceLabel}`);
@@ -342,73 +335,36 @@ export class VideoClass extends HTMLElement {
                     // video frame should be set to size/pixelRatio
                     let settings = track.getSettings();
                     this.currentSettings = settings;
-                    let vidW = settings.width;
-                    let vidH = settings.height;
-                    // track capabilities ~same as stream capabilities,
+                    // track capabilities when available ~same as stream capabilities,
                     // don't know about all environments
-                    // .getCapabilities not always available,
-                    // can provide native resolution and aspect ratio
                     let capabilities = track.getCapabilities
                         ? track.getCapabilities()
                         : {};
-                    const capHolder = document.getElementById("track-capabilities");
-                    capHolder.innerHTML = "";
-                    capHolder.appendChild(
-                        utilsUI.get({
-                            tag: "summary",
-                            text: `${track.kind} ${track.label} controls`,
-                        })
-                    );
-                    capHolder.appendChild(
-                        utilsUI.getCapabilitiesUI(
-                            track.kind,
-                            capabilities,
-                            settings,
-                            this.controlsCallback
-                        )
+                    utilsUI.setControls(
+                        track.kind,
+                        track.label,
+                        capabilities,
+                        settings,
+                        this.controlsCallback
                     );
 
-                    // resolution switch is a shortcut to Box options in capabilities
-                    // it requires webGL canvas remaking
-                    // (so event removals etc. for garbage collection )
-                    // common would be 4:3 and 16:9; 3:2 and 1:1 is something to consider
-                    // overall size affects frame rate, so, no guarantee that it will be granted
-                    // TODO 1: standard resolutions for RealSense, Razor, iPhone, Android, iPad
-                    // render similar variants for unknown
-                    // TO DO 2: scan resolutions that will not switch to cut/resize in settings
-                    const resHolder = document.getElementById("resolution-select");
-                    resHolder.innerHTML = "";
-                    resHolder.appendChild(
-                        utilsUI.get({
-                            tag: "option",
-                            text: `${vidW}x${vidH}`,
-                            attrs: { value: `${vidW}x${vidH}` },
-                        })
-                    );
-                    if (capabilities.width) {
-                        const betterRes = `${capabilities.width.max}x${capabilities.height.max}`;
-                        resHolder.appendChild(
-                            utilsUI.get({
-                                tag: "option",
-                                text: betterRes,
-                                attrs: { value: betterRes },
-                            })
-                        );
+                    const listOfResolutions = [[settings.width, settings.height]];
+                    if (capabilities.width && capabilities.height) {
+                        listOfResolutions.push([capabilities.width.max, capabilities.height.max]);
                     }
-
-                    this.setResolution(vidW, vidH);
+                    utilsUI.initResolutionsUI(
+                        listOfResolutions,
+                        this.device,
+                        this.os
+                    );
+                    this.setResolution(settings.width, settings.height);
 
                     this.log(`Track ${track.kind} ${track.label}`);
+                    this.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
                     this.log(
-                        "Track  Settings:\n" + JSON.stringify(settings, null, 2)
+                        "Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2)
                     );
-                    this.log(
-                        "Track  Capabilities:\n"
-                            + JSON.stringify(capabilities, null, 2)
-                    );
-                    this.log(
-                        "Track Stats:\n" + JSON.stringify(track.stats, null, 2)
-                    );
+                    this.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
                 });
             })
             .catch((error) => {
@@ -428,7 +384,6 @@ export class VideoClass extends HTMLElement {
         this.video.style.height = `${h / this.pixelRatio}px`;
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
-        // destroy canvas before initGL unless there're none
         this.initGL(w, h);
         this.currentResolution = `${w}x${h}`;
         this.log(`Resolution set to ${this.currentResolution}`);
@@ -458,72 +413,60 @@ export class VideoClass extends HTMLElement {
                     this.log(
                         `Nothing changed: ${key} stays ${this.currentSettings[key]}`
                     );
-                    utilsUI.setControlValue(
-                        form,
-                        key,
-                        this.currentSettings[key]
-                    );
+                    // restore to the actual value instead of what we tried to set
+                    utilsUI.setControlValue(form, key, newSettings[key]);
+                    return;
+                }
+
+                if (newSettings[key] === value) {
+                    // success
+                    this.log(`Success! ${key} set to ${value}`);
                 } else {
-                    if (newSettings[key] === value) {
-                        // success
-                        this.log(`Success! ${key} set to ${value}`);
-                    } else {
-                        this.log(
-                            `Warning: ${key} changed to ${newSettings[key]} instead of requested ${value}`
-                        );
-                    }
+                    // usually those are rounding errors
+                    this.log(
+                        `Warning: ${key} changed to ${newSettings[key]} instead of requested ${value}`
+                    );
+                }
 
-                    // out of curiosity check if something else changed
-                    this.currentSettings[key] = value;
-                    const changes = {};
+                const changes = {};
+                const sharedKeys = new Set([
+                    ...Object.keys(this.currentSettings),
+                    ...Object.keys(newSettings),
+                ]);
+                sharedKeys.forEach((sKey) => {
                     if (
-                        JSON.stringify(newSettings)
-                        !== JSON.stringify(this.currentSettings)
+                        newSettings[sKey] === undefined
+                        || this.currentSettings[sKey] === undefined
                     ) {
-                        this.log("Something else changes with it");
-                        const sharedKeys = new Set([
-                            ...Object.keys(this.currentSettings),
-                            ...Object.keys(newSettings),
-                        ]);
-                        for (const sKey of sharedKeys) {
-                            if (
-                                newSettings[sKey] === undefined
-                                || this.currentSettings[sKey] === undefined
-                            ) {
-                                this.log(
-                                    `Key ${sKey} is missing in one of the settings`
-                                );
-                                // total reset needed for controls
-                                // getCapabilities
-                            }
-                            if (
-                                this.currentSettings[sKey] !== newSettings[sKey]
-                            ) {
-                                changes[sKey] = newSettings[sKey];
-                            }
+                        this.log(`Key ${sKey} is missing in one of the settings`);
+                        // different set of settings, total reset needed for controls
+                        // getCapabilities call is needed, so far never happened
+                    }
+                    if (this.currentSettings[sKey] !== newSettings[sKey]) {
+                        changes[sKey] = newSettings[sKey];
+                        if (sKey !== key) {
+                            this.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
                         }
-                        this.log(`Changes ${JSON.stringify(changes, null, 2)}`);
                     }
+                });
+                this.log(`Changes ${JSON.stringify(changes, null, 2)}`);
 
-                    // important! update currentSettings before updating controls
-                    // otherwise it will trigger another event
-                    this.currentSettings = newSettings;
-                    for (const chKey in changes) {
-                        utilsUI.setControlValue(form, chKey, changes[chKey]);
-                    }
+                // important! update currentSettings before updating controls
+                // otherwise it will trigger another event
+                this.currentSettings = newSettings;
+                changes.forEach((chKey) =>{
+                    utilsUI.setControlValue(form, chKey, changes[chKey]);
+                });
 
-                    if (
-                        key === "width"
-                        || key === "height"
+                if (
+                    key === "width" || key === "height"
                         || key === "aspectRatio"
-                    ) {
-                        // aspectRatio adjusts width and height to closest value in integers w,h
-                        this.canvasGL.destroy();
-                        this.setResolution(
-                            newSettings.width,
-                            newSettings.height
-                        );
-                    }
+                ) {
+                    // aspectRatio adjusts width and height to closest value in integers w,h
+                    this.setResolution(
+                        newSettings.width,
+                        newSettings.height
+                    );
                 }
             })
             .catch((e) => {
@@ -534,6 +477,10 @@ export class VideoClass extends HTMLElement {
     }
 
     onResolutionChange(event) {
+        if (this.currentResolution === event.target.value) {
+            return;
+        }
+
         this.stopDeviceTracks();
 
         const [w, h] = event.target.value.split("x");
@@ -544,11 +491,6 @@ export class VideoClass extends HTMLElement {
 
         this.constraints.video.width = { ideal: w };
         this.constraints.video.height = { ideal: h };
-        console.log(
-            this.constraints,
-            "resolution changing from",
-            this.currentResolution
-        );
 
         navigator.mediaDevices
             .getUserMedia(this.constraints)
@@ -557,7 +499,6 @@ export class VideoClass extends HTMLElement {
                 this.video.srcObject = stream;
                 stream.getTracks().forEach((track) => {
                     let settings = track.getSettings();
-                    this.canvasGL.destroy();
                     this.setResolution(settings.width, settings.height);
                 });
             })
@@ -626,6 +567,11 @@ export class VideoClass extends HTMLElement {
     }
 
     initGL(w, h) {
+        if (this.canvasGL) {
+            this.canvasGL.destroy();
+            this.canvasGL = null;
+        }
+
         this.appendChild(
             utilsUI.get({
                 tag: "canvas",

@@ -41,6 +41,7 @@ class VideoElement extends VideoClass {
     }
 }
 
+// TODO: transfer stream specific code here
 customElements.define("my-camera", VideoElement);
 
 const card = {

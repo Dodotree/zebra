@@ -224,6 +224,7 @@ export default class VideoGL {
         if (delCanvas2 !== null) {
             delCanvas2.remove();
         }
+        delete this;
     }
 
     // Normalize colors from 0-255 to 0-1
