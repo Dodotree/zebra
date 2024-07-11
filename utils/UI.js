@@ -24,6 +24,65 @@ export const utilsUI = {
         window.addEventListener("resize", expandFullScreen);
     },
 
+    getOrientation(angle, deviceWide) {
+        return angle === 180 || angle === 0
+            ? deviceWide
+            : !deviceWide;
+    },
+
+    watchOrientation(callback, log) {
+        let angle = 0;
+        // eslint-disable-next-line no-restricted-globals
+        const deviceWide = screen.width > screen.height;
+        // eslint-disable-next-line no-restricted-globals
+        if (screen && "orientation" in screen) {
+            try {
+                // eslint-disable-next-line no-restricted-globals
+                angle = screen.orientation.angle;
+            } catch (e) {
+                log(
+                    `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
+                );
+            }
+            log(
+                // eslint-disable-next-line no-restricted-globals
+                `Screen orientation: ${angle} degrees, ${screen.orientation.type}.`
+            );
+            // eslint-disable-next-line no-restricted-globals
+            screen.orientation.addEventListener("change", () => {
+                // eslint-disable-next-line no-restricted-globals
+                angle = screen.orientation.angle;
+                const wide = this.getOrientation(angle, deviceWide);
+                callback(wide);
+                log(
+                    // eslint-disable-next-line no-restricted-globals
+                    `Screen orientation change: ${angle} degrees, ${screen.orientation.type}.`
+                );
+            });
+        } else if ("onorientationchange" in window) {
+            // for some mobile browsers
+            try {
+                angle = window.orientation;
+            } catch (e) {
+                log(
+                    `Window orientation error: ${JSON.stringify(e, null, 2)}`
+                );
+            }
+            log(`Window orientation: ${angle} degrees.`);
+            window.addEventListener("orientationchange", () => {
+                angle = window.orientation;
+                const wide = this.getOrientation(angle, deviceWide);
+                callback(wide);
+                log(`Window orientation change: ${angle} degrees.`);
+            });
+        }
+        const wide = this.getOrientation(angle, deviceWide);
+        callback(wide);
+        log(
+            `Orientation ${angle} device ${deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
+        );
+    },
+
     getOS() {
         const uA = navigator.userAgent || navigator.vendor || window.opera;
         if ((/iPad|iPhone|iPod/.test(uA) && !window.MSStream) || (uA.includes("Mac") && "ontouchend" in document)) return "iOS";
@@ -66,6 +125,8 @@ export const utilsUI = {
         // overall size affects frame rate, so, no guarantee that it will be granted
         // TODO 2: best resolution for the screen
         // TODO 3: scan resolutions that will not switch to cut/resize in vid.settings
+        const resHolder = document.getElementById("resolution-select");
+        resHolder.innerHTML = "";
 
         let resolutions = [];
         const camResolutions = {
@@ -137,8 +198,6 @@ export const utilsUI = {
         if (givenRs.length === 2) {
             resolutions = resolutions.filter((r) => r[0] <= givenRs[1][0] && r[1] <= givenRs[1][1]);
         }
-        const resHolder = document.getElementById("resolution-select");
-        resHolder.innerHTML = "";
         resolutions.forEach((whtf) => {
             const res = `${whtf[0]}x${whtf[1]}`;
             resHolder.appendChild(
@@ -190,7 +249,7 @@ export const utilsUI = {
             })
         );
         capHolder.appendChild(
-            utilsUI.getCapabilitiesUI(
+            utilsUI.createControls(
                 kind,
                 capabilities,
                 settings,
@@ -199,7 +258,7 @@ export const utilsUI = {
         );
     },
 
-    getCapabilitiesUI(trackKind, capabilities, settings, callback) {
+    createControls(trackKind, capabilities, settings, callback) {
         const form = document.createElement("form");
         form.kind = trackKind;
         const buckets = {

@@ -65,6 +65,8 @@ export class VideoClass extends HTMLElement {
 
         // to make bound callback event listener removable
         this.controlsCallback = this.controlsCallback.bind(this);
+        this.setOrientation = this.setOrientation.bind(this);
+        this.log = this.log.bind(this);
     }
 
     /**
@@ -184,7 +186,7 @@ export class VideoClass extends HTMLElement {
 
         this.pixelRatio = window.devicePixelRatio;
         this.os = utilsUI.getOS();
-        this.watchOrientation();
+        utilsUI.watchOrientation(this.setOrientation, this.log);
 
         this.appendChild(
             utilsUI.get({
@@ -286,6 +288,55 @@ export class VideoClass extends HTMLElement {
         // <button id="capture"> Capture </button>
     }
 
+    changeSettings(kind, label, settings, capabilities) {
+        this.currentSettings = settings;
+        utilsUI.setControls(
+            kind,
+            label,
+            capabilities,
+            settings,
+            this.controlsCallback
+        );
+
+        const listOfResolutions = [[settings.width, settings.height]];
+        if (capabilities.width && capabilities.height) {
+            listOfResolutions.push([capabilities.width.max, capabilities.height.max]);
+        }
+        utilsUI.initResolutionsUI(
+            listOfResolutions,
+            this.device,
+            this.os
+        );
+        this.setResolution(settings.width, settings.height);
+
+        this.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
+        this.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
+    }
+
+    initStream(stream) {
+        this.currentStream = stream;
+        this.video.srcObject = stream;
+
+        stream.getTracks().forEach((track) => {
+            // might need constraints for updated constrains stream request
+            // but so far it was possible to apply additional constrains to the track
+            this.currentTracks[track.kind] = track;
+            // constrains are more like wishes, not necessarily granted
+            // settings should provide width and height, and aspect ratio
+            // video frame should be set to size/pixelRatio
+            let settings = track.getSettings();
+            // track capabilities when available ~same as stream capabilities,
+            // don't know about all environments
+            let capabilities = track.getCapabilities
+                ? track.getCapabilities()
+                : {};
+            this.changeSettings(track.kind, track.label, settings, capabilities);
+
+            this.log(`Track ${track.kind} ${track.label}`);
+            this.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
+        });
+    }
+
     // TO DO 1: with audio tracks
     // TO DO 2: multiple cameras
     onCameraChange() {
@@ -322,50 +373,8 @@ export class VideoClass extends HTMLElement {
         navigator.mediaDevices
             .getUserMedia(constraints)
             .then((stream) => {
-                this.currentStream = stream;
-                this.video.srcObject = stream;
-
-                stream.getTracks().forEach((track) => {
-                    // might need constraints for updated constrains stream request
-                    // but so far it was possible to apply additional constrains to the track
-                    this.constraints = constraints;
-                    this.currentTracks[track.kind] = track;
-                    // constrains are more like wishes, not necessarily granted
-                    // settings should provide width and height, and aspect ratio
-                    // video frame should be set to size/pixelRatio
-                    let settings = track.getSettings();
-                    this.currentSettings = settings;
-                    // track capabilities when available ~same as stream capabilities,
-                    // don't know about all environments
-                    let capabilities = track.getCapabilities
-                        ? track.getCapabilities()
-                        : {};
-                    utilsUI.setControls(
-                        track.kind,
-                        track.label,
-                        capabilities,
-                        settings,
-                        this.controlsCallback
-                    );
-
-                    const listOfResolutions = [[settings.width, settings.height]];
-                    if (capabilities.width && capabilities.height) {
-                        listOfResolutions.push([capabilities.width.max, capabilities.height.max]);
-                    }
-                    utilsUI.initResolutionsUI(
-                        listOfResolutions,
-                        this.device,
-                        this.os
-                    );
-                    this.setResolution(settings.width, settings.height);
-
-                    this.log(`Track ${track.kind} ${track.label}`);
-                    this.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
-                    this.log(
-                        "Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2)
-                    );
-                    this.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
-                });
+                this.constraints = constraints;
+                this.initStream(stream);
             })
             .catch((error) => {
                 this.log(
@@ -373,6 +382,10 @@ export class VideoClass extends HTMLElement {
                 );
                 this.log(`Error: ${JSON.stringify(error, null, 2)}`);
             });
+    }
+
+    setOrientation(isWide) {
+        this.wide = isWide;
     }
 
     setResolution(vidW, vidH) {
@@ -395,6 +408,7 @@ export class VideoClass extends HTMLElement {
         let key = event.target.getAttribute("key");
         key = key || event.target.name;
         const value = event.target.value;
+        const track = this.currentTracks[trackKind];
 
         // sometimes it's required to set "manual" mode before changes
         // but so far it changes between continuous and manual automatically
@@ -403,12 +417,12 @@ export class VideoClass extends HTMLElement {
             return;
         }
 
-        this.currentTracks[trackKind]
+        track
             .applyConstraints({
                 advanced: [{ [key]: value }],
             })
             .then(() => {
-                const newSettings = this.currentTracks[trackKind].getSettings();
+                const newSettings = track.getSettings();
                 if (newSettings[key] === this.currentSettings[key]) {
                     this.log(
                         `Nothing changed: ${key} stays ${this.currentSettings[key]}`
@@ -429,6 +443,7 @@ export class VideoClass extends HTMLElement {
                 }
 
                 const changes = {};
+                let controlsReset = false;
                 const sharedKeys = new Set([
                     ...Object.keys(this.currentSettings),
                     ...Object.keys(newSettings),
@@ -438,9 +453,9 @@ export class VideoClass extends HTMLElement {
                         newSettings[sKey] === undefined
                         || this.currentSettings[sKey] === undefined
                     ) {
-                        this.log(`Key ${sKey} is missing in one of the settings`);
+                        controlsReset = true;
                         // different set of settings, total reset needed for controls
-                        // getCapabilities call is needed, so far never happened
+                        this.log(`Warning: Key ${sKey} is missing in one of the settings`);
                     }
                     if (this.currentSettings[sKey] !== newSettings[sKey]) {
                         changes[sKey] = newSettings[sKey];
@@ -449,6 +464,14 @@ export class VideoClass extends HTMLElement {
                         }
                     }
                 });
+                if (controlsReset) {
+                    let capabilities = track.getCapabilities
+                        ? track.getCapabilities()
+                        : {};
+                    this.changeSettings(trackKind, track.label, newSettings, capabilities);
+                    return;
+                }
+
                 this.log(`Changes ${JSON.stringify(changes, null, 2)}`);
 
                 // important! update currentSettings before updating controls
@@ -494,14 +517,7 @@ export class VideoClass extends HTMLElement {
         navigator.mediaDevices
             .getUserMedia(this.constraints)
             .then((stream) => {
-                this.currentStream = stream;
-                this.video.srcObject = stream;
-                stream.getTracks().forEach((track) => {
-                    // TODO: update controls, currentSettings, currentTracks
-                    // or better do it the same way as ControlsCallback
-                    let settings = track.getSettings();
-                    this.setResolution(settings.width, settings.height);
-                });
+                this.initStream(stream);
             })
             .catch((error) => {
                 this.log(
@@ -509,69 +525,6 @@ export class VideoClass extends HTMLElement {
                 );
                 this.log(`Error: ${JSON.stringify(error, null, 2)}`);
             });
-    }
-
-    setOrientation(isWide) {
-        this.wide = isWide;
-    }
-
-    getOrientation(angle, deviceWide) {
-        return angle === 180 || angle === 0
-            ? deviceWide
-            : !deviceWide;
-    }
-
-    watchOrientation() {
-        let angle = 0;
-        // eslint-disable-next-line no-restricted-globals
-        const deviceWide = screen.width > screen.height;
-        // eslint-disable-next-line no-restricted-globals
-        if (screen && "orientation" in screen) {
-            try {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
-            } catch (e) {
-                this.log(
-                    `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
-                );
-            }
-            this.log(
-                // eslint-disable-next-line no-restricted-globals
-                `Screen orientation: ${angle} degrees, ${screen.orientation.type}.`
-            );
-            // eslint-disable-next-line no-restricted-globals
-            screen.orientation.addEventListener("change", () => {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
-                const wide = this.getOrientation(angle, deviceWide);
-                this.setOrientation(wide);
-                this.log(
-                    // eslint-disable-next-line no-restricted-globals
-                    `Screen orientation change: ${angle} degrees, ${screen.orientation.type}.`
-                );
-            });
-        } else if ("onorientationchange" in window) {
-            // for some mobile browsers
-            try {
-                angle = window.orientation;
-            } catch (e) {
-                this.log(
-                    `Window orientation error: ${JSON.stringify(e, null, 2)}`
-                );
-            }
-            this.log(`Window orientation: ${angle} degrees.`);
-            window.addEventListener("orientationchange", () => {
-                angle = window.orientation;
-                const wide = this.getOrientation(angle, deviceWide);
-                this.setOrientation(wide);
-                this.log(`Window orientation change: ${angle} degrees.`);
-            });
-        }
-        const wide = this.getOrientation(angle, deviceWide);
-        this.setOrientation(wide);
-        this.log(
-            `Orientation ${angle} device ${deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
-        );
     }
 
     initGL(w, h) {

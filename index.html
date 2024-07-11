@@ -14,28 +14,6 @@
         </header>
 
         <main>
-            <!-- Vertex shader program -->
-            <script id="shader-vs" type="x-shader/x-vertex">
-
-                attribute mediump vec2 aVertexPosition;
-                varying mediump vec2 vDirection;
-
-                void main( void )
-                {
-                    gl_Position = vec4(aVertexPosition, 1.0, 1.0);
-                    vDirection = aVertexPosition;
-                }
-            </script>
-
-            <script id="shader-fs" type="x-shader/x-fragment">
-                varying mediump vec2 vDirection;
-                uniform sampler2D uSampler;
-
-                void main(void)
-                {
-                  gl_FragColor = texture2D(uSampler, vec2(vDirection.x * 0.5 + 0.5, vDirection.y * 0.5 + 0.5));
-                }
-            </script>
 
             <!-- Vertex shader program -->
             <script id="depth-vs" type="x-shader/x-vertex">
@@ -71,7 +49,7 @@
         </main>
 
         <footer>
-            <p>Built by Kindofparadox</p>
+            <p>Kindofparadox</p>
         </footer>
     </body>
 </html>
