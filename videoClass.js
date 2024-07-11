@@ -184,7 +184,7 @@ export class VideoClass extends HTMLElement {
 
         this.pixelRatio = window.devicePixelRatio;
         this.os = utilsUI.getOS();
-        this.setOrientation();
+        this.watchOrientation();
 
         this.appendChild(
             utilsUI.get({
@@ -481,14 +481,13 @@ export class VideoClass extends HTMLElement {
             return;
         }
 
-        this.stopDeviceTracks();
-
         const [w, h] = event.target.value.split("x");
         if ((w + 0).isNan || (h + 0).isNan) {
             this.log("Error: resolution should be in format \"width x height\"");
             return;
         }
 
+        this.stopDeviceTracks();
         this.constraints.video.width = { ideal: w };
         this.constraints.video.height = { ideal: h };
 
@@ -498,6 +497,8 @@ export class VideoClass extends HTMLElement {
                 this.currentStream = stream;
                 this.video.srcObject = stream;
                 stream.getTracks().forEach((track) => {
+                    // TODO: update controls, currentSettings, currentTracks
+                    // or better do it the same way as ControlsCallback
                     let settings = track.getSettings();
                     this.setResolution(settings.width, settings.height);
                 });
@@ -510,15 +511,25 @@ export class VideoClass extends HTMLElement {
             });
     }
 
-    setOrientation() {
-        this.angle = 0;
+    setOrientation(isWide) {
+        this.wide = isWide;
+    }
+
+    getOrientation(angle, deviceWide) {
+        return angle === 180 || angle === 0
+            ? deviceWide
+            : !deviceWide;
+    }
+
+    watchOrientation() {
+        let angle = 0;
         // eslint-disable-next-line no-restricted-globals
-        this.deviceWide = screen.width > screen.height;
+        const deviceWide = screen.width > screen.height;
         // eslint-disable-next-line no-restricted-globals
         if (screen && "orientation" in screen) {
             try {
                 // eslint-disable-next-line no-restricted-globals
-                this.angle = screen.orientation.angle;
+                angle = screen.orientation.angle;
             } catch (e) {
                 this.log(
                     `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
@@ -526,43 +537,40 @@ export class VideoClass extends HTMLElement {
             }
             this.log(
                 // eslint-disable-next-line no-restricted-globals
-                `Screen orientation: ${this.angle} degrees, ${screen.orientation.type}.`
+                `Screen orientation: ${angle} degrees, ${screen.orientation.type}.`
             );
             // eslint-disable-next-line no-restricted-globals
             screen.orientation.addEventListener("change", () => {
                 // eslint-disable-next-line no-restricted-globals
-                this.angle = screen.orientation.angle;
-                this.wide = this.angle === 180 || this.angle === 0
-                    ? this.deviceWide
-                    : !this.deviceWide;
+                angle = screen.orientation.angle;
+                const wide = this.getOrientation(angle, deviceWide);
+                this.setOrientation(wide);
                 this.log(
                     // eslint-disable-next-line no-restricted-globals
-                    `Screen orientation change: ${this.angle} degrees, ${screen.orientation.type}.`
+                    `Screen orientation change: ${angle} degrees, ${screen.orientation.type}.`
                 );
             });
         } else if ("onorientationchange" in window) {
             // for some mobile browsers
             try {
-                this.angle = window.orientation;
+                angle = window.orientation;
             } catch (e) {
                 this.log(
                     `Window orientation error: ${JSON.stringify(e, null, 2)}`
                 );
             }
-            this.log(`Window orientation: ${this.angle} degrees.`);
+            this.log(`Window orientation: ${angle} degrees.`);
             window.addEventListener("orientationchange", () => {
-                this.angle = window.orientation;
-                this.wide = this.angle === 180 || this.angle === 0
-                    ? this.deviceWide
-                    : !this.deviceWide;
-                this.log(`Window orientation change: ${this.angle} degrees.`);
+                angle = window.orientation;
+                const wide = this.getOrientation(angle, deviceWide);
+                this.setOrientation(wide);
+                this.log(`Window orientation change: ${angle} degrees.`);
             });
         }
-        this.wide = this.angle === 180 || this.angle === 0
-            ? this.deviceWide
-            : !this.deviceWide;
+        const wide = this.getOrientation(angle, deviceWide);
+        this.setOrientation(wide);
         this.log(
-            `Orientation ${this.angle} device ${this.deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
+            `Orientation ${angle} device ${deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
         );
     }
 
