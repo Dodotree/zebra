@@ -21,8 +21,6 @@ export default class Textures {
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.glTextures[slot] = this.gl.createTexture();
         this.video = options.source;
-        // eslint-disable-next-line no-console
-        console.log(this.video);
 
         // could be onload version where it's needed
         //     this.image = new Image();
@@ -36,17 +34,7 @@ export default class Textures {
         // handleLoadedTexture(slot) {
 
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
-        // Bind
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
-        // Configure
-        this.gl.texImage2D(
-            this.gl.TEXTURE_2D,
-            0,
-            this.gl.RGBA,
-            this.gl.RGBA,
-            this.gl.UNSIGNED_BYTE,
-            this.video
-        );
 
         Object.entries(this.textures[slot].params).forEach((pair) => {
             this.gl.texParameteri(
@@ -65,6 +53,7 @@ export default class Textures {
 
     update(slot) {
         if (this.video.readyState < 3) return; // not ready to display pixels
+
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
         // next line fails in Safari if input video is NOT from same domain/server as this html code
@@ -78,8 +67,7 @@ export default class Textures {
         );
 
         // from 3d camera example
-        // webgl2 this.gl.texImage2D(this.gl.TEXTURE_2D, 0,
-        // this.gl.R32F, this.gl.RED, this.gl.FLOAT, this.video);
+        // webgl2 this.gl.texImage2D(... 0,this.gl.R32F, this.gl.RED, this.gl.FLOAT, this.video);
         // webgl gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.RGBA, gl.FLOAT, video);
     }
 }
