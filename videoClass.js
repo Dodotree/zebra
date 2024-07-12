@@ -5,9 +5,6 @@ export class VideoClass extends HTMLElement {
     constructor() {
         super();
 
-        this.DISCONNECT_TIMEOUT = 5000;
-        this.RECONNECT_TIMEOUT = 30000;
-
         /**
          * [config] Requested medias (video, audio, microphone).
          * @type {string}
@@ -51,17 +48,6 @@ export class VideoClass extends HTMLElement {
 
         this.select = null;
         this.canvasGL = null;
-        /**
-         * [internal] Disconnect TimeoutID.
-         * @type {number}
-         */
-        this.disconnectTID = 0;
-
-        /**
-         * [internal] Reconnect TimeoutID.
-         * @type {number}
-         */
-        this.reconnectTID = 0;
 
         // to make bound callback event listener removable
         this.controlsCallback = this.controlsCallback.bind(this);
@@ -70,52 +56,10 @@ export class VideoClass extends HTMLElement {
     }
 
     /**
-     * `CustomElement` lifecycle callback. Invoked each time the custom element is appended into a
-     * document-connected element.
-     */
-    connectedCallback() {
-        if (this.disconnectTID) {
-            clearTimeout(this.disconnectTID);
-            this.disconnectTID = 0;
-        }
-
-        if (!this.logPanel) {
-            this.logPanel = utilsUI.get({
-                tag: "textarea",
-                attrs: { id: "log", value: "" },
-            });
-            this.appendChild(this.logPanel);
-        }
-
-        // because video autopause on disconnected from DOM
-        if (this.video) {
-            const seek = this.video.seekable;
-            if (seek.length > 0) {
-                this.video.currentTime = seek.end(seek.length - 1);
-            }
-            // this.play();
-        } else {
-            this.onInit();
-        }
-    }
-
-    /**
      * `CustomElement`lifecycle callback. Invoked each time the custom element is removed from the
      * document's DOM.
      */
     disconnectedCallback() {
-        if (this.backgroundPlayOk || this.disconnectTID) return;
-
-        this.disconnectTID = setTimeout(() => {
-            if (this.reconnectTID) {
-                clearTimeout(this.reconnectTID);
-                this.reconnectTID = 0;
-            }
-
-            this.disconnectTID = 0;
-
-            // this.ondisconnect();
-        }, this.DISCONNECT_TIMEOUT);
     }
 
     log(message) {
@@ -145,39 +89,23 @@ export class VideoClass extends HTMLElement {
     }
 
     /**
-     * Creates child DOM elements. Called automatically once on `connectedCallback`.
+     * `CustomElement` lifecycle callback. Invoked each time the custom element is appended into a
+     * document-connected element.
      */
-    async onInit() {
-        this.appendChild(
-            utilsUI.get({
-                tag: "details",
-                attrs: { id: "track-capabilities" },
-            })
+    connectedCallback() {
+        this.logPanel = document.getElementById("log");
+
+        this.select = document.getElementById("camera-select");
+        this.select.addEventListener("change", this.onCameraChange.bind(this));
+
+        const resHolder = document.getElementById("resolution-select");
+        resHolder.addEventListener(
+            "change",
+            this.onResolutionChange.bind(this)
         );
 
-        let mediaDevices = [];
-        // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
-        try {
-            this.currentStream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: true,
-            });
-        } catch (err) {
-            this.log(
-                "Initiating test stream error:\n" + JSON.stringify(err, null, 2)
-            );
-        }
-        try {
-            mediaDevices = await navigator.mediaDevices.enumerateDevices();
-        } catch (error) {
-            this.log(
-                "Error while fetching available streaming devices info:\n"
-                    + JSON.stringify(error, null, 2)
-            );
-        }
-
-        // TO DO
-        // const supportedOptions = navigator.mediaDevices.getSupportedConstraints();
+        // TO DO: capture image and video
+        // <button id="capture"> Capture </button>
 
         // TO DO: in case of multiple displays
         // const mqString = `(resolution: ${window.devicePixelRatio}dppx)`;
@@ -188,59 +116,10 @@ export class VideoClass extends HTMLElement {
         this.os = utilsUI.getOS();
         utilsUI.watchOrientation(this.setOrientation, this.log);
 
-        this.appendChild(
-            utilsUI.get({
-                tag: "label",
-                text: "Select Camera:",
-                attrs: { htmlFor: "camera-select" },
-            })
-        );
-        this.select = utilsUI.get({
-            tag: "select",
-            attrs: { id: "camera-select" },
-        });
-        this.select.appendChild(
-            utilsUI.get({
-                tag: "option",
-                text: "None",
-                attrs: { value: "none" },
-            })
-        );
-        mediaDevices.forEach((mediaDevice, index) => {
-            this.select.appendChild(
-                utilsUI.get({
-                    tag: "option",
-                    text: mediaDevice.label || `Camera ${index}`,
-                    attrs: { value: mediaDevice.deviceId },
-                })
-            );
-            this.log(`Steam ${index} id=${mediaDevice.deviceId}`);
-            if (mediaDevice.getCapabilities) {
-                this.log(
-                    `Capabilities:\n${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`
-                );
-            }
-        });
-        this.appendChild(this.select);
-        this.select.addEventListener("change", this.onCameraChange.bind(this));
-
-        // now we can release the test stream
-        this.stopDeviceTracks(this.currentStream);
-
-        const resHolder = this.appendChild(
-            utilsUI.get({
-                tag: "select",
-                attrs: { id: "resolution-select" },
-            })
-        );
-        resHolder.addEventListener(
-            "change",
-            this.onResolutionChange.bind(this)
-        );
-
+        // the most universal resolution for cameras, empty until stream is initialized
         const vidW = this.wide ? 640 : 480;
         const vidH = this.wide ? 480 : 640;
-        this.video = utilsUI.get({
+        this.video = this.appendChild(utilsUI.get({
             tag: "video",
             attrs: {
                 controls: true,
@@ -251,8 +130,46 @@ export class VideoClass extends HTMLElement {
                 crossOrigin: "anonymous",
                 style: `display: block; width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`,
             },
+        }));
+
+        // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
+        // using Promises instead of async/await because we are inside lifecycle callback
+        navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+        }).then((stream) => {
+            navigator.mediaDevices.enumerateDevices().then((devices) => {
+                devices.forEach((mediaDevice, index) => {
+                    this.select.appendChild(
+                        utilsUI.get({
+                            tag: "option",
+                            text: mediaDevice.label || `Camera ${index}`,
+                            attrs: { value: mediaDevice.deviceId },
+                        })
+                    );
+                    this.log(`Steam ${index} id=${mediaDevice.deviceId}`);
+                    if (mediaDevice.getCapabilities) {
+                        this.log(
+                            `Capabilities:\n${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`
+                        );
+                    }
+                });
+                // now we can release the test stream
+                this.stopDeviceTracks(stream);
+            }).catch((error) => {
+                this.log(
+                    "Error while fetching available streaming devices info:\n"
+                        + JSON.stringify(error, null, 2)
+                );
+            });
+        }).catch((err) => {
+            this.log(
+                "Initiating default stream error:\n" + JSON.stringify(err, null, 2)
+            );
         });
-        this.appendChild(this.video);
+
+        // TO DO
+        // const supportedOptions = navigator.mediaDevices.getSupportedConstraints();
 
         // if you want it to play in the background there"s nothing else to setup
         if (this.backgroundPlayOk) return;
@@ -283,9 +200,6 @@ export class VideoClass extends HTMLElement {
             );
             observer.observe(this);
         }
-
-        // TO DO: capture image and video
-        // <button id="capture"> Capture </button>
     }
 
     changeSettings(kind, label, settings, capabilities) {
@@ -313,17 +227,30 @@ export class VideoClass extends HTMLElement {
         this.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
     }
 
+    getStream(constraints) {
+        navigator.mediaDevices
+            .getUserMedia(constraints)
+            .then((stream) => {
+                this.constraints = constraints;
+                this.initStream(stream);
+            })
+            .catch((error) => {
+                this.log(`getUserMedia Error: ${JSON.stringify(error, null, 2)}`);
+                this.log(`for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+            });
+    }
+
     initStream(stream) {
         this.currentStream = stream;
         this.video.srcObject = stream;
 
         stream.getTracks().forEach((track) => {
-            // might need constraints for updated constrains stream request
+            // might need all constraints for updated constrains stream request
             // but so far it was possible to apply additional constrains to the track
             this.currentTracks[track.kind] = track;
             // constrains are more like wishes, not necessarily granted
             // settings should provide width and height, and aspect ratio
-            // video frame should be set to size/pixelRatio
+            // keep in mind video frame should be set to size/pixelRatio
             let settings = track.getSettings();
             // track capabilities when available ~same as stream capabilities,
             // don't know about all environments
@@ -370,18 +297,7 @@ export class VideoClass extends HTMLElement {
         // but even if we only use deviceId as constrain to get the stream
         // most likely it will provide default webcam 640x480 and not what it's capable of
 
-        navigator.mediaDevices
-            .getUserMedia(constraints)
-            .then((stream) => {
-                this.constraints = constraints;
-                this.initStream(stream);
-            })
-            .catch((error) => {
-                this.log(
-                    `Got user media error for constrains: \n${JSON.stringify(constraints, null, 2)}:`
-                );
-                this.log(`Error: ${JSON.stringify(error, null, 2)}`);
-            });
+        this.getStream(constraints);
     }
 
     setOrientation(isWide) {
@@ -513,18 +429,7 @@ export class VideoClass extends HTMLElement {
         this.stopDeviceTracks();
         this.constraints.video.width = { ideal: w };
         this.constraints.video.height = { ideal: h };
-
-        navigator.mediaDevices
-            .getUserMedia(this.constraints)
-            .then((stream) => {
-                this.initStream(stream);
-            })
-            .catch((error) => {
-                this.log(
-                    `Got user media error for constrains ${JSON.stringify(this.constraints, null, 2)}:`
-                );
-                this.log(`Error: ${JSON.stringify(error, null, 2)}`);
-            });
+        this.getStream(this.constraints);
     }
 
     initGL(w, h) {
@@ -578,6 +483,8 @@ export class VideoClass extends HTMLElement {
         } catch (e) {
             console.log(e);
         }
+
+        // TODO: check if it's playing (Chrome warning at start)
         this.canvasGL.init(
             0,
             {
