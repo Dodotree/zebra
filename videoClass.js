@@ -302,8 +302,6 @@ export class VideoClass extends HTMLElement {
 
     setOrientation(isWide) {
         this.wide = isWide;
-        // for iphone testing
-        this.wide = true;
     }
 
     setResolution(vidW, vidH) {
