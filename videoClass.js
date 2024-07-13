@@ -302,6 +302,8 @@ export class VideoClass extends HTMLElement {
 
     setOrientation(isWide) {
         this.wide = isWide;
+        // for iphone testing
+        this.wide = true;
     }
 
     setResolution(vidW, vidH) {
@@ -318,6 +320,7 @@ export class VideoClass extends HTMLElement {
         this.log(`Resolution set to ${this.currentResolution}`);
     }
 
+    // TODO: needs throttle, but still one value at a time
     controlsCallback(event) {
         const form = event.target.form;
         const trackKind = form.kind;
