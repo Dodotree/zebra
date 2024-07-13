@@ -43,13 +43,3 @@ class VideoElement extends VideoClass {
 
 // TODO: transfer stream specific code here
 customElements.define("my-camera", VideoElement);
-
-const card = {
-    type: "my-camera",
-    name: "My Custom Video Element",
-    preview: false,
-    description: "Play any camera stream",
-};
-// Apple iOS 12 doesn't support `||=`
-if (window.customCards) window.customCards.push(card);
-else window.customCards = [card];

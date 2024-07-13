@@ -15,7 +15,6 @@
 
         <main>
             <textarea id="log"></textarea>
-            <details id="track-capabilities"></details>
             <label for="camera-select">Select camera:</label>
             <select id="camera-select">
                 <option value="none">None</option>
@@ -50,8 +49,8 @@
             <script type="module" src="./videoElement.js"></script>
 
             <script type="module">
-                const card = document.createElement("my-camera");
-                document.body.appendChild(card);
+                const footer = document.querySelector("footer");
+               document.body.insertBefore(document.createElement("my-camera"), footer);
             </script>
         </main>
 

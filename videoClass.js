@@ -1,4 +1,5 @@
 import VideoGL from "./glVideo.js";
+import { VideoControls } from "./videoControls.js";
 import { utilsUI } from "./utils/UI.js";
 
 export class VideoClass extends HTMLElement {
@@ -97,6 +98,9 @@ export class VideoClass extends HTMLElement {
 
         this.select = document.getElementById("camera-select");
         this.select.addEventListener("change", this.onCameraChange.bind(this));
+
+        this.controls = new VideoControls();
+        document.body.insertBefore(this.controls, this);
 
         const resHolder = document.getElementById("resolution-select");
         resHolder.addEventListener(
@@ -204,13 +208,17 @@ export class VideoClass extends HTMLElement {
 
     changeSettings(kind, label, settings, capabilities) {
         this.currentSettings = settings;
-        utilsUI.setControls(
-            kind,
-            label,
-            capabilities,
-            settings,
-            this.controlsCallback
-        );
+        try {
+            this.controls.init(
+                kind,
+                label,
+                capabilities,
+                settings,
+                this.controlsCallback
+            );
+        } catch (e) {
+            console.log(e);
+        }
 
         const listOfResolutions = [[settings.width, settings.height]];
         if (capabilities.width && capabilities.height) {
@@ -268,7 +276,7 @@ export class VideoClass extends HTMLElement {
     // TO DO 2: multiple cameras
     onCameraChange() {
         this.stopDeviceTracks();
-        utilsUI.deleteControlsUI("track-capabilities", this.controlsCallback);
+        this.controls.reset("video-controls", this.controlsCallback);
         document.getElementById("resolution-select").innerHTML = "";
 
         if (this.select.value === "none") {
@@ -345,7 +353,7 @@ export class VideoClass extends HTMLElement {
                         `Nothing changed: ${key} stays ${this.currentSettings[key]}`
                     );
                     // restore to the actual value instead of what we tried to set
-                    utilsUI.setControlValue(form, key, newSettings[key]);
+                    this.controls.setControlValue(form, key, newSettings[key]);
                     return;
                 }
 
@@ -395,7 +403,7 @@ export class VideoClass extends HTMLElement {
                 // otherwise it will trigger another event
                 this.currentSettings = newSettings;
                 changes.forEach((chKey) =>{
-                    utilsUI.setControlValue(form, chKey, changes[chKey]);
+                    this.controls.setControlValue(form, chKey, changes[chKey]);
                 });
 
                 if (
