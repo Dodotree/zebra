@@ -30,17 +30,17 @@ export class VideoControls extends HTMLElement {
         this.callback = callback;
 
         const buckets = {
-            info: ["deviceId", "groupId"],
-            box: ["resizeMode", "aspectRatio", "width", "height", "frameRate"],
-            exposure: [
+            IDs: ["deviceId", "groupId"],
+            Box: ["resizeMode", "aspectRatio", "width", "height", "frameRate"],
+            Exposure: [
                 "exposureMode",
                 "exposureTime",
                 "exposureCompensation",
                 "iso",
                 "whiteBalanceMode",
             ],
-            focus: ["focusMode", "focusDistance", "focusRange"],
-            color: [
+            Focus: ["focusMode", "focusDistance", "focusRange"],
+            Color: [
                 "brightness",
                 "colorTemperature",
                 "contrast",
@@ -53,9 +53,11 @@ export class VideoControls extends HTMLElement {
 
         Object.keys(buckets).forEach((buck) => {
             const bucketNode = document.createElement("fieldset");
-            bucketNode.setAttribute(
-                "style",
-                "break-inside: avoid; page-break-inside: avoid;"
+            bucketNode.appendChild(
+                utilsUI.get({
+                    tag: "legend",
+                    text: buck,
+                })
             );
             buckets[buck].forEach((cKey) => {
                 if (cKey in capabilities) {
@@ -71,7 +73,7 @@ export class VideoControls extends HTMLElement {
                 }
             });
 
-            if (bucketNode.children.length > 0) {
+            if (bucketNode.children.length > 1) {
                 this.form.appendChild(bucketNode);
             } else {
                 bucketNode.remove();
@@ -179,10 +181,11 @@ export class VideoControls extends HTMLElement {
             });
             sel.addEventListener("change", callback);
         } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
+            function fix(num) { return parseFloat(num.toFixed(4));}
             pElement.appendChild(
                 utilsUI.get({
                     tag: "label",
-                    text: cKey,
+                    text: `${cKey} ${fix(cOptions.min)} - ${fix(cOptions.max)}, step: ${"step" in cOptions ? fix(cOptions.step) : 1}`,
                     attrs: { htmlFor: cKey + "Range" },
                 })
             );
@@ -196,7 +199,7 @@ export class VideoControls extends HTMLElement {
                         min: cOptions.min,
                         max: cOptions.max,
                         step: "step" in cOptions ? cOptions.step : 1,
-                        value: cValue,
+                        value: cValue, // do not change default value (could be long)
                         class: "control-input",
                         oninput: `this.form.${cKey + "Number"}.value = this.value`,
                     },

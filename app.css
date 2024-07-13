@@ -19,13 +19,17 @@ summary {
     padding: 1rem;
 }
 
-#video-controls form {
+video-controls form {
     padding: 20px;
     column-count: 3;
     column-gap: 0.3rem;
 }
+video-controls form fieldset {
+    break-inside: avoid; 
+    page-break-inside: avoid;
+}
 @media (max-width: 768px) {
-    #video-controls form {
+    video-controls form {
         padding: 5px;
         column-count: 1;
     }

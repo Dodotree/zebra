@@ -68,6 +68,18 @@ export class VideoClass extends HTMLElement {
         this.logPanel.scrollTop = this.logPanel.scrollHeight;
     }
 
+    logError(error) {
+        console.error(error);
+        if (error instanceof DOMException) {
+            this.log(`DOMException: ${error.name}: ${error.message}`);
+            return;
+        } if (error instanceof Error) {
+            this.log(`Error ${typeof error} ${error.name}: ${error.message} ${error.cause}`);
+            return;
+        }
+        this.log(`Error: ${error}`);
+    }
+
     // for browsers that don't support autoplay
     play() {
         this.video.play().catch(() => {
@@ -99,8 +111,12 @@ export class VideoClass extends HTMLElement {
         this.select = document.getElementById("camera-select");
         this.select.addEventListener("change", this.onCameraChange.bind(this));
 
-        this.controls = new VideoControls();
-        document.body.insertBefore(this.controls, this);
+        try {
+            this.controls = new VideoControls();
+            document.body.insertBefore(this.controls, this);
+        } catch (e) {
+            this.logError(e);
+        }
 
         const resHolder = document.getElementById("resolution-select");
         resHolder.addEventListener(
@@ -161,15 +177,12 @@ export class VideoClass extends HTMLElement {
                 // now we can release the test stream
                 this.stopDeviceTracks(stream);
             }).catch((error) => {
-                this.log(
-                    "Error while fetching available streaming devices info:\n"
-                        + JSON.stringify(error, null, 2)
-                );
+                this.log("Error while fetching available streaming devices info");
+                this.logError(error);
             });
         }).catch((err) => {
-            this.log(
-                "Initiating default stream error:\n" + JSON.stringify(err, null, 2)
-            );
+            this.log("Initiating default stream error:\n");
+            this.logError(err);
         });
 
         // TO DO
@@ -217,7 +230,7 @@ export class VideoClass extends HTMLElement {
                 this.controlsCallback
             );
         } catch (e) {
-            console.log(e);
+            this.logError(e);
         }
 
         const listOfResolutions = [[settings.width, settings.height]];
@@ -243,8 +256,8 @@ export class VideoClass extends HTMLElement {
                 this.initStream(stream);
             })
             .catch((error) => {
-                this.log(`getUserMedia Error: ${JSON.stringify(error, null, 2)}`);
-                this.log(`for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.logError(error);
             });
     }
 
@@ -276,7 +289,11 @@ export class VideoClass extends HTMLElement {
     // TO DO 2: multiple cameras
     onCameraChange() {
         this.stopDeviceTracks();
-        this.controls.reset("video-controls", this.controlsCallback);
+        try {
+            this.controls.reset("video-controls", this.controlsCallback);
+        } catch (e) {
+            this.logError(e);
+        }
         document.getElementById("resolution-select").innerHTML = "";
 
         if (this.select.value === "none") {
@@ -353,7 +370,11 @@ export class VideoClass extends HTMLElement {
                         `Nothing changed: ${key} stays ${this.currentSettings[key]}`
                     );
                     // restore to the actual value instead of what we tried to set
-                    this.controls.setControlValue(form, key, newSettings[key]);
+                    try {
+                        this.controls.setControlValue(form, key, newSettings[key]);
+                    } catch (e) {
+                        this.logError(e);
+                    }
                     return;
                 }
 
@@ -403,7 +424,11 @@ export class VideoClass extends HTMLElement {
                 // otherwise it will trigger another event
                 this.currentSettings = newSettings;
                 changes.forEach((chKey) =>{
-                    this.controls.setControlValue(form, chKey, changes[chKey]);
+                    try {
+                        this.controls.setControlValue(form, chKey, changes[chKey]);
+                    } catch (e) {
+                        this.logError(e);
+                    }
                 });
 
                 if (
@@ -418,9 +443,8 @@ export class VideoClass extends HTMLElement {
                 }
             })
             .catch((e) => {
-                this.log(
-                    `Failed set ${key} to ${value} error: ${JSON.stringify(e, null, 2)}`
-                );
+                this.log(`Failed set ${key} to ${value}`);
+                this.logError(e);
             });
     }
 
@@ -490,7 +514,7 @@ export class VideoClass extends HTMLElement {
                 ["s"]
             );
         } catch (e) {
-            console.log(e);
+            this.logError(e);
         }
 
         // TODO: check if it's playing (Chrome warning at start)

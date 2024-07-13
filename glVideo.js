@@ -38,12 +38,20 @@ export default class VideoGL {
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
-        this.program = new Program(this.gl, vertexShaderId, fragmentShaderId);
-        this.program.load(attrs, uniforms);
+        try {
+            this.program = new Program(this.gl, vertexShaderId, fragmentShaderId);
+            this.program.load(attrs, uniforms);
+        } catch (e) {
+            console.log(e);
+        }
 
         this.buffers = {};
-        this.clock = new Clock();
-        this.textures = new Textures(this.gl);
+        try {
+            this.clock = new Clock();
+            this.textures = new Textures(this.gl);
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     /** * HERE and below I don't use spread operator for parameters because it's slow
@@ -59,12 +67,20 @@ export default class VideoGL {
             this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
         }
 
-        this.textures.init(slot, textureOptions);
+        try {
+            this.textures.init(slot, textureOptions);
+        } catch (e) {
+            console.log(e);
+        }
         this.initUniforms(uniData);
         this.initBuffers(bufferData);
         // this.initFramebuffer(slot);
 
-        this.clock.on("tick", this.draw.bind(this));
+        try {
+            this.clock.on("tick", this.draw.bind(this));
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     initUniforms(uniData) {
@@ -134,7 +150,11 @@ export default class VideoGL {
     draw() {
         const slot = 0;
 
-        this.textures.update(slot);
+        try {
+            this.textures.update(slot);
+        } catch (e) {
+            console.log(e);
+        }
         this.gl.bindVertexArray(this.buffers.vertsVAO); // repeat this on each draw()
         this.gl.drawElements(
             this.gl.TRIANGLES,
@@ -202,7 +222,11 @@ export default class VideoGL {
     }
 
     destroy() {
-        this.clock.stop();
+        try {
+            this.clock.stop();
+        } catch (e) {
+            console.log(e);
+        }
         this.gl.deleteProgram(this.program.program);
         this.gl.deleteBuffer(this.buffers.vertsBuffer);
         this.gl.deleteBuffer(this.buffers.indsBuffer);
