@@ -38,11 +38,13 @@ export default class VideoGL {
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
+        this.logger = document.getElementsByTagName("screen-logger")[0];
+
         try {
             this.program = new Program(this.gl, vertexShaderId, fragmentShaderId);
             this.program.load(attrs, uniforms);
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
 
         this.buffers = {};
@@ -50,7 +52,7 @@ export default class VideoGL {
             this.clock = new Clock();
             this.textures = new Textures(this.gl);
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
     }
 
@@ -58,7 +60,9 @@ export default class VideoGL {
      * and whole point of WebGL is speed * */
 
     /** Boilerplate webGL initialization */
-    init(slot, textureOptions, uniData, bufferData) {
+    init(slot, w, h, textureOptions, uniData, bufferData) {
+        this.w = w;
+        this.h = h;
         this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
         this.gl.clearDepth(1.0);
         this.gl.disable(this.gl.DEPTH_TEST);
@@ -70,7 +74,7 @@ export default class VideoGL {
         try {
             this.textures.init(slot, textureOptions);
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
         this.initUniforms(uniData);
         this.initBuffers(bufferData);
@@ -79,7 +83,7 @@ export default class VideoGL {
         try {
             this.clock.on("tick", this.draw.bind(this));
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
     }
 
@@ -153,7 +157,7 @@ export default class VideoGL {
         try {
             this.textures.update(slot);
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
         this.gl.bindVertexArray(this.buffers.vertsVAO); // repeat this on each draw()
         this.gl.drawElements(
@@ -186,17 +190,17 @@ export default class VideoGL {
                 && this.gl.getParameter(this.gl.IMPLEMENTATION_COLOR_READ_TYPE)
                 === this.gl.FLOAT
             ) {
-                this.readBuffer = new Float32Array(this.videowidth * this.videoheight);
+                this.readBuffer = new Float32Array(this.w * this.h);
             } else {
                 this.readFormat = this.gl.RGBA;
-                this.readBuffer = new Float32Array(this.videowidth * this.videoheight * 4);
+                this.readBuffer = new Float32Array(this.w * this.h * 4);
             }
         }
         this.gl.readPixels(
             0,
             0,
-            this.videowidth,
-            this.videoheight,
+            this.w,
+            this.h,
             this.readFormat,
             this.gl.FLOAT,
             this.readBuffer
@@ -208,8 +212,8 @@ export default class VideoGL {
         var img = this.context_2d.getImageData(
             0,
             0,
-            this.videowidth,
-            this.videoheight
+            this.w,
+            this.h
         );
         var data = img.data;
         var stride = this.readFormat === this.gl.RED ? 1 : 4;
@@ -225,12 +229,13 @@ export default class VideoGL {
         try {
             this.clock.stop();
         } catch (e) {
-            console.log(e);
+            this.logger.logError(e);
         }
         this.gl.deleteProgram(this.program.program);
         this.gl.deleteBuffer(this.buffers.vertsBuffer);
         this.gl.deleteBuffer(this.buffers.indsBuffer);
         this.gl.deleteVertexArray(this.buffers.vertsVAO);
+        // eslint-disable-next-line no-plusplus
         for (let i = 0; i < this.textures.glTextures.length; i++) {
             this.gl.deleteTexture(this.textures.glTextures[i]);
         }

@@ -11,6 +11,8 @@
         "autopause",
         "oninit",
         "ondisconnect",
+        "plusplus",
+        "IMAX",
         "CONRADY",
         "DIstortioncoeffs"
     ],

@@ -88,6 +88,7 @@ export const utilsUI = {
         if ((/iPad|iPhone|iPod/.test(uA) && !window.MSStream) || (uA.includes("Mac") && "ontouchend" in document)) return "iOS";
 
         const os = ["Windows", "Android", "Unix", "Mac", "Linux", "BlackBerry"];
+        // eslint-disable-next-line no-plusplus
         for (let i = 0; i < os.length; i++) if (new RegExp(os[i], "i").test(uA)) return os[i];
         return "unknown";
     },
@@ -198,12 +199,12 @@ export const utilsUI = {
         if (givenRs.length === 2) {
             resolutions = resolutions.filter((r) => r[0] <= givenRs[1][0] && r[1] <= givenRs[1][1]);
         }
-        resolutions.forEach((whtf) => {
-            const res = `${whtf[0]}x${whtf[1]}`;
+        resolutions.forEach((row) => {
+            const res = `${row[0]}x${row[1]}`;
             resHolder.appendChild(
                 utilsUI.get({
                     tag: "option",
-                    text: `${res} (${whtf[2]})`,
+                    text: `${res} (${row[2]})`,
                     attrs: { value: res },
                 })
             );

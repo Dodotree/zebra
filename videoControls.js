@@ -7,13 +7,6 @@ export class VideoControls extends HTMLElement {
         this.callback = null;
     }
 
-    /**
-     * `CustomElement` lifecycle callback. Invoked each time the it's appended into a
-     * document-connected element.
-     */
-    connectedCallback() {
-    }
-
     init(kind, label, capabilities, settings, callback) {
         this.reset();
         const details = this.appendChild(document.createElement("details"));
@@ -181,7 +174,7 @@ export class VideoControls extends HTMLElement {
             });
             sel.addEventListener("change", callback);
         } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
-            function fix(num) { return parseFloat(num.toFixed(4));}
+            function fix(num) { return parseFloat(num.toFixed(4)); }
             pElement.appendChild(
                 utilsUI.get({
                     tag: "label",

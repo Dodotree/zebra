@@ -6,9 +6,7 @@ export default class Program {
         this.program = gl.createProgram();
 
         if (!(vertexShaderId && fragmentShaderId)) {
-            // eslint-disable-next-line no-console
-            console.error("No shader IDs were provided");
-            return;
+            throw new Error("No shader IDs were provided");
         }
 
         gl.attachShader(this.program, this.getShader(vertexShaderId));
@@ -17,11 +15,7 @@ export default class Program {
         // gl.validateProgram(this.program);
 
         if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-            // eslint-disable-next-line no-console
-            console.error(
-                "Could not initialize shaders." + gl.getProgramInfoLog(this.program)
-            );
-            return;
+            throw new Error("Could not initialize shaders." + gl.getProgramInfoLog(this.program));
         }
 
         // eslint-disable-next-line no-console
@@ -104,9 +98,7 @@ export default class Program {
         this.gl.compileShader(shader);
 
         if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-            // eslint-disable-next-line no-console
-            console.error(`Problem compiling shader with id ${id}`, this.gl.getShaderInfoLog(shader));
-            return null;
+            throw new Error(`Problem compiling shader with id ${id}`, this.gl.getShaderInfoLog(shader));
         }
 
         return shader;

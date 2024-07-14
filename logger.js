@@ -13,7 +13,6 @@ export class Logger extends HTMLElement {
      */
     connectedCallback() {
         this.logPanel = this.appendChild(document.createElement("textarea"));
-        console.log("Logger connected", this.logPanel);
     }
 
     log(message) {
@@ -22,6 +21,7 @@ export class Logger extends HTMLElement {
     }
 
     logError(error) {
+        // eslint-disable-next-line no-console
         console.error(error);
         if (error instanceof DOMException) {
             this.log(`DOMException: ${error.name}: ${error.message}`);

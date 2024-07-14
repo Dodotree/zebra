@@ -57,19 +57,13 @@ export class VideoClass extends HTMLElement {
         this.setOrientation = this.setOrientation.bind(this);
     }
 
-    /**
-     * `CustomElement`lifecycle callback. Invoked each time the custom element is removed from the
-     * document's DOM.
-     */
-    disconnectedCallback() {
-    }
-
     // for browsers that don't support autoplay
     play() {
         this.video.play().catch(() => {
             if (!this.video.muted) {
                 this.video.muted = true;
                 this.video.play().catch((er) => {
+                    // eslint-disable-next-line no-console
                     console.warn(er);
                 });
             }
@@ -504,6 +498,8 @@ export class VideoClass extends HTMLElement {
         // TODO: check if it's playing (Chrome warning at start)
         this.canvasGL.init(
             0,
+            w,
+            h,
             {
                 source: this.video,
                 flip: false,
