@@ -50,10 +50,11 @@ export class VideoClass extends HTMLElement {
         this.select = null;
         this.canvasGL = null;
 
+        this.logger = null;
+
         // to make bound callback event listener removable
         this.controlsCallback = this.controlsCallback.bind(this);
         this.setOrientation = this.setOrientation.bind(this);
-        this.log = this.log.bind(this);
     }
 
     /**
@@ -61,23 +62,6 @@ export class VideoClass extends HTMLElement {
      * document's DOM.
      */
     disconnectedCallback() {
-    }
-
-    log(message) {
-        this.logPanel.value += "\n\n" + message;
-        this.logPanel.scrollTop = this.logPanel.scrollHeight;
-    }
-
-    logError(error) {
-        console.error(error);
-        if (error instanceof DOMException) {
-            this.log(`DOMException: ${error.name}: ${error.message}`);
-            return;
-        } if (error instanceof Error) {
-            this.log(`Error ${typeof error} ${error.name}: ${error.message} ${error.cause}`);
-            return;
-        }
-        this.log(`Error: ${error}`);
     }
 
     // for browsers that don't support autoplay
@@ -106,7 +90,7 @@ export class VideoClass extends HTMLElement {
      * document-connected element.
      */
     connectedCallback() {
-        this.logPanel = document.getElementById("log");
+        this.logger = document.getElementsByTagName("screen-logger")[0];
 
         this.select = document.getElementById("camera-select");
         this.select.addEventListener("change", this.onCameraChange.bind(this));
@@ -115,7 +99,7 @@ export class VideoClass extends HTMLElement {
             this.controls = new VideoControls();
             document.body.insertBefore(this.controls, this);
         } catch (e) {
-            this.logError(e);
+            this.logger.logError(e);
         }
 
         const resHolder = document.getElementById("resolution-select");
@@ -134,7 +118,7 @@ export class VideoClass extends HTMLElement {
 
         this.pixelRatio = window.devicePixelRatio;
         this.os = utilsUI.getOS();
-        utilsUI.watchOrientation(this.setOrientation, this.log);
+        utilsUI.watchOrientation(this.setOrientation, this.logger.log);
 
         // the most universal resolution for cameras, empty until stream is initialized
         const vidW = this.wide ? 640 : 480;
@@ -167,9 +151,9 @@ export class VideoClass extends HTMLElement {
                             attrs: { value: mediaDevice.deviceId },
                         })
                     );
-                    this.log(`Steam ${index} id=${mediaDevice.deviceId}`);
+                    this.logger.log(`Steam ${index} id=${mediaDevice.deviceId}`);
                     if (mediaDevice.getCapabilities) {
-                        this.log(
+                        this.logger.log(
                             `Capabilities:\n${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`
                         );
                     }
@@ -177,12 +161,12 @@ export class VideoClass extends HTMLElement {
                 // now we can release the test stream
                 this.stopDeviceTracks(stream);
             }).catch((error) => {
-                this.log("Error while fetching available streaming devices info");
-                this.logError(error);
+                this.logger.log("Error while fetching available streaming devices info");
+                this.logger.logError(error);
             });
         }).catch((err) => {
-            this.log("Initiating default stream error:\n");
-            this.logError(err);
+            this.logger.log("Initiating default stream error:\n");
+            this.logger.logError(err);
         });
 
         // TO DO
@@ -230,7 +214,7 @@ export class VideoClass extends HTMLElement {
                 this.controlsCallback
             );
         } catch (e) {
-            this.logError(e);
+            this.logger.logError(e);
         }
 
         const listOfResolutions = [[settings.width, settings.height]];
@@ -244,8 +228,8 @@ export class VideoClass extends HTMLElement {
         );
         this.setResolution(settings.width, settings.height);
 
-        this.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
-        this.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
+        this.logger.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
+        this.logger.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
     }
 
     getStream(constraints) {
@@ -256,8 +240,8 @@ export class VideoClass extends HTMLElement {
                 this.initStream(stream);
             })
             .catch((error) => {
-                this.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
-                this.logError(error);
+                this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.logger.logError(error);
             });
     }
 
@@ -280,8 +264,8 @@ export class VideoClass extends HTMLElement {
                 : {};
             this.changeSettings(track.kind, track.label, settings, capabilities);
 
-            this.log(`Track ${track.kind} ${track.label}`);
-            this.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
+            this.logger.log(`Track ${track.kind} ${track.label}`);
+            this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
         });
     }
 
@@ -292,7 +276,7 @@ export class VideoClass extends HTMLElement {
         try {
             this.controls.reset("video-controls", this.controlsCallback);
         } catch (e) {
-            this.logError(e);
+            this.logger.logError(e);
         }
         document.getElementById("resolution-select").innerHTML = "";
 
@@ -316,8 +300,8 @@ export class VideoClass extends HTMLElement {
             constraints.video.width = { ideal: 628, max: 640 };
         }
 
-        this.log(`Selected ${deviceLabel}`);
-        this.log(`Get constrains ${JSON.stringify(constraints, null, 2)}`);
+        this.logger.log(`Selected ${deviceLabel}`);
+        this.logger.log(`Get constrains ${JSON.stringify(constraints, null, 2)}`);
         // should be prior to apply constrains: track.getConstrains();
         // but even if we only use deviceId as constrain to get the stream
         // most likely it will provide default webcam 640x480 and not what it's capable of
@@ -340,7 +324,7 @@ export class VideoClass extends HTMLElement {
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
         this.currentResolution = `${w}x${h}`;
-        this.log(`Resolution set to ${this.currentResolution}`);
+        this.logger.log(`Resolution set to ${this.currentResolution}`);
     }
 
     // TODO: needs throttle, but still one value at a time
@@ -366,24 +350,24 @@ export class VideoClass extends HTMLElement {
             .then(() => {
                 const newSettings = track.getSettings();
                 if (newSettings[key] === this.currentSettings[key]) {
-                    this.log(
+                    this.logger.log(
                         `Nothing changed: ${key} stays ${this.currentSettings[key]}`
                     );
                     // restore to the actual value instead of what we tried to set
                     try {
                         this.controls.setControlValue(form, key, newSettings[key]);
                     } catch (e) {
-                        this.logError(e);
+                        this.logger.logError(e);
                     }
                     return;
                 }
 
                 if (newSettings[key] === value) {
                     // success
-                    this.log(`Success! ${key} set to ${value}`);
+                    this.logger.log(`Success! ${key} set to ${value}`);
                 } else {
                     // usually those are rounding errors
-                    this.log(
+                    this.logger.log(
                         `Warning: ${key} changed to ${newSettings[key]} instead of requested ${value}`
                     );
                 }
@@ -401,12 +385,12 @@ export class VideoClass extends HTMLElement {
                     ) {
                         controlsReset = true;
                         // different set of settings, total reset needed for controls
-                        this.log(`Warning: Key ${sKey} is missing in one of the settings`);
+                        this.logger.log(`Warning: Key ${sKey} is missing in one of the settings`);
                     }
                     if (this.currentSettings[sKey] !== newSettings[sKey]) {
                         changes[sKey] = newSettings[sKey];
                         if (sKey !== key) {
-                            this.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
+                            this.logger.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
                         }
                     }
                 });
@@ -418,7 +402,7 @@ export class VideoClass extends HTMLElement {
                     return;
                 }
 
-                this.log(`Changes ${JSON.stringify(changes, null, 2)}`);
+                this.logger.log(`Changes ${JSON.stringify(changes, null, 2)}`);
 
                 // important! update currentSettings before updating controls
                 // otherwise it will trigger another event
@@ -427,7 +411,7 @@ export class VideoClass extends HTMLElement {
                     try {
                         this.controls.setControlValue(form, chKey, changes[chKey]);
                     } catch (e) {
-                        this.logError(e);
+                        this.logger.logError(e);
                     }
                 });
 
@@ -443,8 +427,8 @@ export class VideoClass extends HTMLElement {
                 }
             })
             .catch((e) => {
-                this.log(`Failed set ${key} to ${value}`);
-                this.logError(e);
+                this.logger.log(`Failed set ${key} to ${value}`);
+                this.logger.logError(e);
             });
     }
 
@@ -455,7 +439,7 @@ export class VideoClass extends HTMLElement {
 
         const [w, h] = event.target.value.split("x");
         if ((w + 0).isNan || (h + 0).isNan) {
-            this.log("Error: resolution should be in format \"width x height\"");
+            this.logger.log("Error: resolution should be in format \"width x height\"");
             return;
         }
 
@@ -514,7 +498,7 @@ export class VideoClass extends HTMLElement {
                 ["s"]
             );
         } catch (e) {
-            this.logError(e);
+            this.logger.logError(e);
         }
 
         // TODO: check if it's playing (Chrome warning at start)

@@ -4,8 +4,6 @@ export default class Textures {
         this.gl = gl;
         this.textures = [];
         this.glTextures = [];
-        // eslint-disable-next-line no-console
-        console.log("textures constructed", this.gl);
     }
 
     init(
