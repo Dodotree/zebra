@@ -5,30 +5,6 @@ class VideoElement extends VideoClass {
         super.oninit();
     }
 
-    saveScreenshot() {
-        const anchor = document.createElement("a");
-
-        if (this.video.videoWidth && this.video.videoHeight) {
-            const canvas = document.createElement("canvas");
-            canvas.width = this.video.videoWidth;
-            canvas.height = this.video.videoHeight;
-            canvas
-                .getContext("2d")
-                .drawImage(this.video, 0, 0, canvas.width, canvas.height);
-            anchor.href = canvas.toDataURL("image/jpeg");
-        } else {
-            return;
-        }
-
-        const ts = new Date()
-            .toISOString()
-            .substring(0, 19)
-            .replaceAll("-", "")
-            .replaceAll(":", "");
-        anchor.download = `snapshot_${ts}.jpeg`;
-        anchor.click();
-    }
-
     get hasAudio() {
         return (
             (this.video.srcObject

@@ -58,9 +58,12 @@ export default class Textures {
         this.gl.texImage2D(
             this.gl.TEXTURE_2D,
             0,
-            this.gl.RGB,
-            this.gl.RGB,
-            this.gl.UNSIGNED_BYTE,
+            this.gl.RGBA32F,
+            this.gl.RGBA,
+            this.gl.FLOAT,
+            // this.gl.RGB,
+            // this.gl.RGB,
+            // this.gl.UNSIGNED_BYTE,
             this.video
         );
 

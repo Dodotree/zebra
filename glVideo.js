@@ -21,14 +21,18 @@ export default class VideoGL {
         }
 
         this.out2DCanvasID = out2DCanvasID;
-        const outCanvas = document.getElementById(out2DCanvasID);
-        if (!outCanvas) {
+        this.outCanvas = document.getElementById(out2DCanvasID);
+        if (!this.outCanvas) {
             throw new Error(`There is no canvas with id ${out2DCanvasID}`);
         }
 
-        this.context_2d = outCanvas.getContext("2d");
+        this.context_2d = this.outCanvas.getContext("2d", {
+            antialias: false,
+            willReadFrequently: true,
+        });
 
         // The extension tells us if we can use single component R32F texture format.
+        // Important for FRAMEBUFFER_COMPLETE, makes renderbufferStorage() accept R32F.
         // webgl2:
         this.gl.color_buffer_float_ext = this.gl.getExtension(
             "EXT_color_buffer_float"
@@ -76,9 +80,10 @@ export default class VideoGL {
         } catch (e) {
             this.logger.logError(e);
         }
+
         this.initUniforms(uniData);
         this.initBuffers(bufferData);
-        // this.initFramebuffer(slot);
+        this.initFramebuffer(slot);
 
         try {
             this.clock.on("tick", this.draw.bind(this));
@@ -168,34 +173,20 @@ export default class VideoGL {
         );
 
         // Read it back to buffer from framebuffer.
-        // readPixels();
+        this.readPixels();
 
         // TODO: process pixels.
         // Put read and processed pixels to 2D canvas.
-        // Note: This is just one of scenarios for the demo. You can directly
-        // bind video to 2D canvas without using WebGL as intermediate step.
-        // putReadPixelsTo2DCanvas();
+        this.putReadPixelsTo2DCanvas();
     }
 
     readPixels() {
         // Bind the framebuffer the texture is color-attached to.
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
 
-        if (!this.readBuffer) {
-            this.readFormat = this.gl.getParameter(
-                this.gl.IMPLEMENTATION_COLOR_readFormat
-            );
-            if (
-                this.readFormat === this.gl.RED
-                && this.gl.getParameter(this.gl.IMPLEMENTATION_COLOR_READ_TYPE)
-                === this.gl.FLOAT
-            ) {
-                this.readBuffer = new Float32Array(this.w * this.h);
-            } else {
-                this.readFormat = this.gl.RGBA;
-                this.readBuffer = new Float32Array(this.w * this.h * 4);
-            }
-        }
+        this.readFormat = this.gl.RGBA;
+        this.readBuffer = new Float32Array(this.w * this.h * 4);
+
         this.gl.readPixels(
             0,
             0,
@@ -219,10 +210,26 @@ export default class VideoGL {
         var stride = this.readFormat === this.gl.RED ? 1 : 4;
         var j = 0;
         for (let i = 0; i < data.length; i += 4, j += stride) {
-            data[i] = this.readBuffer[j] * 255;
+            // data[i] = this.readBuffer[j] * 255;
+            // data[i + 1] = this.readBuffer[j + 1] * 255;
+            data[i + 2] = this.readBuffer[j + 2] * 255;
             data[i + 3] = 255;
         }
         this.context_2d.putImageData(img, 0, 0);
+    }
+
+    captureImage() {
+        // this.context_2d.drawImage(this.video, 0, 0, this.w, this.h);
+        const anchor = document.createElement("a");
+        anchor.href = this.outCanvas.toDataURL("image/jpeg");
+
+        const ts = new Date()
+            .toISOString()
+            .substring(0, 19)
+            .replaceAll("-", "")
+            .replaceAll(":", "");
+        anchor.download = `snapshot_${ts}.jpeg`;
+        anchor.click();
     }
 
     destroy() {
