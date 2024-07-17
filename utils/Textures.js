@@ -1,9 +1,10 @@
 // Encapsulates creating of WebGL textures
 export default class Textures {
-    constructor(gl) {
+    constructor(gl, isDepthStream = false) {
         this.gl = gl;
         this.textures = [];
         this.glTextures = [];
+        this.update = isDepthStream ? this.updateDepth : this.updateRGB;
     }
 
     init(
@@ -49,26 +50,33 @@ export default class Textures {
         this.gl.bindTexture(this.gl.TEXTURE_2D, null);
     }
 
-    update(slot) {
+    updateRGB(slot) {
         if (this.video.readyState < 3) return; // not ready to display pixels
 
         this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
-        // next line fails in Safari if input video is NOT from same domain/server as this html code
         this.gl.texImage2D(
             this.gl.TEXTURE_2D,
             0,
             this.gl.RGBA32F,
             this.gl.RGBA,
             this.gl.FLOAT,
-            // this.gl.RGB,
-            // this.gl.RGB,
-            // this.gl.UNSIGNED_BYTE,
             this.video
         );
+    }
 
-        // from 3d camera example
-        // webgl2 this.gl.texImage2D(... 0,this.gl.R32F, this.gl.RED, this.gl.FLOAT, this.video);
-        // webgl gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.RGBA, gl.FLOAT, video);
+    updateDepth(slot) {
+        if (this.video.readyState < 3) return; // not ready to display pixels
+
+        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.glTextures[slot]);
+        this.gl.texImage2D(
+            this.gl.TEXTURE_2D,
+            0,
+            this.gl.R32F,
+            this.gl.RED,
+            this.gl.FLOAT,
+            this.video
+        );
     }
 }

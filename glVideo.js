@@ -5,7 +5,22 @@ import Textures from "./utils/Textures.js";
 // captureButton.addEventListener('click', takeScreenshot);
 
 export default class VideoGL {
-    constructor(glCanvasID, out2DCanvasID, vertexShaderId, fragmentShaderId, attrs, uniforms) {
+    constructor(
+        source,
+        isDepthStream,
+        glCanvasID,
+        out2DCanvasID,
+        w,
+        h
+    ) {
+        this.w = w;
+        this.h = h;
+
+        const vertexShaderId = "shader-vs";
+        const fragmentShaderId = isDepthStream ? "depth-fs" : "shader-fs";
+        const attrs = ["v"];
+        const uniforms = ["s"];
+
         this.glCanvasID = glCanvasID;
         const canvas = document.getElementById(glCanvasID);
         if (!canvas) {
@@ -54,36 +69,70 @@ export default class VideoGL {
         this.buffers = {};
         try {
             this.clock = new Clock();
-            this.textures = new Textures(this.gl);
+            this.textures = new Textures(this.gl, isDepthStream);
         } catch (e) {
             this.logger.logError(e);
         }
+
+        this.readPixels = isDepthStream ? this.readPixelsDepth : this.readPixelsRGB;
+        this.pixelsTo2DCanvas = isDepthStream
+            ? this.pixelsTo2DCanvasDepth : this.pixelsTo2DCanvasRGB;
+
+        /**
+         *       V0              V1
+                (0, 0)         (1, 0)
+                X-----------------X
+                |                 |
+                |     (0, 0)      |
+                |                 |
+                X-----------------X
+                (0, 1)         (1, 1)
+                V3               V2
+         */
+        // TODO: check if it's playing (Chrome warning at start)
+        this.init({
+            slot: 0,
+            textureOptions: {
+                source: source,
+                flip: false,
+                mipmap: false,
+                params: {
+                    TEXTURE_WRAP_T: "CLAMP_TO_EDGE",
+                    TEXTURE_WRAP_S: "CLAMP_TO_EDGE",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                },
+            },
+            uniData: { s: 0 },
+            bufferData: {
+                v: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+                i: new Uint16Array([0, 1, 2, 0, 2, 3]),
+            }
+        });
     }
 
     /** * HERE and below I don't use spread operator for parameters because it's slow
      * and whole point of WebGL is speed * */
 
     /** Boilerplate webGL initialization */
-    init(slot, w, h, textureOptions, uniData, bufferData) {
-        this.w = w;
-        this.h = h;
+    init(params) {
         this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
         this.gl.clearDepth(1.0);
         this.gl.disable(this.gl.DEPTH_TEST);
         // not sure if it should be here or in a texture class
-        if (textureOptions.flip) {
+        if (params.textureOptions.flip) {
             this.gl.pixelStorei(this.gl.UNPACK_FLIP_Y_WEBGL, true);
         }
 
         try {
-            this.textures.init(slot, textureOptions);
+            this.textures.init(params.slot, params.textureOptions);
         } catch (e) {
             this.logger.logError(e);
         }
 
-        this.initUniforms(uniData);
-        this.initBuffers(bufferData);
-        this.initFramebuffer(slot);
+        this.initUniforms(params.uniData);
+        this.initBuffers(params.bufferData);
+        this.initFramebuffer(params.slot);
 
         try {
             this.clock.on("tick", this.draw.bind(this));
@@ -172,19 +221,13 @@ export default class VideoGL {
             0
         );
 
-        // Read it back to buffer from framebuffer.
         this.readPixels();
-
-        // TODO: process pixels.
-        // Put read and processed pixels to 2D canvas.
-        this.putReadPixelsTo2DCanvas();
+        this.pixelsTo2DCanvas();
     }
 
-    readPixels() {
+    readPixelsRGB() {
         // Bind the framebuffer the texture is color-attached to.
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
-
-        this.readFormat = this.gl.RGBA;
         this.readBuffer = new Float32Array(this.w * this.h * 4);
 
         this.gl.readPixels(
@@ -192,28 +235,57 @@ export default class VideoGL {
             0,
             this.w,
             this.h,
-            this.readFormat,
+            this.gl.RGBA,
             this.gl.FLOAT,
             this.readBuffer
         );
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
-    putReadPixelsTo2DCanvas() {
-        var img = this.context_2d.getImageData(
+    readPixelsDepth() {
+        // Bind the framebuffer the texture is color-attached to.
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
+        this.readBuffer = new Float32Array(this.w * this.h);
+
+        // TODO: sometimes it spams with zeroes, maybe check why
+        this.gl.readPixels(
+            0,
+            0,
+            this.w,
+            this.h,
+            this.gl.RED,
+            this.gl.FLOAT,
+            this.readBuffer
+        );
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+    }
+
+    pixelsTo2DCanvasRGB() {
+        const img = this.context_2d.getImageData(
             0,
             0,
             this.w,
             this.h
         );
-        var data = img.data;
-        var stride = this.readFormat === this.gl.RED ? 1 : 4;
-        var j = 0;
-        for (let i = 0; i < data.length; i += 4, j += stride) {
+        for (let i = 0, j = 0; i < img.data.length; i += 4, j += 4) {
             // data[i] = this.readBuffer[j] * 255;
             // data[i + 1] = this.readBuffer[j + 1] * 255;
-            data[i + 2] = this.readBuffer[j + 2] * 255;
-            data[i + 3] = 255;
+            img.data[i + 2] = this.readBuffer[j + 2] * 255;
+            img.data[i + 3] = 255;
+        }
+        this.context_2d.putImageData(img, 0, 0);
+    }
+
+    pixelsTo2DCanvasDepth() {
+        const img = this.context_2d.getImageData(
+            0,
+            0,
+            this.w,
+            this.h
+        );
+        for (let i = 0, j = 0; i < img.data.length; i += 4, j += 1) {
+            img.data[i] = Math.min(this.readBuffer[j] * 255 * 10, 255);
+            img.data[i + 3] = 255;
         }
         this.context_2d.putImageData(img, 0, 0);
     }

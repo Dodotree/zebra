@@ -471,51 +471,17 @@ export class VideoClass extends HTMLElement {
                 },
             })
         );
-        /**
-         *       V0              V1
-                (0, 0)         (1, 0)
-                X-----------------X
-                |                 |
-                |     (0, 0)      |
-                |                 |
-                X-----------------X
-                (0, 1)         (1, 1)
-                V3               V2
-         */
         try {
             this.canvasGL = new VideoGL(
+                this.video,
+                this.device.includes("Depth"),
                 "vCanvas",
                 "outputCanvas",
-                "depth-vs",
-                "depth-fs",
-                ["v"],
-                ["s"]
+                w,
+                h
             );
         } catch (e) {
             this.logger.logError(e);
         }
-
-        // TODO: check if it's playing (Chrome warning at start)
-        this.canvasGL.init(
-            0,
-            w,
-            h,
-            {
-                source: this.video,
-                flip: false,
-                mipmap: false,
-                params: {
-                    TEXTURE_WRAP_T: "CLAMP_TO_EDGE",
-                    TEXTURE_WRAP_S: "CLAMP_TO_EDGE",
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                },
-            },
-            { s: 0 },
-            {
-                v: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
-                i: new Uint16Array([0, 1, 2, 0, 2, 3]),
-            }
-        );
     }
 }

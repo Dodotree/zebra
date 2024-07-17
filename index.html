@@ -21,7 +21,7 @@
             <select id="resolution-select"></select>
 
             <!-- Vertex shader program -->
-            <script id="depth-vs" type="x-shader/x-vertex">
+            <script id="shader-vs" type="x-shader/x-vertex">
                 attribute vec2 v;
                 varying vec2 t;
 
@@ -33,7 +33,7 @@
             </script>
 
             <!-- Fragment shader program -->
-            <script id="depth-fs" type="x-shader/x-fragment">
+            <script id="shader-fs" type="x-shader/x-fragment">
                 precision mediump float;
                 uniform sampler2D s;
                 varying vec2 t;
@@ -41,7 +41,21 @@
                 void main(void)
                 {
                     vec4 tex=texture2D(s,t);
-                    gl_FragColor=vec4(tex.r, tex.g, tex.b, tex.a);
+                    gl_FragColor=tex.rgba;
+                }
+            </script>
+
+            <!-- Fragment shader program for depth -->
+            <!-- Only difference is in multiplication -->
+            <script id="depth-fs" type="x-shader/x-fragment">
+                precision mediump float;
+                uniform sampler2D s;
+                varying vec2 t;
+
+                void main(void)
+                {
+                    vec4 tex=texture2D(s,t) * vec4(10.0, 10.0, 10.0, 1.0);
+                    gl_FragColor=tex.rgba;
                 }
             </script>
 
