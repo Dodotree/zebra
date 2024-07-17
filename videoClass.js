@@ -53,8 +53,8 @@ export class VideoClass extends HTMLElement {
         this.logger = null;
 
         // to make bound callback event listener removable
-        this.controlsCallback = this.controlsCallback.bind(this);
-        this.setOrientation = this.setOrientation.bind(this);
+        this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
+        this.setOrientation = utilsUI.throttle(this.setOrientation.bind(this), 400);
     }
 
     // for browsers that don't support autoplay
@@ -133,9 +133,10 @@ export class VideoClass extends HTMLElement {
         // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
         // using Promises instead of async/await because we are inside lifecycle callback
         navigator.mediaDevices.getUserMedia({
-            audio: false,
+            audio: true, // it's better to take all names to avoid confusion
             video: true,
         }).then((stream) => {
+            this.currentStream = stream;
             navigator.mediaDevices.enumerateDevices().then((devices) => {
                 devices.forEach((mediaDevice, index) => {
                     this.select.appendChild(
@@ -305,6 +306,9 @@ export class VideoClass extends HTMLElement {
 
     setOrientation(isWide) {
         this.wide = isWide;
+        if (!this.currentResolution) return;
+        const [w, h] = this.currentResolution.split("x");
+        this.setResolution(w, h);
     }
 
     setResolution(vidW, vidH) {
@@ -324,6 +328,7 @@ export class VideoClass extends HTMLElement {
     // TODO: needs throttle, but still one value at a time
     controlsCallback(event) {
         const form = event.target.form;
+        console.log("controlsCallback", this);
         const trackKind = form.kind;
         let key = event.target.getAttribute("key");
         key = key || event.target.name;
@@ -401,7 +406,7 @@ export class VideoClass extends HTMLElement {
                 // important! update currentSettings before updating controls
                 // otherwise it will trigger another event
                 this.currentSettings = newSettings;
-                changes.forEach((chKey) =>{
+                Object.keys(changes).forEach((chKey) =>{
                     try {
                         this.controls.setControlValue(form, chKey, changes[chKey]);
                     } catch (e) {

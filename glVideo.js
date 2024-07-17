@@ -89,7 +89,7 @@ export default class VideoGL {
                 (0, 1)         (1, 1)
                 V3               V2
          */
-        // TODO: check if it's playing (Chrome warning at start)
+        // TODO: check if it's playing (Chrome warnings at start)
         this.init({
             slot: 0,
             textureOptions: {
