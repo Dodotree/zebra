@@ -14,11 +14,6 @@
         </header>
 
         <main>
-            <label for="camera-select">Select camera:</label>
-            <select id="camera-select">
-                <option value="none">None</option>
-            </select>
-            <select id="resolution-select"></select>
 
             <!-- Vertex shader program -->
             <script id="shader-vs" type="x-shader/x-vertex">
@@ -60,14 +55,13 @@
             </script>
 
             <script type="module" src="./utils/logger.js"></script>
-            <script type="module" src="./videoElement.js"></script>
+            <script type="module" src="./MediaMenu.js"></script>
 
             <script type="module">
                 document.body.appendChild(document.createElement("screen-logger"));
-                const footer = document.querySelector("footer");
                 document.body.insertBefore(
-                    document.createElement("my-camera"),
-                    footer
+                    document.createElement("media-menu"),
+                    document.querySelector("footer")
                 );
             </script>
         </main>

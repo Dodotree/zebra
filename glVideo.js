@@ -2,8 +2,6 @@ import Clock from "./utils/Clock.js";
 import Program from "./utils/Program.js";
 import Textures from "./utils/Textures.js";
 
-// captureButton.addEventListener('click', takeScreenshot);
-
 export default class VideoGL {
     constructor(
         source,

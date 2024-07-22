@@ -1,20 +1,20 @@
 import { utilsUI } from "./utils/UI.js";
 
-export class VideoControls extends HTMLElement {
+export class MediaControls extends HTMLElement {
     constructor() {
         super();
         this.form = null;
         this.callback = null;
     }
 
-    init(kind, label, capabilities, settings, callback) {
+    init(kind, trackInfo, callback) {
         this.reset();
         const details = this.appendChild(document.createElement("details"));
 
         details.appendChild(
             utilsUI.get({
                 tag: "summary",
-                text: `${kind} ${label} controls`,
+                text: `${kind} ${trackInfo.label} controls`,
             })
         );
 
@@ -53,13 +53,13 @@ export class VideoControls extends HTMLElement {
                 })
             );
             buckets[buck].forEach((cKey) => {
-                if (cKey in capabilities) {
+                if (cKey in trackInfo.capabilities) {
                     usedSoFar.push(cKey);
                     bucketNode.appendChild(
                         this.constructor.createInput(
                             cKey,
-                            capabilities[cKey],
-                            settings[cKey],
+                            trackInfo.capabilities[cKey],
+                            trackInfo.settings[cKey],
                             callback
                         )
                     );
@@ -73,7 +73,7 @@ export class VideoControls extends HTMLElement {
             }
         });
 
-        const leftoverKeys = Object.keys(capabilities).filter(
+        const leftoverKeys = Object.keys(trackInfo.capabilities).filter(
             (key) => usedSoFar.indexOf(key) === -1
         );
 
@@ -81,8 +81,8 @@ export class VideoControls extends HTMLElement {
             this.form.appendChild(
                 this.constructor.createInput(
                     cKey,
-                    capabilities[cKey],
-                    settings[cKey],
+                    trackInfo.capabilities[cKey],
+                    trackInfo.settings[cKey],
                     callback
                 )
             );
@@ -221,6 +221,6 @@ export class VideoControls extends HTMLElement {
     }
 }
 
-if (!customElements.get("video-controls")) {
-    customElements.define("video-controls", VideoControls);
+if (!customElements.get("media-controls")) {
+    customElements.define("media-controls", MediaControls);
 }
