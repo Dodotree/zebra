@@ -225,7 +225,6 @@ export class MediaElement extends HTMLElement {
             } else if (track.kind === "audio") {
                 // TODO: visualization of sound to show it's working
                 this.logger.log("Audio track");
-                console.log(current);
             }
 
             this.logger.log(`Track ${track.kind} ${track.label}`);
