@@ -5,6 +5,7 @@ textarea {
 label {
     padding-right: 1.2rem;
 }
+button,
 select {
     padding: 1rem;
 }
@@ -19,9 +20,22 @@ summary {
     padding: 1rem;
 }
 
-media-element {
+media-menu{
     display: block;
+}
+media-element {
+    display: inline-block;
     margin: 2rem;
+}
+media-element video,
+media-element canvas.webGLCanvas,
+media-element canvas.outCanvas{
+        display: none;
+}
+media-element[showvideo] video,
+media-element[showwebgl] canvas.webGLCanvas,
+media-element[showoutcanvas] canvas.outCanvas{
+        display: block;
 }
 
 media-controls form {

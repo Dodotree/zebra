@@ -37,14 +37,6 @@ export class MediaMenu extends HTMLElement {
                 attrs: { name: "device-select" },
             })
         );
-        this.select.appendChild(
-            utilsUI.get({
-                tag: "option",
-                text: "None",
-                attrs: { value: "none" },
-            })
-        );
-
         this.appendChild(
             utilsUI.get({
                 tag: "button",
@@ -76,10 +68,12 @@ export class MediaMenu extends HTMLElement {
                         })
                     );
                     groups[groupId].forEach((mediaDevice) => {
+                        const kind = mediaDevice.kind.replace("input", "");
+                        const label = mediaDevice.label || (kind === "video" ? `Camera ${index}` : `Microphone ${index}`);
                         group.appendChild(
                             utilsUI.get({
                                 tag: "option",
-                                text: mediaDevice.label || `Camera ${index}`,
+                                text: `${kind} ${label}`,
                                 attrs: {
                                     value: mediaDevice.deviceId,
                                     groupId,
@@ -126,17 +120,12 @@ export class MediaMenu extends HTMLElement {
                 mediaUI.setStream(device, constraints, stream);
             })
             .catch((error) => {
-                this.select.value = "none";
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
                 this.logger.logError(error);
             });
     }
 
     onAddStream() {
-        if (this.select.value === "none") {
-            return;
-        }
-
         const selected = this.select.options[this.select.selectedIndex];
         const deviceLabel = selected.text;
         const constraints = selected.getAttribute("kind") === "audioinput"

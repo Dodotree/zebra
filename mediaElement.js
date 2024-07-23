@@ -3,6 +3,15 @@ import { MediaControls } from "./mediaControls.js";
 import { utilsUI } from "./utils/UI.js";
 
 export class MediaElement extends HTMLElement {
+    static get observedAttributes() {
+        return ["showvideo", "showwebgl", "showoutcanvas"];
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        const checkbox = this.querySelector(`.${name}`);
+        if (checkbox && checkbox.checked !== newValue) checkbox.checked = newValue;
+    }
+
     constructor() {
         super();
 
@@ -43,7 +52,7 @@ export class MediaElement extends HTMLElement {
          * [internal] Camera or mic name.
          * @type {string}
          */
-        this.streamDevice = "";
+        this.streamdevice = "";
 
         /**
          * [internal] Constrains object used to fetch the stream.
@@ -88,6 +97,25 @@ export class MediaElement extends HTMLElement {
         // to make bound callback event listener removable
         this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
         this.setOrientation = utilsUI.throttle(this.setOrientation.bind(this), 400);
+        this.onShowChange = this.onShowChange.bind(this);
+
+        /**
+         * [config] Default `false`.
+         * @type {boolean}
+         */
+        this.showvideo = false;
+
+        /**
+         * [config] Default `false`.
+         * @type {boolean}
+         */
+        this.showwebgl = false;
+
+        /**
+         * [config] Default `false`.
+         * @type {boolean}
+         */
+        this.showoutcanvas = false;
 
         /**
          * [config] Run stream when not displayed on the screen. Default `false`.
@@ -109,6 +137,39 @@ export class MediaElement extends HTMLElement {
          * @type {number}
          */
         this.visibilityThreshold = 0;
+    }
+
+    toggleAttribute(name, value) {
+        if (value) {
+            this.setAttribute(name, true);
+        } else {
+            this.removeAttribute(name);
+        }
+    }
+
+    /**
+     * @param {Boolean} value
+     */
+    set showvideo(value) {
+        this.toggleAttribute("showvideo", value);
+    }
+
+    /**
+     * @param {Boolean} value
+     */
+    set showwebgl(value) {
+        this.toggleAttribute("showwebgl", value);
+    }
+
+    /**
+     * @param {Boolean} value
+     */
+    set showoutcanvas(value) {
+        this.toggleAttribute("showoutcanvas", value);
+    }
+
+    onShowChange(event) {
+        this[event.target.name.replace(/-.*/, "")] = event.target.checked;
     }
 
     // for browsers that don't support autoplay
@@ -154,20 +215,19 @@ export class MediaElement extends HTMLElement {
     }
 
     setStream(device, constraints, stream) {
-        this.device = device;
-        this.setAttribute("device", device);
+        this.streamdevice = device;
+        this.setAttribute("streamdevice", device);
 
         this.constraints = constraints;
         this.currentStream = stream;
 
-        this.appendChild(
+        const caption = this.appendChild(
             utilsUI.get({
-                tag: "b",
+                tag: "h4",
                 text: device,
             })
         );
-
-        this.appendChild(
+        caption.appendChild(
             utilsUI.get({
                 tag: "button",
                 text: "⚙",
@@ -196,6 +256,61 @@ export class MediaElement extends HTMLElement {
             if (track.kind === "video") {
                 this.appendChild(
                     utilsUI.get({
+                        tag: "input",
+                        attrs: {
+                            type: "checkbox",
+                            name: `showvideo-${this.id}`,
+                            class: "showvideo",
+                            value: true,
+                        },
+                    })
+                ).addEventListener("change", this.onShowChange);
+                this.appendChild(
+                    utilsUI.get({
+                        tag: "label",
+                        text: "video",
+                        attrs: { htmlFor: `showvideo-${this.id}` },
+                    })
+                );
+                this.appendChild(
+                    utilsUI.get({
+                        tag: "input",
+                        attrs: {
+                            type: "checkbox",
+                            name: `showwebgl-${this.id}`,
+                            class: "showwebgl",
+                            value: true,
+                        },
+                    })
+                ).addEventListener("change", this.onShowChange);
+                this.appendChild(
+                    utilsUI.get({
+                        tag: "label",
+                        text: "webGL",
+                        attrs: { htmlFor: `showwebgl-${this.id}` },
+                    })
+                );
+                this.appendChild(
+                    utilsUI.get({
+                        tag: "input",
+                        attrs: {
+                            type: "checkbox",
+                            name: `showoutcanvas-${this.id}`,
+                            class: "showoutcanvas",
+                            value: true,
+                        },
+                    })
+                ).addEventListener("change", this.onShowChange);
+                this.appendChild(
+                    utilsUI.get({
+                        tag: "label",
+                        text: "outCanvas",
+                        attrs: { htmlFor: `showoutcanvas-${this.id}` },
+                    })
+                );
+
+                this.appendChild(
+                    utilsUI.get({
                         tag: "select",
                         attrs: {
                             name: `resolution-select-${this.id}`,
@@ -215,13 +330,14 @@ export class MediaElement extends HTMLElement {
                         preload: "auto",
                         loop: true,
                         crossOrigin: "anonymous",
-                        style: `display: block; width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`,
+                        style: `width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`,
                     },
                 }));
 
                 // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
                 this.video.srcObject = stream;
                 this.resetResolutions();
+                this.showwebgl = true;
             } else if (track.kind === "audio") {
                 // TODO: visualization of sound to show it's working
                 this.logger.log("Audio track");
@@ -299,7 +415,7 @@ export class MediaElement extends HTMLElement {
         }
         this.initResolutionsUI(
             listOfResolutions,
-            this.streamDevice,
+            this.streamdevice,
             this.os
         );
         this.setResolution(settings.width, settings.height);
@@ -626,7 +742,8 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
-                    id: "vCanvas" + this.device,
+                    id: "webGLCanvas" + this.streamdevice,
+                    class: "webGLCanvas",
                     width: w,
                     height: h,
                     style: `width: ${w / this.pixelRatio}px; height: ${h / this.pixelRatio}px;`,
@@ -637,7 +754,8 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
-                    id: "outputCanvas" + this.device,
+                    id: "outCanvas" + this.streamdevice,
+                    class: "outCanvas",
                     width: w,
                     height: h,
                     style: `width: ${w / this.pixelRatio}px; height: ${h / this.pixelRatio}px;`,
@@ -647,9 +765,9 @@ export class MediaElement extends HTMLElement {
         try {
             this.canvasGL = new VideoGL(
                 this.video,
-                this.streamDevice.includes("Depth"),
-                "vCanvas" + this.device,
-                "outputCanvas" + this.device,
+                this.streamdevice.includes("Depth"),
+                "webGLCanvas" + this.streamdevice,
+                "outCanvas" + this.streamdevice,
                 w,
                 h
             );
