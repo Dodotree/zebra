@@ -440,8 +440,8 @@ export class MediaElement extends HTMLElement {
             return;
         }
 
-        const [w, h] = event.target.value.split("x");
-        if ((w + 0).isNan || (h + 0).isNan) {
+        const [w, h] = event.target.value.split("x").map(Number);
+        if (w.isNan || h.isNan) {
             this.logger.log("Error: resolution should be in format \"width x height\"");
             return;
         }
@@ -486,7 +486,6 @@ export class MediaElement extends HTMLElement {
     }
 
     static nothingChanged(newSettings, oldSettings, intendedChange) {
-        console.log(newSettings, oldSettings, intendedChange);
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChange) {
             if (newSettings[key] !== oldSettings[key]) {
