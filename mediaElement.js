@@ -448,6 +448,7 @@ export class MediaElement extends HTMLElement {
         }
         this.video.style.width = `${w / this.pixelRatio}px`;
         this.video.style.height = `${h / this.pixelRatio}px`;
+        this.style.width = `${w / this.pixelRatio + 20}px`;
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
