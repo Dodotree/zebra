@@ -44,24 +44,24 @@ export class MediaElement extends HTMLElement {
         this.wide = false;
 
         /**
-         * @type {MediaStream}
-         */
-        this.currentStream = null;
-
-        /**
          * [internal] Camera or mic name.
          * @type {string}
          */
         this.streamdevice = "";
 
         /**
+         * @type {MediaStream}
+         */
+        this.currentStream = null;
+
+        /**
          * [internal] Constrains object used to fetch the stream.
          * @type {object}
          */
-        this.streamConstraints = null;
+        this.currentConstraints = null;
 
         /**
-         * [internal] WxH actual dimensions of the video stream.
+         * [internal] WxH actual dimensions of the *video* track.
          * @type {string}
          */
         this.trackResolution = "";
@@ -218,7 +218,7 @@ export class MediaElement extends HTMLElement {
         this.streamdevice = device;
         this.setAttribute("streamdevice", device);
 
-        this.constraints = constraints;
+        this.currentConstraints = constraints;
         this.currentStream = stream;
 
         const caption = this.appendChild(
@@ -315,10 +315,9 @@ export class MediaElement extends HTMLElement {
                         attrs: {
                             name: `resolution-select-${this.id}`,
                             class: "resolution-select",
-                            onchange: this.onResolutionChange.bind(this),
                         },
                     })
-                );
+                ).onchange = this.onRequestResolution.bind(this);
                 const vidW = current.settings.width;
                 const vidH = current.settings.height;
                 this.video = this.appendChild(utilsUI.get({
@@ -424,7 +423,19 @@ export class MediaElement extends HTMLElement {
         this.logger.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
     }
 
-    onResolutionChange(event) {
+    // TODO: after throttle maybe check for other keys too
+    controlsCallback(event) {
+        const form = event.target.form;
+        const trackKind = form.kind;
+        let key = event.target.getAttribute("key");
+        key = key || event.target.name;
+        const value = event.target.value;
+        // sometimes it's required to set "manual" mode before changes
+        // but so far it changes between continuous and manual automatically
+        this.requestStreamChanges(trackKind, { [key]: value });
+    }
+
+    onRequestResolution(event) {
         if (this.trackResolution === event.target.value) {
             return;
         }
@@ -434,11 +445,8 @@ export class MediaElement extends HTMLElement {
             this.logger.log("Error: resolution should be in format \"width x height\"");
             return;
         }
-
-        this.stopDeviceTracks();
-        this.streamConstraints.video.width = { ideal: w };
-        this.streamConstraints.video.height = { ideal: h };
-        this.getStream(this.streamConstraints);
+        // "ideal" preferred for initiating the stream { width: { ideal: w }, height: { ideal: h } }
+        this.requestStreamChanges("video", { width: w, height: h });
     }
 
     setResolution(vidW, vidH) {
@@ -456,112 +464,123 @@ export class MediaElement extends HTMLElement {
         this.logger.log(`Resolution set to ${this.trackResolution}`);
     }
 
-    // TODO: needs throttle, but still one value at a time
-    controlsCallback(event) {
-        const form = event.target.form;
-        const trackKind = form.kind;
-        const oldSettings = this.streamTracks[trackKind].settings;
-        let key = event.target.getAttribute("key");
-        key = key || event.target.name;
-        const value = event.target.value;
+    requestStreamChanges(trackKind, changes) {
         const track = this.streamTracks[trackKind].track;
-
-        // sometimes it's required to set "manual" mode before changes
-        // but so far it changes between continuous and manual automatically
-
-        if (oldSettings[key] === value) {
+        const oldSettings = this.streamTracks[trackKind].settings;
+        if (this.constructor.nothingChanged(changes, oldSettings, changes)) {
             return;
         }
 
         track
             .applyConstraints({
-                advanced: [{ [key]: value }],
+                advanced: [changes],
             })
             .then(() => {
                 const newSettings = track.getSettings();
-                if (newSettings[key] === oldSettings[key]) {
-                    this.logger.log(
-                        `Nothing changed: ${key} stays ${oldSettings[key]}`
-                    );
-                    // restore to the actual value instead of what we tried to set
-                    try {
-                        this.controls.setControlValue(form, key, newSettings[key]);
-                    } catch (e) {
-                        this.logger.logError(e);
-                    }
-                    return;
-                }
-
-                if (newSettings[key] === value) {
-                    // success
-                    this.logger.log(`Success! ${key} set to ${value}`);
-                } else {
-                    // usually those are rounding errors
-                    this.logger.log(
-                        `Warning: ${key} changed to ${newSettings[key]} instead of requested ${value}`
-                    );
-                }
-
-                const changes = {};
-                let controlsReset = false;
-                const sharedKeys = new Set([
-                    ...Object.keys(oldSettings),
-                    ...Object.keys(newSettings),
-                ]);
-                sharedKeys.forEach((sKey) => {
-                    if (
-                        newSettings[sKey] === undefined
-                        || oldSettings[sKey] === undefined
-                    ) {
-                        controlsReset = true;
-                        // different set of settings, total reset needed for controls
-                        this.logger.log(`Warning: Key ${sKey} is missing in one of the settings`);
-                    }
-                    if (oldSettings[sKey] !== newSettings[sKey]) {
-                        changes[sKey] = newSettings[sKey];
-                        if (sKey !== key) {
-                            this.logger.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
-                        }
-                    }
-                });
-
-                this.logger.log(`Changes ${JSON.stringify(changes, null, 2)}`);
-
-                if (controlsReset && trackKind === "video") {
-                    this.streamConstraints.video.settings = newSettings;
-                    this.streamConstraints.video.capabilities = track.getCapabilities
-                        ? track.getCapabilities()
-                        : {};
-                    this.resetResolutions();
-                    return;
-                }
-
-                // important! update currentSettings before updating controls
-                // otherwise it will trigger another event
-                this.streamConstraints[trackKind].settings = newSettings;
-                Object.keys(changes).forEach((chKey) =>{
-                    try {
-                        this.controls.setControlValue(form, chKey, changes[chKey]);
-                    } catch (e) {
-                        this.logger.logError(e);
-                    }
-                });
-
-                if (
-                    key === "width" || key === "height"
-                        || key === "aspectRatio"
-                ) {
-                    // aspectRatio adjusts width and height to closest value in integers w,h
-                    this.setResolution(
-                        newSettings.width,
-                        newSettings.height
-                    );
-                }
+                this.changeSetting(trackKind, newSettings, oldSettings, changes);
             })
             .catch((e) => {
-                this.logger.log(`Failed set ${key} to ${value}`);
+                this.logger.log(`Failed set stream changes ${JSON.stringify(changes, null, 2)}`);
                 this.logger.logError(e);
             });
+    }
+
+    static nothingChanged(newSettings, oldSettings, intendedChange) {
+        console.log(newSettings, oldSettings, intendedChange);
+        // eslint-disable-next-line no-restricted-syntax
+        for (const key in intendedChange) {
+            if (newSettings[key] !== oldSettings[key]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    changeControls(trackKind, changes) {
+        const controls = this.streamTracks[trackKind].controls;
+        if (!controls) {
+            return;
+        }
+        Object.keys(changes).forEach((key) => {
+            controls.setControlValue(key, changes[key]);
+        });
+    }
+
+    changeSetting(trackKind, newSettings, oldSettings, intendedChanges) {
+        if (this.constructor.nothingChanged(newSettings, oldSettings, intendedChanges)) {
+            this.logger.log(
+                `Warning: Nothing changed. Intended changes ${JSON.stringify(intendedChanges, null, 2)}`
+            );
+            // restore to the actual value instead of what we tried to set
+            try {
+                const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
+                    acc[key] = newSettings[key];
+                    return acc;
+                }, {});
+                this.changeControls(trackKind, unchanged);
+            } catch (e) {
+                this.logger.logError(e);
+            }
+            return;
+        }
+
+        const changes = {};
+        let controlsReset = false;
+        const sharedKeys = new Set([
+            ...Object.keys(oldSettings),
+            ...Object.keys(newSettings),
+        ]);
+        sharedKeys.forEach((sKey) => {
+            if (
+                newSettings[sKey] === undefined
+                        || oldSettings[sKey] === undefined
+            ) {
+                controlsReset = true;
+                // different set of settings, total reset needed for controls
+                this.logger.log(`Warning: Key ${sKey} is missing in one of the settings`);
+            }
+            if (oldSettings[sKey] !== newSettings[sKey]) {
+                changes[sKey] = newSettings[sKey];
+                if (sKey in intendedChanges && intendedChanges[sKey] === newSettings[sKey]) {
+                    this.logger.log(`Success: ${sKey} changed to ${newSettings[sKey]}`);
+                } else if (sKey in intendedChanges && intendedChanges[sKey] !== newSettings[sKey]) {
+                    // usually those are rounding errors
+                    this.logger.log(
+                        `Warning: ${sKey} changed to ${newSettings[sKey]} instead of requested ${newSettings[sKey]}`
+                    );
+                } else {
+                    this.logger.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
+                }
+            }
+        });
+
+        this.logger.log(`Changes ${JSON.stringify(changes, null, 2)}`);
+
+        if (controlsReset && trackKind === "video") {
+            this.streamTracks.video.settings = newSettings;
+            this.streamTracks.video.capabilities = this.streamTracks.video.getCapabilities
+                ? this.streamTracks.video.getCapabilities()
+                : {};
+            this.resetResolutions();
+            return;
+        }
+
+        // important! update currentSettings before updating controls
+        // otherwise it will trigger another event
+        this.streamTracks[trackKind].settings = newSettings;
+        try {
+            this.changeControls(trackKind, changes);
+        } catch (e) {
+            this.logger.logError(e);
+        }
+
+        if (["width", "height", "aspectRatio"].some(v=> Object.keys(changes).indexOf(v) >= 0)) {
+            // aspectRatio adjusts width and height to closest value in integers w,h
+            this.setResolution(
+                newSettings.width,
+                newSettings.height
+            );
+        }
     }
 
     static getOrientation(angle, deviceWide) {
