@@ -118,6 +118,7 @@ export class MediaMenu extends HTMLElement {
                 );
                 mediaUI.id = id;
                 mediaUI.setStream(device, constraints, stream);
+                this.select.options[this.select.selectedIndex].disabled = true;
             })
             .catch((error) => {
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
