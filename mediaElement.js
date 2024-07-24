@@ -221,12 +221,13 @@ export class MediaElement extends HTMLElement {
         });
     }
 
-    setStream(device, constraints, stream) {
+    setStream(device, constraints, stream, onRelease) {
         this.streamdevice = device;
         this.setAttribute("streamdevice", device);
 
         this.currentConstraints = constraints;
         this.currentStream = stream;
+        this.onRelease = onRelease;
 
         const caption = this.appendChild(
             utilsUI.get({
@@ -824,6 +825,7 @@ export class MediaElement extends HTMLElement {
             this.canvasGL.destroy();
             this.canvasGL = null;
         }
+        this.onRelease(this.id);
         this.remove();
     }
 

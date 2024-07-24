@@ -15,6 +15,8 @@ export class MediaMenu extends HTMLElement {
          * @type {HTMLSelectElement}
          */
         this.select = null;
+
+        this.onReleaseDevice = this.onReleaseDevice.bind(this);
     }
 
     /**
