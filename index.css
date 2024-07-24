@@ -27,12 +27,15 @@ media-element {
     display: inline-block;
     margin: 2rem;
 }
-media-element video,
+/* hack for iPhone video stop streaming if not in view */
+media-element video{
+    width: 1px;
+    height: 1px;
+}
 media-element canvas.webGLCanvas,
 media-element canvas.outCanvas{
         display: none;
 }
-media-element[showvideo] video,
 media-element[showwebgl] canvas.webGLCanvas,
 media-element[showoutcanvas] canvas.outCanvas{
         display: block;

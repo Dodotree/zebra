@@ -149,9 +149,20 @@ export class MediaElement extends HTMLElement {
 
     /**
      * @param {Boolean} value
+     * @description Show video element. Since iPhone stops streaming when video is not visible,
+     * in order to make WebGL work, video element should be visible 1px x 1px.
+     * if you don't care about WebGL on iPhone, you can just use display: none.
      */
     set showvideo(value) {
         this.toggleAttribute("showvideo", value);
+        if (!this.video) return;
+        if (value) {
+            this.video.style.width = `${this.streamTracks.video.settings.width / this.pixelRatio}px`;
+            this.video.style.height = `${this.streamTracks.video.settings.height / this.pixelRatio}px`;
+        } else {
+            this.video.style.width = "1px";
+            this.video.style.height = "1px";
+        }
     }
 
     /**
@@ -318,8 +329,6 @@ export class MediaElement extends HTMLElement {
                         },
                     })
                 ).onchange = this.onRequestResolution.bind(this);
-                const vidW = current.settings.width;
-                const vidH = current.settings.height;
                 this.video = this.appendChild(utilsUI.get({
                     tag: "video",
                     attrs: {
@@ -329,7 +338,6 @@ export class MediaElement extends HTMLElement {
                         preload: "auto",
                         loop: true,
                         crossOrigin: "anonymous",
-                        style: `width: ${vidW / this.pixelRatio}px; height: ${vidH / this.pixelRatio}px;`,
                     },
                 }));
 
@@ -437,6 +445,7 @@ export class MediaElement extends HTMLElement {
 
     onRequestResolution(event) {
         if (this.trackResolution === event.target.value) {
+            this.logger.log("Warning: resolution is already set to " + this.trackResolution);
             return;
         }
 
@@ -454,9 +463,10 @@ export class MediaElement extends HTMLElement {
         if ((this.wide && w < h) || (!this.wide && w >= h)) {
             [w, h] = [vidH, vidW];
         }
-        this.video.style.width = `${w / this.pixelRatio}px`;
-        this.video.style.height = `${h / this.pixelRatio}px`;
-        this.style.width = `${w / this.pixelRatio + 20}px`;
+        if (this.showvideo) {
+            this.video.style.width = `${w / this.pixelRatio}px`;
+            this.video.style.height = `${h / this.pixelRatio}px`;
+        }
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
@@ -467,10 +477,12 @@ export class MediaElement extends HTMLElement {
     requestStreamChanges(trackKind, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
+        this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
         if (this.constructor.nothingChanged(changes, oldSettings, changes)) {
+            this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
-
+        // TODO: don't rely on advanced since they are optional, add required and min/max/ideal
         track
             .applyConstraints({
                 advanced: [changes],
