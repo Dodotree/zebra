@@ -4,6 +4,7 @@ import { utilsUI } from "./utils/UI.js";
 
 export class MediaElement extends HTMLElement {
     static get observedAttributes() {
+        // any attribute for use here should be in low case
         return ["showvideo", "showwebgl", "showoutcanvas"];
     }
 
@@ -87,7 +88,10 @@ export class MediaElement extends HTMLElement {
          * }}
          * @description Current stream tracks for controls callback.
          */
-        this.streamTracks = { audio: null, video: null };
+        this.streamTracks = {
+            audio: { track: null, controls: null },
+            video: { track: null, controls: null }
+        };
 
         /**
          * @type {ScreenLogger}
@@ -196,15 +200,6 @@ export class MediaElement extends HTMLElement {
         });
     }
 
-    stopDeviceTracks() {
-        if (!this.currentStream) return;
-        this.currentStream.getTracks().forEach((track) => {
-            track.stop();
-        });
-        this.currentStream = null;
-        this.streamTracks = { audio: null, video: null };
-    }
-
     openControls() {
         Object.keys(this.streamTracks).forEach((kind) => {
             // TODO reuse controls if possible
@@ -242,9 +237,14 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "button",
                 text: "⚙",
-                attrs: { onclick: this.openControls.bind(this) },
             })
         ).onclick = this.openControls.bind(this);
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ).onclick = this.destroy.bind(this);
 
         stream.getTracks().forEach((track) => {
             // might need all constraints for updated constrains stream request
@@ -761,6 +761,38 @@ export class MediaElement extends HTMLElement {
         });
         // first givenRs from actual track settings
         resHolder.value = `${givenRs[0][0]}x${givenRs[0][1]}`;
+    }
+
+    stopDeviceTracks() {
+        if (!this.currentStream) return;
+        this.currentStream.getTracks().forEach((track) => {
+            track.stop();
+        });
+        this.currentStream = null;
+        this.streamTracks.audio.track = null;
+        this.streamTracks.audio.video = null;
+    }
+
+    destroy() {
+        this.querySelectorAll("input[type='checkbox']").forEach((inp) => {
+            inp.removeEventListener("change", this.onShowChange);
+        });
+        this.querySelectorAll("button").forEach((button) => {
+            button.onclose = null;
+        });
+        this.querySelectorAll("select").forEach((select) => {
+            select.onchange = null;
+        });
+        // TODO: remove screen orientation listener
+        Object.keys(this.streamTracks).forEach((kind) => {
+            if (this.streamTracks[kind].controls) {
+                this.streamTracks[kind].controls.remove();
+            }
+        });
+        this.stopDeviceTracks();
+        this.canvasGL.destroy();
+        this.canvasGL = null;
+        this.remove();
     }
 
     initGL(w, h) {

@@ -117,7 +117,7 @@ export class MediaMenu extends HTMLElement {
                     document.querySelector("footer")
                 );
                 mediaUI.id = id;
-                mediaUI.setStream(device, constraints, stream);
+                mediaUI.setStream(device, constraints, stream, this.onReleaseDevice);
                 this.select.options[this.select.selectedIndex].disabled = true;
             })
             .catch((error) => {
@@ -168,6 +168,15 @@ export class MediaMenu extends HTMLElement {
             }
         }
         return label;
+    }
+
+    onReleaseDevice(id) {
+        const index = Array.from(this.select.options).findIndex((option) => option.value === id);
+        if (index === -1) {
+            this.logger.log(`Failed to enable device ${id}, not found in the list`);
+            return;
+        }
+        this.select.options[index].disabled = false;
     }
 }
 
