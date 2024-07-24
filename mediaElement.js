@@ -1,3 +1,4 @@
+import Clock from "./utils/Clock.js";
 import VideoGL from "./glVideo.js";
 import { MediaControls } from "./mediaControls.js";
 import { utilsUI } from "./utils/UI.js";
@@ -348,6 +349,35 @@ export class MediaElement extends HTMLElement {
             } else if (track.kind === "audio") {
                 // TODO: visualization of sound to show it's working
                 this.logger.log("Audio track");
+                this.audio = this.appendChild(
+                    utilsUI.get({
+                        tag: "meter",
+                        attrs: {
+                            max: 1,
+                            value: 0,
+                            hight: 0.25
+                        },
+                    })
+                );
+                try {
+                    this.clock = new Clock();
+                    const audioContext = new AudioContext();
+                    const audioNode = audioContext.createMediaStreamSource(stream);
+                    const analyserNode = audioContext.createAnalyser();
+                    audioNode.connect(analyserNode);
+
+                    const pcmData = new Float32Array(analyserNode.fftSize);
+                    this.clock.on("tick", () => {
+                        analyserNode.getFloatTimeDomainData(pcmData);
+                        // const sum = pcmData.reduce((acc, val) => acc + val, 0);
+                        // this.audio.value = sum / pcmData.length;
+                        let sumSquares = 0.0;
+                        for (const amplitude of pcmData) { sumSquares += amplitude * amplitude; }
+                        this.audio.value = Math.sqrt(sumSquares / pcmData.length);
+                    });
+                } catch (e) {
+                    this.logger.logError(e);
+                }
             }
 
             this.logger.log(`Track ${track.kind} ${track.label}`);
@@ -790,8 +820,10 @@ export class MediaElement extends HTMLElement {
             }
         });
         this.stopDeviceTracks();
-        this.canvasGL.destroy();
-        this.canvasGL = null;
+        if (this.canvasGL) {
+            this.canvasGL.destroy();
+            this.canvasGL = null;
+        }
         this.remove();
     }
 

@@ -72,6 +72,7 @@ export default class VideoGL {
             this.logger.logError(e);
         }
 
+        this.draw = this.draw.bind(this);
         this.readPixels = isDepthStream ? this.readPixelsDepth : this.readPixelsRGB;
         this.pixelsTo2DCanvas = isDepthStream
             ? this.pixelsTo2DCanvasDepth : this.pixelsTo2DCanvasRGB;
@@ -133,7 +134,7 @@ export default class VideoGL {
         this.initFramebuffer(params.slot);
 
         try {
-            this.clock.on("tick", this.draw.bind(this));
+            this.clock.on("tick", this.draw);
         } catch (e) {
             this.logger.logError(e);
         }
