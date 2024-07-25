@@ -205,7 +205,7 @@ export class MediaElement extends HTMLElement {
         Object.keys(this.streamTracks).forEach((kind) => {
             // TODO reuse controls if possible
             // remove controls from previous instance if any, connect to this one
-            if (this.streamTracks[kind]) {
+            if (this.streamTracks[kind].track) {
                 try {
                     this.streamTracks[kind].controls = new MediaControls();
                     document.body.insertBefore(this.streamTracks[kind].controls, this);
@@ -373,6 +373,7 @@ export class MediaElement extends HTMLElement {
                         // const sum = pcmData.reduce((acc, val) => acc + val, 0);
                         // this.audio.value = sum / pcmData.length;
                         let sumSquares = 0.0;
+                        // eslint-disable-next-line no-restricted-syntax
                         for (const amplitude of pcmData) { sumSquares += amplitude * amplitude; }
                         this.audio.value = Math.sqrt(sumSquares / pcmData.length);
                     });
@@ -436,10 +437,22 @@ export class MediaElement extends HTMLElement {
         }
     }
 
+    // TODO: after throttle maybe check for other keys too
+    controlsCallback(event) {
+        const form = event.target.form;
+        const trackKind = form.kind;
+        let key = event.target.getAttribute("key");
+        key = key || event.target.name;
+        const value = event.target.value;
+        // sometimes it's required to set "manual" mode before changes
+        // but so far it changes between continuous and manual automatically
+        this.requestStreamChanges(trackKind, { [key]: value });
+    }
+
     setOrientation(isWide) {
         this.wide = isWide;
         if (!this.currentResolution) return;
-        const [w, h] = this.currentResolution.split("x");
+        const [w, h] = this.whFromResolution(this.currentResolution);
         this.setResolution(w, h);
     }
 
@@ -462,38 +475,36 @@ export class MediaElement extends HTMLElement {
         this.logger.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
     }
 
-    // TODO: after throttle maybe check for other keys too
-    controlsCallback(event) {
-        const form = event.target.form;
-        const trackKind = form.kind;
-        let key = event.target.getAttribute("key");
-        key = key || event.target.name;
-        const value = event.target.value;
-        // sometimes it's required to set "manual" mode before changes
-        // but so far it changes between continuous and manual automatically
-        this.requestStreamChanges(trackKind, { [key]: value });
-    }
-
     onRequestResolution(event) {
         if (this.trackResolution === event.target.value) {
             this.logger.log("Warning: resolution is already set to " + this.trackResolution);
             return;
         }
 
-        const [w, h] = event.target.value.split("x").map(Number);
-        if (w.isNan || h.isNan) {
-            this.logger.log("Error: resolution should be in format \"width x height\"");
-            return;
-        }
+        const [w, h] = this.whFromResolution(event.target.value);
         // "ideal" preferred for initiating the stream { width: { ideal: w }, height: { ideal: h } }
         this.requestStreamChanges("video", { width: w, height: h });
     }
 
-    setResolution(vidW, vidH) {
-        let [w, h] = [vidW, vidH];
+    orientedResolution(w, h) {
         if ((this.wide && w < h) || (!this.wide && w >= h)) {
-            [w, h] = [vidH, vidW];
+            return [h, w];
         }
+        return [w, h];
+    }
+
+    whFromResolution(resolution) {
+        const [w, h] = resolution.split("x").map(Number);
+        if (w.isNan || h.isNan) {
+            this.logger.log("Error: resolution should be in format \"width x height\"");
+            return [];
+        }
+        return this.orientedResolution(w, h);
+    }
+
+    setResolution(vidW, vidH) {
+        let [w, h] = this.orientedResolution(vidW, vidH);
+        console.log("setResolution", w, h);
         if (this.showvideo) {
             this.video.style.width = `${w / this.pixelRatio}px`;
             this.video.style.height = `${h / this.pixelRatio}px`;
