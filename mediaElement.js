@@ -162,8 +162,12 @@ export class MediaElement extends HTMLElement {
         this.toggleAttribute("showvideo", value);
         if (!this.video) return;
         if (value) {
-            this.video.style.width = `${this.streamTracks.video.settings.width / this.pixelRatio}px`;
-            this.video.style.height = `${this.streamTracks.video.settings.height / this.pixelRatio}px`;
+            const [w, h] = this.orientedResolution(
+                this.streamTracks.video.settings.width,
+                this.streamTracks.video.settings.height
+            );
+            this.video.style.width = `${ w / this.pixelRatio}px`;
+            this.video.style.height = `${h / this.pixelRatio}px`;
         } else {
             this.video.style.width = "1px";
             this.video.style.height = "1px";
