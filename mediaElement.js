@@ -161,17 +161,18 @@ export class MediaElement extends HTMLElement {
     set showvideo(value) {
         this.toggleAttribute("showvideo", value);
         if (!this.video) return;
-        if (value) {
-            const [w, h] = this.orientedResolution(
-                this.streamTracks.video.settings.width,
-                this.streamTracks.video.settings.height
-            );
-            this.video.style.width = `${ w / this.pixelRatio}px`;
-            this.video.style.height = `${h / this.pixelRatio}px`;
-        } else {
-            this.video.style.width = "1px";
-            this.video.style.height = "1px";
-        }
+
+        const [w, h] = this.orientedResolution(
+            this.streamTracks.video.settings.width,
+            this.streamTracks.video.settings.height
+        );
+        this.setVideoSize(w, h);
+    }
+
+    setVideoSize(vidW, vidH) {
+        const [w, h] = this.showvideo ? [vidW / this.pixelRatio, vidH / this.pixelRatio] : [1, 1];
+        this.video.style.width = `${w}px`;
+        this.video.style.height = `${h}px`;
     }
 
     /**
@@ -508,11 +509,7 @@ export class MediaElement extends HTMLElement {
 
     setResolution(vidW, vidH) {
         let [w, h] = this.orientedResolution(vidW, vidH);
-        console.log("setResolution", w, h);
-        if (this.showvideo) {
-            this.video.style.width = `${w / this.pixelRatio}px`;
-            this.video.style.height = `${h / this.pixelRatio}px`;
-        }
+        this.setVideoSize(w, h);
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
