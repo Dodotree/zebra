@@ -451,8 +451,8 @@ export class MediaElement extends HTMLElement {
 
     setOrientation(isWide) {
         this.wide = isWide;
-        if (!this.currentResolution) return;
-        const [w, h] = this.whFromResolution(this.currentResolution);
+        if (!this.trackResolution) return;
+        const [w, h] = this.whFromResolution(this.trackResolution);
         this.setResolution(w, h);
     }
 
@@ -512,7 +512,16 @@ export class MediaElement extends HTMLElement {
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
-        this.trackResolution = `${w}x${h}`;
+        this.trackResolution = (w > h) ? `${w}x${h}` : `${h}x${w}`;
+
+        const resHolder = this.querySelector(".resolution-select");
+        const index = Array.from(resHolder.options).findIndex(
+            (option) => option.value === this.trackResolution
+        );
+        if (index !== -1) {
+            resHolder.selectedIndex = index;
+        }
+
         this.logger.log(`Resolution set to ${this.trackResolution}`);
     }
 
@@ -599,7 +608,7 @@ export class MediaElement extends HTMLElement {
                 } else if (sKey in intendedChanges && intendedChanges[sKey] !== newSettings[sKey]) {
                     // usually those are rounding errors
                     this.logger.log(
-                        `Warning: ${sKey} changed to ${newSettings[sKey]} instead of requested ${newSettings[sKey]}`
+                        `Warning: ${sKey} changed to ${newSettings[sKey]} instead of requested ${intendedChanges[sKey]}`
                     );
                 } else {
                     this.logger.log(`Warning: ${sKey} changed to ${newSettings[sKey]} too`);
