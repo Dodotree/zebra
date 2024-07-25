@@ -160,8 +160,9 @@ export class MediaElement extends HTMLElement {
      */
     set showvideo(value) {
         this.toggleAttribute("showvideo", value);
-        if (!this.video) return;
+        // this.showvideo = value;
 
+        if (!this.video) return;
         const [w, h] = this.orientedResolution(
             this.streamTracks.video.settings.width,
             this.streamTracks.video.settings.height
@@ -170,7 +171,7 @@ export class MediaElement extends HTMLElement {
     }
 
     setVideoSize(vidW, vidH) {
-        const [w, h] = this.showvideo ? [vidW / this.pixelRatio, vidH / this.pixelRatio] : [1, 1];
+        const [w, h] = this.getAttribute("showvideo") ? [vidW / this.pixelRatio, vidH / this.pixelRatio] : [1, 1];
         this.video.style.width = `${w}px`;
         this.video.style.height = `${h}px`;
     }
