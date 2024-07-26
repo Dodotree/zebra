@@ -24,10 +24,10 @@ export class Logger extends HTMLElement {
         // eslint-disable-next-line no-console
         console.error(error);
         if (error instanceof DOMException) {
-            this.log(`DOMException: ${error.name}: ${error.message}`);
+            this.log(`DOMException:\nname: ${error.name}\nmessage: ${error.message}`);
             return;
         } if (error instanceof Error) {
-            this.log(`Error ${typeof error} ${error.name}: ${error.message} ${error.cause}`);
+            this.log(`Error:\ntype: ${typeof error}\nname: ${error.name}\nmessage: ${error.message}\ncause: ${error.cause}`);
             return;
         }
         this.log(`Error: ${error}`);
