@@ -160,7 +160,6 @@ export class MediaElement extends HTMLElement {
      */
     set showvideo(value) {
         this.toggleAttribute("showvideo", value);
-        // this.showvideo = value;
 
         if (!this.video) return;
         const [w, h] = this.orientedResolution(
@@ -856,12 +855,13 @@ export class MediaElement extends HTMLElement {
             this.canvasGL.destroy();
             this.canvasGL = null;
         }
-
+        const webGLCanvasID = "webGLCanvas" + this.streamdevice;
+        const outCanvasID = "outCanvas" + this.streamdevice;
         this.appendChild(
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
-                    id: "webGLCanvas" + this.streamdevice,
+                    id: webGLCanvasID,
                     class: "webGLCanvas",
                     width: w,
                     height: h,
@@ -873,7 +873,7 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
-                    id: "outCanvas" + this.streamdevice,
+                    id: outCanvasID,
                     class: "outCanvas",
                     width: w,
                     height: h,
@@ -885,8 +885,8 @@ export class MediaElement extends HTMLElement {
             this.canvasGL = new VideoGL(
                 this.video,
                 this.streamdevice.includes("Depth"),
-                "webGLCanvas" + this.streamdevice,
-                "outCanvas" + this.streamdevice,
+                webGLCanvasID,
+                outCanvasID,
                 w,
                 h
             );

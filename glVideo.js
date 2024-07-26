@@ -22,7 +22,7 @@ export default class VideoGL {
         this.glCanvasID = glCanvasID;
         const canvas = document.getElementById(glCanvasID);
         if (!canvas) {
-            throw new Error(`There is no canvas with id ${glCanvasID}`);
+            throw new Error(`glVideo.js: There is no canvas with id ${glCanvasID}`);
         }
 
         this.gl = canvas.getContext("webgl2", {
@@ -30,13 +30,13 @@ export default class VideoGL {
             willReadFrequently: true,
         });
         if (!(this.gl && this.gl instanceof WebGL2RenderingContext)) {
-            throw new Error("WebGL2 is NOT available");
+            throw new Error("glVideo.js: WebGL2 is NOT available");
         }
 
         this.out2DCanvasID = out2DCanvasID;
         this.outCanvas = document.getElementById(out2DCanvasID);
         if (!this.outCanvas) {
-            throw new Error(`There is no canvas with id ${out2DCanvasID}`);
+            throw new Error(`glVideo.js: There is no canvas with id ${out2DCanvasID}`);
         }
 
         this.context_2d = this.outCanvas.getContext("2d", {
