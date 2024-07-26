@@ -53,6 +53,21 @@ export const utilsUI = {
         };
     },
 
+    getValueTypeFromInputType(type) {
+        switch (type) {
+        case "checkbox":
+            return "boolean";
+        case "range":
+        case "number":
+            return "number";
+        case "text":
+        case "select-one":
+        case "select-multiple":
+        default:
+            return "string";
+        }
+    },
+
     stayFullScreen(canvas) {
         const expandFullScreen = () => {
             canvas.width = window.innerWidth;

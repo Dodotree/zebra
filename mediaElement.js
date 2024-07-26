@@ -450,9 +450,11 @@ export class MediaElement extends HTMLElement {
         let key = event.target.getAttribute("key");
         key = key || event.target.name;
         const value = event.target.value;
+        const type = utilsUI.getValueTypeFromInputType(event.target.type);
+
         // sometimes it's required to set "manual" mode before changes
         // but so far it changes between continuous and manual automatically
-        this.requestStreamChanges(trackKind, { [key]: value });
+        this.requestStreamChanges(trackKind, type, { [key]: value });
     }
 
     setOrientation(isWide) {
@@ -489,7 +491,7 @@ export class MediaElement extends HTMLElement {
 
         const [w, h] = this.whFromResolution(event.target.value);
         // "ideal" preferred for initiating the stream { width: { ideal: w }, height: { ideal: h } }
-        this.requestStreamChanges("video", { width: w, height: h });
+        this.requestStreamChanges("video", "number", { width: w, height: h });
     }
 
     orientedResolution(w, h) {
@@ -527,7 +529,7 @@ export class MediaElement extends HTMLElement {
         this.logger.log(`Resolution set to ${this.trackResolution}`);
     }
 
-    requestStreamChanges(trackKind, changes) {
+    requestStreamChanges(trackKind, type, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
         this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
@@ -535,11 +537,16 @@ export class MediaElement extends HTMLElement {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
-        // TODO: don't rely on advanced since they are optional, add required and min/max/ideal
+        // TODO: don't rely on advanced since they are optional,
+        // add required and min/max/ideal/exact
+        // type could be useful for min/max reset if needed
+        const constraints = Object.keys(changes).reduce((acc, key) => {
+            acc[key] = { [key]: { ideal: changes[key] } };
+            return acc;
+        }, { advanced: [changes] });
+
         track
-            .applyConstraints({
-                advanced: [changes],
-            })
+            .applyConstraints(constraints)
             .then(() => {
                 const newSettings = track.getSettings();
                 this.changeSetting(trackKind, newSettings, oldSettings, changes);
