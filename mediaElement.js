@@ -836,25 +836,33 @@ export class MediaElement extends HTMLElement {
             select.onchange = null;
         });
         // TODO: remove screen orientation listener
-        Object.keys(this.streamTracks).forEach((kind) => {
-            if (this.streamTracks[kind].controls) {
-                this.streamTracks[kind].controls.remove();
-            }
-        });
-        this.stopDeviceTracks();
-        if (this.canvasGL) {
-            this.canvasGL.destroy();
-            this.canvasGL = null;
+        try {
+            Object.keys(this.streamTracks).forEach((kind) => {
+                if (this.streamTracks[kind].controls) {
+                    this.streamTracks[kind].controls.remove();
+                }
+            });
+        } catch (e) {
+            this.logger.logError(e);
         }
+        this.stopDeviceTracks();
+        this.destroyCanvases();
         this.onRelease(this.id);
         this.remove();
     }
 
-    initGL(w, h) {
-        if (this.canvasGL) {
+    destroyCanvases() {
+        if (!this.canvasGL) { return; }
+        try {
             this.canvasGL.destroy();
             this.canvasGL = null;
+        } catch (e) {
+            this.logger.logError(e);
         }
+    }
+
+    initGL(w, h) {
+        this.destroyCanvases();
         const webGLCanvasID = "webGLCanvas" + this.streamdevice;
         const outCanvasID = "outCanvas" + this.streamdevice;
         this.appendChild(
