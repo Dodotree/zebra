@@ -366,6 +366,7 @@ export class MediaElement extends HTMLElement {
                     })
                 );
                 try {
+                    // TODO: separate as audio visualizer component
                     this.clock = new Clock();
                     const audioContext = new AudioContext();
                     const audioNode = audioContext.createMediaStreamSource(stream);

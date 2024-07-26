@@ -130,6 +130,9 @@ export class MediaMenu extends HTMLElement {
 
     onAddStream() {
         const selected = this.select.options[this.select.selectedIndex];
+        if (selected.disabled) {
+            return;
+        }
         const deviceLabel = selected.text;
         const constraints = selected.getAttribute("kind") === "audioinput"
             ? { audio: { deviceId: { exact: this.select.value } } }

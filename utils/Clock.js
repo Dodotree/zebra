@@ -5,7 +5,7 @@ import EventEmitter from "./EventEmitter.js";
 export default class Clock extends EventEmitter {
     constructor() {
         super();
-        // gives "illegal invocation" error
+        // substitute code below gives "illegal invocation" error
         // this.requestAnimationFrame = (
         // window.requestAnimationFrame || window.mozRequestAnimationFrame ||
         // window.webkitRequestAnimationFrame || window.msRequestAnimationFrame);

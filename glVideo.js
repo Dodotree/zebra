@@ -206,7 +206,6 @@ export default class VideoGL {
 
     draw() {
         const slot = 0;
-
         try {
             this.textures.update(slot);
         } catch (e) {
@@ -304,8 +303,12 @@ export default class VideoGL {
     }
 
     destroy() {
+        this.logger.log("Drawing frame");
+
         try {
             this.clock.stop();
+            this.clock.remove(this.draw);
+            this.clock = null;
         } catch (e) {
             this.logger.logError(e);
         }
