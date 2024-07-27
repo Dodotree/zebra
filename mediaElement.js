@@ -52,11 +52,6 @@ export class MediaElement extends HTMLElement {
         this.streamdevice = "";
 
         /**
-         * @type {MediaStream}
-         */
-        this.currentStream = null;
-
-        /**
          * [internal] Constrains object used to fetch the stream.
          * @type {object}
          */
@@ -73,25 +68,36 @@ export class MediaElement extends HTMLElement {
          *   audio:
          *         {
          *              track: MediaStreamTrack,
+         *              contentHint: string,
          *              label: string,
          *              settings: object,
          *              capabilities: object,
-         *              controls: MediaControls
          *         },
          *  video:
          *         {
          *              track: MediaStreamTrack,
-         *              label: string,
+         *              contentHint: string,
+        *               label: string,
          *              settings: object,
          *              capabilities: object,
-         *              controls: MediaControls
         *         }
          * }}
          * @description Current stream tracks for controls callback.
          */
         this.streamTracks = {
-            audio: { track: null, controls: null },
-            video: { track: null, controls: null }
+            audio: { track: null },
+            video: { track: null }
+        };
+
+        /**
+         *  @type {{
+         *      audio: MediaControls,
+         *      video: MediaControls,
+         *  }}
+         * */
+        this.controls = {
+            audio: null,
+            video: null
         };
 
         /**
@@ -206,193 +212,6 @@ export class MediaElement extends HTMLElement {
         });
     }
 
-    openControls() {
-        Object.keys(this.streamTracks).forEach((kind) => {
-            // TODO reuse controls if possible
-            // remove controls from previous instance if any, connect to this one
-            if (this.streamTracks[kind].track) {
-                try {
-                    this.streamTracks[kind].controls = new MediaControls();
-                    document.body.insertBefore(this.streamTracks[kind].controls, this);
-                    this.streamTracks[kind].controls.init(
-                        kind,
-                        this.streamTracks[kind],
-                        this.controlsCallback
-                    );
-                } catch (e) {
-                    this.logger.logError(e);
-                }
-            }
-        });
-    }
-
-    setStream(device, constraints, stream, onRelease) {
-        this.streamdevice = device;
-        this.setAttribute("streamdevice", device);
-
-        this.currentConstraints = constraints;
-        this.currentStream = stream;
-        this.onRelease = onRelease;
-
-        const caption = this.appendChild(
-            utilsUI.get({
-                tag: "h4",
-                text: device,
-            })
-        );
-        caption.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "⚙",
-            })
-        ).onclick = this.openControls.bind(this);
-        caption.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "✕",
-            })
-        ).onclick = this.destroy.bind(this);
-
-        stream.getTracks().forEach((track) => {
-            // might need all constraints for updated constrains stream request
-            // but so far it was possible to apply additional constrains to the track
-            const current = {
-                track,
-                label: track.label,
-                settings: track.getSettings(),
-                capabilities: track.getCapabilities
-                    ? track.getCapabilities()
-                    : {},
-                controls: null,
-            };
-            this.streamTracks[track.kind] = current;
-            // constrains are more like wishes, not necessarily granted
-            // settings should provide width and height, and aspect ratio
-            // keep in mind video frame should be set to size/pixelRatio
-            // track capabilities when available ~same as stream capabilities,
-            // don't know about all environments
-            if (track.kind === "video") {
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: "checkbox",
-                            name: `showvideo-${this.id}`,
-                            class: "showvideo",
-                            value: true,
-                        },
-                    })
-                ).addEventListener("change", this.onShowChange);
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "label",
-                        text: "video",
-                        attrs: { htmlFor: `showvideo-${this.id}` },
-                    })
-                );
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: "checkbox",
-                            name: `showwebgl-${this.id}`,
-                            class: "showwebgl",
-                            value: true,
-                        },
-                    })
-                ).addEventListener("change", this.onShowChange);
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "label",
-                        text: "webGL",
-                        attrs: { htmlFor: `showwebgl-${this.id}` },
-                    })
-                );
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "input",
-                        attrs: {
-                            type: "checkbox",
-                            name: `showoutcanvas-${this.id}`,
-                            class: "showoutcanvas",
-                            value: true,
-                        },
-                    })
-                ).addEventListener("change", this.onShowChange);
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "label",
-                        text: "outCanvas",
-                        attrs: { htmlFor: `showoutcanvas-${this.id}` },
-                    })
-                );
-
-                this.appendChild(
-                    utilsUI.get({
-                        tag: "select",
-                        attrs: {
-                            name: `resolution-select-${this.id}`,
-                            class: "resolution-select",
-                        },
-                    })
-                ).onchange = this.onRequestResolution.bind(this);
-                this.video = this.appendChild(utilsUI.get({
-                    tag: "video",
-                    attrs: {
-                        controls: true,
-                        autoplay: true,
-                        playsInline: true,
-                        preload: "auto",
-                        loop: true,
-                        crossOrigin: "anonymous",
-                    },
-                }));
-
-                // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
-                this.video.srcObject = stream;
-                this.resetResolutions();
-                this.showwebgl = true;
-            } else if (track.kind === "audio") {
-                // TODO: visualization of sound to show it's working
-                this.logger.log("Audio track");
-                this.audio = this.appendChild(
-                    utilsUI.get({
-                        tag: "meter",
-                        attrs: {
-                            max: 1,
-                            value: 0,
-                            hight: 0.25
-                        },
-                    })
-                );
-                try {
-                    // TODO: separate as audio visualizer component
-                    this.clock = new Clock();
-                    const audioContext = new AudioContext();
-                    const audioNode = audioContext.createMediaStreamSource(stream);
-                    const analyserNode = audioContext.createAnalyser();
-                    audioNode.connect(analyserNode);
-
-                    const pcmData = new Float32Array(analyserNode.fftSize);
-                    this.clock.on("tick", () => {
-                        analyserNode.getFloatTimeDomainData(pcmData);
-                        // const sum = pcmData.reduce((acc, val) => acc + val, 0);
-                        // this.audio.value = sum / pcmData.length;
-                        let sumSquares = 0.0;
-                        // eslint-disable-next-line no-restricted-syntax
-                        for (const amplitude of pcmData) { sumSquares += amplitude * amplitude; }
-                        this.audio.value = Math.sqrt(sumSquares / pcmData.length);
-                    });
-                } catch (e) {
-                    this.logger.logError(e);
-                }
-            }
-
-            this.logger.log(`Track ${track.kind} ${track.label}`);
-            this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
-        });
-    }
-
     /**
      * `CustomElement` lifecycle callback. Invoked each time the custom element is appended into a
      * document-connected element.
@@ -443,18 +262,213 @@ export class MediaElement extends HTMLElement {
         }
     }
 
+    openControls() {
+        Object.keys(this.streamTracks).forEach((kind) => {
+            // TODO reuse controls if possible
+            // remove controls from previous instance if any, connect to this one
+            if (this.streamTracks[kind].track) {
+                try {
+                    this.controls[kind] = new MediaControls();
+                    document.body.insertBefore(this.controls[kind], this);
+                    this.controls[kind].init(
+                        kind,
+                        this.streamTracks[kind],
+                        this.controlsCallback
+                    );
+                } catch (e) {
+                    this.logger.logError(e);
+                }
+            }
+        });
+    }
+
+    initVideoTrackUI() {
+        this.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "checkbox",
+                    name: `showvideo-${this.id}`,
+                    class: "showvideo",
+                    value: true,
+                },
+            })
+        ).addEventListener("change", this.onShowChange);
+        this.appendChild(
+            utilsUI.get({
+                tag: "label",
+                text: "video",
+                attrs: { htmlFor: `showvideo-${this.id}` },
+            })
+        );
+        this.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "checkbox",
+                    name: `showwebgl-${this.id}`,
+                    class: "showwebgl",
+                    value: true,
+                },
+            })
+        ).addEventListener("change", this.onShowChange);
+        this.appendChild(
+            utilsUI.get({
+                tag: "label",
+                text: "webGL",
+                attrs: { htmlFor: `showwebgl-${this.id}` },
+            })
+        );
+        this.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "checkbox",
+                    name: `showoutcanvas-${this.id}`,
+                    class: "showoutcanvas",
+                    value: true,
+                },
+            })
+        ).addEventListener("change", this.onShowChange);
+        this.appendChild(
+            utilsUI.get({
+                tag: "label",
+                text: "outCanvas",
+                attrs: { htmlFor: `showoutcanvas-${this.id}` },
+            })
+        );
+
+        this.appendChild(
+            utilsUI.get({
+                tag: "select",
+                attrs: {
+                    name: `resolution-select-${this.id}`,
+                    class: "resolution-select",
+                },
+            })
+        ).onchange = this.onRequestResolution.bind(this);
+        this.video = this.appendChild(utilsUI.get({
+            tag: "video",
+            attrs: {
+                controls: true,
+                autoplay: true,
+                playsInline: true,
+                preload: "auto",
+                loop: true,
+                crossOrigin: "anonymous",
+            },
+        }));
+        // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
+    }
+
+    initAudioTrackUI(stream) {
+        // TODO: visualization of sound to show it's working
+        this.logger.log("Audio track");
+        this.audio = this.appendChild(
+            utilsUI.get({
+                tag: "meter",
+                attrs: {
+                    max: 1,
+                    value: 0,
+                    hight: 0.25
+                },
+            })
+        );
+        try {
+            // TODO: separate as audio visualizer component
+            this.clock = new Clock();
+            const audioContext = new AudioContext();
+            const audioNode = audioContext.createMediaStreamSource(stream);
+            const analyserNode = audioContext.createAnalyser();
+            audioNode.connect(analyserNode);
+
+            const pcmData = new Float32Array(analyserNode.fftSize);
+            this.clock.on("tick", () => {
+                analyserNode.getFloatTimeDomainData(pcmData);
+                // const sum = pcmData.reduce((acc, val) => acc + val, 0);
+                // this.audio.value = sum / pcmData.length;
+                let sumSquares = 0.0;
+                // eslint-disable-next-line no-restricted-syntax
+                for (const amplitude of pcmData) { sumSquares += amplitude * amplitude; }
+                this.audio.value = Math.sqrt(sumSquares / pcmData.length);
+            });
+        } catch (e) {
+            this.logger.logError(e);
+        }
+    }
+
+    setTrack(track) {
+        // track capabilities when available ~same as stream capabilities,
+        // don't know about all environments
+        // track has: kind, contentHint
+        // id, label, muted, enabled, readyState(live, ended), onmute, onunmute, onended
+        const current = {
+            track,
+            contentHint: track.contentHint,
+            label: track.label,
+            settings: track.getSettings(),
+            capabilities: track.getCapabilities
+                ? track.getCapabilities()
+                : {},
+        };
+        this.streamTracks[track.kind] = current;
+    }
+
+    setStream(device, constraints, stream, onRelease) {
+        this.streamdevice = device;
+        this.setAttribute("streamdevice", device);
+
+        this.currentConstraints = constraints;
+        this.onRelease = onRelease;
+
+        const caption = this.appendChild(
+            utilsUI.get({
+                tag: "h4",
+                text: device,
+            })
+        );
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "⚙",
+            })
+        ).onclick = this.openControls.bind(this);
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ).onclick = this.destroy.bind(this);
+
+        stream.getTracks().forEach((track) => {
+            this.setTrack(track);
+
+            if (track.kind === "video") {
+                this.initVideoTrackUI();
+                this.video.srcObject = stream;
+                this.resetResolutions();
+                this.showwebgl = true;
+            } else if (track.kind === "audio") {
+                this.initAudioTrackUI(stream);
+            }
+
+            this.logger.log(`Track ${track.kind} ${track.label}`);
+            this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
+        });
+    }
+
     // TODO: after throttle maybe check for other keys too
     controlsCallback(event) {
         const form = event.target.form;
         const trackKind = form.kind;
         let key = event.target.getAttribute("key");
         key = key || event.target.name;
-        const value = event.target.value;
         const type = utilsUI.getValueTypeFromInputType(event.target.type);
+        const value = type === "number" ? parseFloat(event.target.value) : event.target.value;
 
         // sometimes it's required to set "manual" mode before changes
         // but so far it changes between continuous and manual automatically
-        this.requestStreamChanges(trackKind, type, { [key]: value });
+        this.requestTrackChanges(trackKind, type, { [key]: value });
     }
 
     setOrientation(isWide) {
@@ -465,6 +479,7 @@ export class MediaElement extends HTMLElement {
     }
 
     resetResolutions() {
+        // settings should provide width and height, and aspect ratio
         const settings = this.streamTracks.video.settings;
         const capabilities = this.streamTracks.video.capabilities;
 
@@ -491,7 +506,7 @@ export class MediaElement extends HTMLElement {
 
         const [w, h] = this.whFromResolution(event.target.value);
         // "ideal" preferred for initiating the stream { width: { ideal: w }, height: { ideal: h } }
-        this.requestStreamChanges("video", "number", { width: w, height: h });
+        this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
     orientedResolution(w, h) {
@@ -512,10 +527,12 @@ export class MediaElement extends HTMLElement {
 
     setResolution(vidW, vidH) {
         let [w, h] = this.orientedResolution(vidW, vidH);
+        // keep in mind video frame should be set to size/pixelRatio
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
+        // keeping the standard order in naming resolutions
         this.trackResolution = (w > h) ? `${w}x${h}` : `${h}x${w}`;
 
         const resHolder = this.querySelector(".resolution-select");
@@ -529,7 +546,65 @@ export class MediaElement extends HTMLElement {
         this.logger.log(`Resolution set to ${this.trackResolution}`);
     }
 
-    requestStreamChanges(trackKind, type, changes) {
+    // make sure the original obj is not mutated, deep copy with modifications
+    mergeOverride(o, oo) {
+        const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
+        return Array.from(sharedKeys.values()).reduce((acc, key) => {
+            if (typeof o[key] === "object" && typeof oo[key] === "object") {
+                acc[key] = this.mergeOverride(o[key], oo[key]);
+            } else {
+                acc[key] = key in oo ? oo[key] : o[key];
+            }
+            return acc;
+        }, {});
+    }
+
+    /**
+     * @description Last resort to change track settings through changing stream.
+     * rollback if not successful.
+     */
+    requestStreamChanges(trackKind, changes, trackConstraints) {
+        // constrains are more like wishes, not necessarily granted
+        const oldSettings = this.streamTracks[trackKind].settings;
+        this.stopDeviceTracks();
+        const constraints = this.mergeOverride(this.currentConstraints, trackConstraints);
+        this.logger.log(
+            `Requesting stream with constraints ${JSON.stringify(constraints, null, 2)}`
+        );
+        navigator.mediaDevices
+            .getUserMedia(constraints)
+            .then((stream) => {
+                stream.getTracks().forEach((track) => {
+                    this.setTrack(track);
+                    if (track.kind === "video") {
+                        this.video.srcObject = stream;
+                        const unchanged = this.constructor.nothingChanged(
+                            this.streamTracks[trackKind].settings,
+                            oldSettings,
+                            changes
+                        );
+                        if (unchanged) {
+                            this.reportUnchanged(unchanged, changes, 2);
+                            // restore to the actual value instead of what we tried to set
+                            this.changeControls(trackKind, unchanged);
+                            return;
+                        }
+                        // Successful
+                        this.currentConstraints = constraints;
+                        this.changeSetting(trackKind, oldSettings, changes);
+                    } else if (track.kind === "audio") {
+                        // this.initAudioTrackUI(stream);
+                    }
+                });
+            })
+            .catch((error) => {
+                this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.logger.logError(error);
+                // rollback. attempt once.
+            });
+    }
+
+    requestTrackChanges(trackKind, type, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
         this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
@@ -549,51 +624,68 @@ export class MediaElement extends HTMLElement {
             .applyConstraints(constraints)
             .then(() => {
                 const newSettings = track.getSettings();
-                this.changeSetting(trackKind, newSettings, oldSettings, changes);
+                this.streamTracks[trackKind].settings = newSettings;
+                const unchanged = this.constructor.nothingChanged(
+                    newSettings,
+                    oldSettings,
+                    changes
+                );
+                if (unchanged) {
+                    this.reportUnchanged(unchanged, changes, 1);
+                    this.requestStreamChanges(trackKind, changes, constraints);
+                    return;
+                }
+                // Successful
+                this.changeSetting(trackKind, oldSettings, changes);
             })
             .catch((e) => {
-                this.logger.log(`Failed set stream changes ${JSON.stringify(changes, null, 2)}`);
+                this.logger.log(`Failed set track changes ${JSON.stringify(changes, null, 2)}`);
                 this.logger.logError(e);
             });
     }
 
-    static nothingChanged(newSettings, oldSettings, intendedChange) {
+    // returns false if anything changed
+    // returns intended change keys with their actual values (previous that stayed the same)
+    static nothingChanged(newSettings, oldSettings, intendedChanges) {
         // eslint-disable-next-line no-restricted-syntax
-        for (const key in intendedChange) {
+        for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
                 return false;
             }
         }
-        return true;
+        const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
+            acc[key] = newSettings[key];
+            return acc;
+        }, {});
+        return unchanged;
     }
 
+    reportUnchanged(unchanged, intendedChanges, attempt) {
+        this.logger.log(
+            `Warning: Nothing changed. Intended changes ${JSON.stringify(intendedChanges, null, 2)}`
+        );
+        this.logger.log(
+            `Attempt ${attempt} left unchanged ${JSON.stringify(unchanged, null, 2)}`
+        );
+    }
+
+    // important! update track[kind].settings before updating controls
+    // otherwise it will trigger another event
     changeControls(trackKind, changes) {
-        const controls = this.streamTracks[trackKind].controls;
-        if (!controls) {
+        if (!this.controls[trackKind]) {
             return;
         }
-        Object.keys(changes).forEach((key) => {
-            controls.setControlValue(key, changes[key]);
-        });
+        try {
+            Object.keys(changes).forEach((key) => {
+                this.controls[trackKind].setControlValue(key, changes[key]);
+            });
+        } catch (e) {
+            this.logger.logError(e);
+        }
     }
 
-    changeSetting(trackKind, newSettings, oldSettings, intendedChanges) {
-        if (this.constructor.nothingChanged(newSettings, oldSettings, intendedChanges)) {
-            this.logger.log(
-                `Warning: Nothing changed. Intended changes ${JSON.stringify(intendedChanges, null, 2)}`
-            );
-            // restore to the actual value instead of what we tried to set
-            try {
-                const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-                    acc[key] = newSettings[key];
-                    return acc;
-                }, {});
-                this.changeControls(trackKind, unchanged);
-            } catch (e) {
-                this.logger.logError(e);
-            }
-            return;
-        }
+    changeSetting(trackKind, oldSettings, intendedChanges) {
+        const newSettings = this.streamTracks[trackKind].settings;
 
         const changes = {};
         let controlsReset = false;
@@ -636,14 +728,7 @@ export class MediaElement extends HTMLElement {
             return;
         }
 
-        // important! update currentSettings before updating controls
-        // otherwise it will trigger another event
-        this.streamTracks[trackKind].settings = newSettings;
-        try {
-            this.changeControls(trackKind, changes);
-        } catch (e) {
-            this.logger.logError(e);
-        }
+        this.changeControls(trackKind, changes);
 
         if (["width", "height", "aspectRatio"].some(v=> Object.keys(changes).indexOf(v) >= 0)) {
             // aspectRatio adjusts width and height to closest value in integers w,h
@@ -824,11 +909,11 @@ export class MediaElement extends HTMLElement {
     }
 
     stopDeviceTracks() {
-        if (!this.currentStream) return;
-        this.currentStream.getTracks().forEach((track) => {
+        if (!this.video || !this.video.srcObject) return;
+        this.video.srcObject.getTracks().forEach((track) => {
             track.stop();
         });
-        this.currentStream = null;
+        this.video.srcObject = null;
         this.streamTracks.audio.track = null;
         this.streamTracks.audio.video = null;
     }
@@ -846,8 +931,9 @@ export class MediaElement extends HTMLElement {
         // TODO: remove screen orientation listener
         try {
             Object.keys(this.streamTracks).forEach((kind) => {
-                if (this.streamTracks[kind].controls) {
-                    this.streamTracks[kind].controls.remove();
+                if (this.controls[kind]) {
+                    this.controls[kind].remove();
+                    this.controls[kind] = null;
                 }
             });
         } catch (e) {
