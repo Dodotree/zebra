@@ -541,7 +541,7 @@ export class MediaElement extends HTMLElement {
         // add required and min/max/ideal/exact
         // type could be useful for min/max reset if needed
         const constraints = Object.keys(changes).reduce((acc, key) => {
-            acc[key] = { [key]: { ideal: changes[key] } };
+            acc[key] = { [key]: { ideal: changes[key], exact: changes[key] } };
             return acc;
         }, { advanced: [changes] });
 
