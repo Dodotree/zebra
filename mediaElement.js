@@ -581,7 +581,8 @@ export class MediaElement extends HTMLElement {
                         const unchanged = this.constructor.nothingChanged(
                             this.streamTracks[trackKind].settings,
                             oldSettings,
-                            changes
+                            changes,
+                            this.logger.log
                         );
                         if (unchanged) {
                             this.reportUnchanged(unchanged, changes, 2);
@@ -608,7 +609,7 @@ export class MediaElement extends HTMLElement {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
         this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
-        if (this.constructor.nothingChanged(changes, oldSettings, changes)) {
+        if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
@@ -628,7 +629,8 @@ export class MediaElement extends HTMLElement {
                 const unchanged = this.constructor.nothingChanged(
                     newSettings,
                     oldSettings,
-                    changes
+                    changes,
+                    this.logger.log
                 );
                 if (unchanged) {
                     this.reportUnchanged(unchanged, changes, 1);
@@ -646,13 +648,13 @@ export class MediaElement extends HTMLElement {
 
     // returns false if anything changed
     // returns intended change keys with their actual values (previous that stayed the same)
-    static nothingChanged(newSettings, oldSettings, intendedChanges) {
+    static nothingChanged(newSettings, oldSettings, intendedChanges, log) {
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                this.logger.log(`Found change: ${key} ${oldSettings[key]} != ${newSettings[key]}`);
-                this.logger.log(`Intended change: ${key} ${intendedChanges[key]}`);
-                this.logger.log(`typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
+                log(`Found change: ${key} ${oldSettings[key]} != ${newSettings[key]}`);
+                log(`Intended change: ${key} ${intendedChanges[key]}`);
+                log(`typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
                 return false;
             }
         }
