@@ -1,4 +1,5 @@
 import { utilsUI } from "./utils/UI.js";
+import Environment from "./utils/Environment.js";
 import { MediaElement } from "./mediaElement.js";
 
 export class MediaMenu extends HTMLElement {
@@ -25,6 +26,7 @@ export class MediaMenu extends HTMLElement {
      */
     connectedCallback() {
         this.logger = document.getElementsByTagName("screen-logger")[0];
+        this.env = new Environment(this.logger);
 
         this.appendChild(
             utilsUI.get({
@@ -98,11 +100,11 @@ export class MediaMenu extends HTMLElement {
                 });
             }).catch((error) => {
                 this.logger.log("Error while fetching available streaming devices info");
-                this.logger.logError(error);
+                this.logger.error(error);
             });
         }).catch((err) => {
             this.logger.log("Initiating default stream error:\n");
-            this.logger.logError(err);
+            this.logger.error(err);
         });
 
         // TODO
@@ -113,7 +115,7 @@ export class MediaMenu extends HTMLElement {
         navigator.mediaDevices
             .getUserMedia(constraints)
             .then((stream) => {
-                const mediaUI = new MediaElement();
+                const mediaUI = new MediaElement(this.env);
                 document.body.insertBefore(
                     mediaUI,
                     document.querySelector("footer")
@@ -124,7 +126,7 @@ export class MediaMenu extends HTMLElement {
             })
             .catch((error) => {
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
-                this.logger.logError(error);
+                this.logger.error(error);
             });
     }
 
@@ -146,6 +148,11 @@ export class MediaMenu extends HTMLElement {
             constraints.video.frameRate = { ideal: 110 };
         } else if (device === "R200 Depth") {
             constraints.video.width = { ideal: 628, max: 640 };
+        } else {
+            // default webcam dimensions adjusted for orientation
+            let [w, h] = this.env.orientedResolution(640, 480);
+            constraints.video.width = { ideal: w };
+            constraints.video.height = { ideal: h };
         }
 
         this.logger.log(`Selected ${deviceLabel}`);

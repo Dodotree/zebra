@@ -61,7 +61,7 @@ export default class VideoGL {
             this.program = new Program(this.gl, vertexShaderId, fragmentShaderId);
             this.program.load(attrs, uniforms);
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
 
         this.buffers = {};
@@ -69,7 +69,7 @@ export default class VideoGL {
             this.clock = new Clock();
             this.textures = new Textures(this.gl, isDepthStream);
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
 
         this.draw = this.draw.bind(this);
@@ -126,7 +126,7 @@ export default class VideoGL {
         try {
             this.textures.init(params.slot, params.textureOptions);
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
 
         this.initUniforms(params.uniData);
@@ -136,7 +136,7 @@ export default class VideoGL {
         try {
             this.clock.on("tick", this.draw);
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
     }
 
@@ -209,7 +209,7 @@ export default class VideoGL {
         try {
             this.textures.update(slot);
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
         this.gl.bindVertexArray(this.buffers.vertsVAO); // repeat this on each draw()
         this.gl.drawElements(
@@ -310,7 +310,7 @@ export default class VideoGL {
             this.clock.remove(this.draw);
             this.clock = null;
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
         this.gl.deleteProgram(this.program.program);
         this.gl.deleteBuffer(this.buffers.vertsBuffer);

@@ -14,8 +14,10 @@ export class MediaElement extends HTMLElement {
         if (checkbox && checkbox.checked !== newValue) checkbox.checked = newValue;
     }
 
-    constructor() {
+    constructor(env) {
         super();
+
+        this.env = env;
 
         /**
          * @type {HTMLVideoElement}
@@ -26,24 +28,6 @@ export class MediaElement extends HTMLElement {
          * @type {HTMLCanvasElement}
          */
         this.canvasGL = null;
-
-        /**
-         * [internal] Display pixel ratio.
-         * @type {number}
-         */
-        this.pixelRatio = 1;
-
-        /**
-         * [internal] OS name.
-         * @type {string}
-         */
-        this.os = "";
-
-        /**
-         * [internal] w > h.
-         * @type {boolean}
-         */
-        this.wide = false;
 
         /**
          * [internal] Camera or mic name.
@@ -107,8 +91,8 @@ export class MediaElement extends HTMLElement {
 
         // to make bound callback event listener removable
         this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
-        this.setOrientation = utilsUI.throttle(this.setOrientation.bind(this), 400);
         this.onShowChange = this.onShowChange.bind(this);
+        this.setOrientation = this.setOrientation.bind(this);
 
         /**
          * [config] Default `false`.
@@ -168,7 +152,7 @@ export class MediaElement extends HTMLElement {
         this.toggleAttribute("showvideo", value);
 
         if (!this.video) return;
-        const [w, h] = this.orientedResolution(
+        const [w, h] = this.env.orientedResolution(
             this.streamTracks.video.settings.width,
             this.streamTracks.video.settings.height
         );
@@ -176,7 +160,8 @@ export class MediaElement extends HTMLElement {
     }
 
     setVideoSize(vidW, vidH) {
-        const [w, h] = this.getAttribute("showvideo") ? [vidW / this.pixelRatio, vidH / this.pixelRatio] : [1, 1];
+        const [w, h] = this.getAttribute("showvideo")
+            ? [vidW / this.env.pixelRatio, vidH / this.env.pixelRatio] : [1, 1];
         this.video.style.width = `${w}px`;
         this.video.style.height = `${h}px`;
     }
@@ -218,15 +203,6 @@ export class MediaElement extends HTMLElement {
      */
     connectedCallback() {
         this.logger = document.getElementsByTagName("screen-logger")[0];
-
-        // TODO: in case of multiple displays
-        // const mqString = `(resolution: ${window.devicePixelRatio}dppx)`;
-        // const media = matchMedia(mqString);
-        // media.addEventListener("change", updatePixelRatio.bind(this));
-
-        this.pixelRatio = window.devicePixelRatio;
-        this.os = this.constructor.getOS();
-        this.watchOrientation();
 
         // TODO: capture image and video
         // <button for_id=""> Capture </button>
@@ -276,7 +252,7 @@ export class MediaElement extends HTMLElement {
                         this.controlsCallback
                     );
                 } catch (e) {
-                    this.logger.logError(e);
+                    this.logger.error(e);
                 }
             }
         });
@@ -393,7 +369,7 @@ export class MediaElement extends HTMLElement {
                 this.audio.value = Math.sqrt(sumSquares / pcmData.length);
             });
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
     }
 
@@ -455,6 +431,8 @@ export class MediaElement extends HTMLElement {
                 this.initAudioTrackUI(stream);
             }
         });
+
+        this.env.on("orientation", this.setOrientation);
     }
 
     // TODO: after throttle maybe check for other keys too
@@ -471,10 +449,9 @@ export class MediaElement extends HTMLElement {
         this.requestTrackChanges(trackKind, type, { [key]: value });
     }
 
-    setOrientation(isWide) {
-        this.wide = isWide;
+    setOrientation() {
         if (!this.trackResolution) return;
-        const [w, h] = this.whFromResolution(this.trackResolution);
+        const [w, h] = this.env.whFromResolution(this.trackResolution);
         this.setResolution(w, h);
     }
 
@@ -490,7 +467,7 @@ export class MediaElement extends HTMLElement {
         this.initResolutionsUI(
             listOfResolutions,
             this.streamdevice,
-            this.os
+            this.env.os
         );
         this.setResolution(settings.width, settings.height);
 
@@ -502,30 +479,12 @@ export class MediaElement extends HTMLElement {
             this.logger.log("Warning: resolution is already set to " + this.trackResolution);
             return;
         }
-
-        const [w, h] = this.whFromResolution(event.target.value);
-        // "ideal" preferred for initiating the stream { width: { ideal: w }, height: { ideal: h } }
+        const [w, h] = this.env.whFromResolution(event.target.value);
         this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
-    orientedResolution(w, h) {
-        if ((this.wide && w < h) || (!this.wide && w >= h)) {
-            return [h, w];
-        }
-        return [w, h];
-    }
-
-    whFromResolution(resolution) {
-        const [w, h] = resolution.split("x").map(Number);
-        if (w.isNan || h.isNan) {
-            this.logger.log("Error: resolution should be in format \"width x height\"");
-            return [];
-        }
-        return this.orientedResolution(w, h);
-    }
-
     setResolution(vidW, vidH) {
-        let [w, h] = this.orientedResolution(vidW, vidH);
+        let [w, h] = this.env.orientedResolution(vidW, vidH);
         // keep in mind video frame should be set to size/pixelRatio
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
@@ -603,7 +562,7 @@ export class MediaElement extends HTMLElement {
             })
             .catch((error) => {
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
-                this.logger.logError(error);
+                this.logger.error(error);
                 // rollback. attempt once.
             });
     }
@@ -647,7 +606,7 @@ export class MediaElement extends HTMLElement {
             })
             .catch((e) => {
                 this.logger.log(`Failed set track changes ${JSON.stringify(changes, null, 2)}`);
-                this.logger.logError(e);
+                this.logger.error(e);
             });
     }
 
@@ -690,7 +649,7 @@ export class MediaElement extends HTMLElement {
                 this.controls[trackKind].setControlValue(key, changes[key]);
             });
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
     }
 
@@ -749,22 +708,6 @@ export class MediaElement extends HTMLElement {
         }
     }
 
-    static getOrientation(angle, deviceWide) {
-        return angle === 180 || angle === 0
-            ? deviceWide
-            : !deviceWide;
-    }
-
-    static getOS() {
-        const uA = navigator.userAgent || navigator.vendor || window.opera;
-        if ((/iPad|iPhone|iPod/.test(uA) && !window.MSStream) || (uA.includes("Mac") && "ontouchend" in document)) return "iOS";
-
-        const os = ["Windows", "Android", "Unix", "Mac", "Linux", "BlackBerry"];
-        // eslint-disable-next-line no-plusplus
-        for (let i = 0; i < os.length; i++) if (new RegExp(os[i], "i").test(uA)) return os[i];
-        return "unknown";
-    }
-
     static getAspectRatioTag(width, height) {
         let [w, h] = width > height ? [width, height] : [height, width];
         const aspKeys = [0, 0, 1, 1, 2, 3, 4, 5, 6, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10];
@@ -772,57 +715,6 @@ export class MediaElement extends HTMLElement {
         const keyIndex = Math.round(12 * (w / h)) - 12;
         if (keyIndex < 0 || keyIndex > aspKeys.length) return "";
         return aspTags[aspKeys[keyIndex]];
-    }
-
-    watchOrientation() {
-        let angle = 0;
-        // eslint-disable-next-line no-restricted-globals
-        const deviceWide = screen.width > screen.height;
-        // eslint-disable-next-line no-restricted-globals
-        if (screen && "orientation" in screen) {
-            try {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
-            } catch (e) {
-                this.logger.log(
-                    `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
-                );
-            }
-            this.logger.log(
-                // eslint-disable-next-line no-restricted-globals
-                `Screen orientation: ${angle} degrees, ${screen.orientation.type}.`
-            );
-            // eslint-disable-next-line no-restricted-globals
-            screen.orientation.addEventListener("change", () => {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
-                const wide = this.constructor.getOrientation(angle, deviceWide);
-                this.setOrientation(wide);
-                this.logger.log(
-                    // eslint-disable-next-line no-restricted-globals
-                    `Screen orientation change: ${angle} degrees, ${screen.orientation.type}.`
-                );
-            });
-        } else if ("onorientationchange" in window) {
-            // for some mobile browsers
-            try {
-                angle = window.orientation;
-            } catch (e) {
-                this.logger.logError(e);
-            }
-            this.logger.log(`Window orientation: ${angle} degrees.`);
-            window.addEventListener("orientationchange", () => {
-                angle = window.orientation;
-                const wide = this.constructor.getOrientation(angle, deviceWide);
-                this.setOrientation(wide);
-                this.logger.log(`Window orientation change: ${angle} degrees.`);
-            });
-        }
-        const wide = this.constructor.getOrientation(angle, deviceWide);
-        this.setOrientation(wide);
-        this.logger.log(
-            `Orientation ${angle} device ${deviceWide ? "Wide" : "Narrow"} => ${this.wide ? "Wide" : "Narrow"} screen`
-        );
     }
 
     initResolutionsUI(givenRs, camera, os) {
@@ -938,7 +830,6 @@ export class MediaElement extends HTMLElement {
         this.querySelectorAll("select").forEach((select) => {
             select.onchange = null;
         });
-        // TODO: remove screen orientation listener
         try {
             Object.keys(this.streamTracks).forEach((kind) => {
                 if (this.controls[kind]) {
@@ -947,7 +838,7 @@ export class MediaElement extends HTMLElement {
                 }
             });
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
         this.stopDeviceTracks();
         this.destroyCanvases();
@@ -961,7 +852,7 @@ export class MediaElement extends HTMLElement {
             this.canvasGL.destroy();
             this.canvasGL = null;
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
     }
 
@@ -977,7 +868,7 @@ export class MediaElement extends HTMLElement {
                     class: "webGLCanvas",
                     width: w,
                     height: h,
-                    style: `width: ${w / this.pixelRatio}px; height: ${h / this.pixelRatio}px;`,
+                    style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
                 },
             })
         );
@@ -989,7 +880,7 @@ export class MediaElement extends HTMLElement {
                     class: "outCanvas",
                     width: w,
                     height: h,
-                    style: `width: ${w / this.pixelRatio}px; height: ${h / this.pixelRatio}px;`,
+                    style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
                 },
             })
         );
@@ -1003,7 +894,7 @@ export class MediaElement extends HTMLElement {
                 h
             );
         } catch (e) {
-            this.logger.logError(e);
+            this.logger.error(e);
         }
     }
 

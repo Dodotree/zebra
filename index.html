@@ -54,16 +54,20 @@
                 }
             </script>
 
-            <script type="module" src="./utils/Logger.js"></script>
-            <script type="module" src="./mediaMenu.js"></script>
-
             <script type="module">
-                document.body.appendChild(document.createElement("screen-logger"));
+                const footer = document.querySelector("footer");
+                document.body.insertBefore(
+                    document.createElement("screen-logger"),
+                    footer
+                );
                 document.body.insertBefore(
                     document.createElement("media-menu"),
-                    document.querySelector("footer")
+                    footer
                 );
             </script>
+                    
+            <script type="module" src="./utils/Logger.js"></script>
+            <script type="module" src="./mediaMenu.js"></script>
         </main>
 
         <footer>

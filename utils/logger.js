@@ -4,7 +4,7 @@ export class Logger extends HTMLElement {
         this.logPanel = null;
 
         this.log = this.log.bind(this);
-        this.logError = this.logError.bind(this);
+        this.error = this.error.bind(this);
     }
 
     /**
@@ -20,7 +20,7 @@ export class Logger extends HTMLElement {
         this.logPanel.scrollTop = this.logPanel.scrollHeight;
     }
 
-    logError(error) {
+    error(error) {
         // eslint-disable-next-line no-console
         console.error(error);
         if (error instanceof DOMException) {
