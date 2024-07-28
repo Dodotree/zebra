@@ -578,6 +578,7 @@ export class MediaElement extends HTMLElement {
                     this.setTrack(track);
                     if (track.kind === "video") {
                         this.video.srcObject = stream;
+                        this.logger.log("Post stream request check:");
                         const unchanged = this.constructor.nothingChanged(
                             this.streamTracks[trackKind].settings,
                             oldSettings,
@@ -609,6 +610,7 @@ export class MediaElement extends HTMLElement {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
         this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
+        this.logger.log("Pre-check if such request really needed changes/old:");
         if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
@@ -626,6 +628,7 @@ export class MediaElement extends HTMLElement {
             .then(() => {
                 const newSettings = track.getSettings();
                 this.streamTracks[trackKind].settings = newSettings;
+                this.logger.log("Post track request check:");
                 const unchanged = this.constructor.nothingChanged(
                     newSettings,
                     oldSettings,
@@ -652,7 +655,7 @@ export class MediaElement extends HTMLElement {
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                log(`Found change: ${key} ${oldSettings[key]} != ${newSettings[key]}`);
+                log(`Found change new/old: [${key}] ${newSettings[key]} != ${oldSettings[key]}`);
                 log(`Intended change: ${key} ${intendedChanges[key]}`);
                 log(`typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
                 return false;
