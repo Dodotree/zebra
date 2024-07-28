@@ -650,6 +650,9 @@ export class MediaElement extends HTMLElement {
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
+                this.logger.log(`Found change: ${key} ${oldSettings[key]} != ${newSettings[key]}`);
+                this.logger.log(`Intended change: ${key} ${intendedChanges[key]}`);
+                this.logger.log(`typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
                 return false;
             }
         }
