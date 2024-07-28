@@ -412,6 +412,9 @@ export class MediaElement extends HTMLElement {
                 : {},
         };
         this.streamTracks[track.kind] = current;
+        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`);
+        this.logger.log("Track  Settings:\n" + JSON.stringify(current.settings, null, 2));
+        this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
     }
 
     setStream(device, constraints, stream, onRelease) {
@@ -451,9 +454,6 @@ export class MediaElement extends HTMLElement {
             } else if (track.kind === "audio") {
                 this.initAudioTrackUI(stream);
             }
-
-            this.logger.log(`Track ${track.kind} ${track.label}`);
-            this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
         });
     }
 
@@ -494,7 +494,6 @@ export class MediaElement extends HTMLElement {
         );
         this.setResolution(settings.width, settings.height);
 
-        this.logger.log("Track  Settings:\n" + JSON.stringify(settings, null, 2));
         this.logger.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
     }
 
@@ -567,7 +566,10 @@ export class MediaElement extends HTMLElement {
         // constrains are more like wishes, not necessarily granted
         const oldSettings = this.streamTracks[trackKind].settings;
         this.stopDeviceTracks();
-        const constraints = this.mergeOverride(this.currentConstraints, trackConstraints);
+        const constraints = this.mergeOverride(
+            this.currentConstraints,
+            { [trackKind]: trackConstraints }
+        );
         this.logger.log(
             `Requesting stream with constraints ${JSON.stringify(constraints, null, 2)}`
         );
