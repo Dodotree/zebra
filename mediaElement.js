@@ -388,9 +388,9 @@ export class MediaElement extends HTMLElement {
                 : {},
         };
         this.streamTracks[track.kind] = current;
-        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`);
-        this.logger.log("Track  Settings:\n" + JSON.stringify(current.settings, null, 2));
-        this.logger.log("Track Stats:\n" + JSON.stringify(track.stats, null, 2));
+        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}\n`
+            + "Settings:\n" + JSON.stringify(current.settings, null, 2)
+            + "Stats:\n" + JSON.stringify(track.stats, null, 2));
     }
 
     setStream(device, constraints, stream, onRelease) {
@@ -602,6 +602,10 @@ export class MediaElement extends HTMLElement {
                     return;
                 }
                 // Successful
+                this.logger.log("Success initiating changes:\n"
+                    + "Track Constraints:\n" + JSON.stringify(constraints, null, 2)
+                    + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
+                    + "Stats:\n" + JSON.stringify(track.stats, null, 2));
                 this.changeSetting(trackKind, oldSettings, changes);
             })
             .catch((e) => {
@@ -616,9 +620,9 @@ export class MediaElement extends HTMLElement {
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                log(`Found change new/old: [${key}] ${newSettings[key]} != ${oldSettings[key]}`);
-                log(`Intended change: ${key} ${intendedChanges[key]}`);
-                log(`typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
+                log(`Found change new/old: [${key}] ${newSettings[key]} != ${oldSettings[key]}\n`
+                + `Intended change: ${key} ${intendedChanges[key]}\n`
+                + `typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
                 return false;
             }
         }
@@ -632,9 +636,7 @@ export class MediaElement extends HTMLElement {
     reportUnchanged(unchanged, intendedChanges, attempt) {
         this.logger.log(
             `Warning: Nothing changed. Intended changes ${JSON.stringify(intendedChanges, null, 2)}`
-        );
-        this.logger.log(
-            `Attempt ${attempt} left unchanged ${JSON.stringify(unchanged, null, 2)}`
+            + `Attempt ${attempt} left unchanged ${JSON.stringify(unchanged, null, 2)}`
         );
     }
 
@@ -837,6 +839,7 @@ export class MediaElement extends HTMLElement {
                     this.controls[kind] = null;
                 }
             });
+            this.env.remove("orientation", this.setOrientation);
         } catch (e) {
             this.logger.error(e);
         }
