@@ -333,7 +333,16 @@ export class MediaElement extends HTMLElement {
                 crossOrigin: "anonymous",
             },
         }));
+        this.video.onloadedmetadata = this.onVideoLoaded.bind(this);
+        this.video.onplaying = this.onVideoLoaded.bind(this);
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
+    }
+
+    onVideoLoaded(event) {
+        this.logger.log(
+            `Video ${this.video.videoWidth}x${this.video.videoHeight}`
+            + JSON.stringify(event, null, 2)
+        );
     }
 
     initAudioTrackUI(stream) {
