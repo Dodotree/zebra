@@ -27,7 +27,9 @@ export class Logger extends HTMLElement {
             this.log(`DOMException:\nname: ${error.name}\nmessage: ${error.message}`);
             return;
         } if (error instanceof Error) {
-            this.log(`Error:\ntype: ${typeof error}\nname: ${error.name}\nmessage: ${error.message}\ncause: ${error.cause}`);
+            this.log(`Error:\ntype: ${typeof error}\nname: ${error.name}\n`
+                + `message: ${error.message}\ncause: ${error.cause}`
+                + JSON.stringify(error, null, 2));
             return;
         }
         this.log(`Error: ${error}`);

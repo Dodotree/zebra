@@ -583,7 +583,7 @@ export class MediaElement extends HTMLElement {
         const constraints = Object.keys(changes).reduce((acc, key) => {
             acc[key] = { ideal: changes[key], exact: changes[key] };
             return acc;
-        }, { advanced: changes });
+        }, { advanced: [changes] });
 
         track
             .applyConstraints(constraints)
@@ -614,6 +614,7 @@ export class MediaElement extends HTMLElement {
             })
             .catch((e) => {
                 this.logger.log(`Failed set track changes ${JSON.stringify(changes, null, 2)}`);
+                this.logger.log(`applyConstraints error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
                 this.logger.error(e);
             });
     }
