@@ -530,7 +530,7 @@ export class MediaElement extends HTMLElement {
             { [trackKind]: trackConstraints }
         );
         this.logger.log(
-            `Requesting stream with constraints ${JSON.stringify(constraints, null, 2)}`
+            `Requesting *stream* with constraints ${JSON.stringify(constraints, null, 2)}`
         );
         navigator.mediaDevices
             .getUserMedia(constraints)
@@ -570,7 +570,7 @@ export class MediaElement extends HTMLElement {
     requestTrackChanges(trackKind, type, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
-        this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`
+        this.logger.log(`Requesting track changes ${JSON.stringify(changes, null, 2)}`
             + `Current track settings ${JSON.stringify(oldSettings, null, 2)}`
             + "Pre-check if such request really needed changes/old:");
         if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
