@@ -152,11 +152,10 @@ export class MediaElement extends HTMLElement {
         this.toggleAttribute("showvideo", value);
 
         if (!this.video) return;
-        const [w, h] = this.env.orientedResolution(
+        this.setVideoSize(
             this.streamTracks.video.settings.width,
             this.streamTracks.video.settings.height
         );
-        this.setVideoSize(w, h);
     }
 
     setVideoSize(vidW, vidH) {
@@ -449,12 +448,6 @@ export class MediaElement extends HTMLElement {
         this.requestTrackChanges(trackKind, type, { [key]: value });
     }
 
-    setOrientation() {
-        if (!this.trackResolution) return;
-        const [w, h] = this.env.whFromResolution(this.trackResolution);
-        this.setResolution(w, h);
-    }
-
     resetResolutions() {
         // settings should provide width and height, and aspect ratio
         const settings = this.streamTracks.video.settings;
@@ -470,8 +463,13 @@ export class MediaElement extends HTMLElement {
             this.env.os
         );
         this.setResolution(settings.width, settings.height);
+    }
 
-        this.logger.log("Track  Capabilities:\n" + JSON.stringify(capabilities, null, 2));
+    setOrientation() {
+        if (!this.trackResolution) return;
+        const [w, h] = this.env.whFromResolution(this.trackResolution);
+        // request if it's possible to flip width and height (so aspect ratio too?)
+        this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
     onRequestResolution(event) {
@@ -483,8 +481,18 @@ export class MediaElement extends HTMLElement {
         this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
-    setResolution(vidW, vidH) {
-        let [w, h] = this.env.orientedResolution(vidW, vidH);
+    selectCurrentResolution() {
+        const resHolder = this.querySelector(".resolution-select");
+        if (!resHolder) return;
+        const index = Array.from(resHolder.options).findIndex(
+            (option) => option.value === this.trackResolution
+        );
+        if (index !== -1) {
+            resHolder.selectedIndex = index;
+        }
+    }
+
+    setResolution(w, h) {
         // keep in mind video frame should be set to size/pixelRatio
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
@@ -492,16 +500,8 @@ export class MediaElement extends HTMLElement {
         this.initGL(w, h);
         // keeping the standard order in naming resolutions
         this.trackResolution = (w > h) ? `${w}x${h}` : `${h}x${w}`;
-
-        const resHolder = this.querySelector(".resolution-select");
-        const index = Array.from(resHolder.options).findIndex(
-            (option) => option.value === this.trackResolution
-        );
-        if (index !== -1) {
-            resHolder.selectedIndex = index;
-        }
-
         this.logger.log(`Resolution set to ${this.trackResolution}`);
+        this.selectCurrentResolution();
     }
 
     // make sure the original obj is not mutated, deep copy with modifications
@@ -577,8 +577,6 @@ export class MediaElement extends HTMLElement {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
-        // TODO: don't rely on advanced since they are optional,
-        // add required and min/max/ideal/exact
         // type could be useful for min/max reset if needed
         const constraints = Object.keys(changes).reduce((acc, key) => {
             acc[key] = { ideal: changes[key], exact: changes[key] };
@@ -685,9 +683,10 @@ export class MediaElement extends HTMLElement {
             if (oldSettings[sKey] !== newSettings[sKey]) {
                 changes[sKey] = newSettings[sKey];
                 if (sKey in intendedChanges && intendedChanges[sKey] === newSettings[sKey]) {
-                    this.logger.log(`Success: ${sKey} changed to ${newSettings[sKey]}`);
+                    this.logger.log(`[${sKey}] changed to ${newSettings[sKey]}`);
                 } else if (sKey in intendedChanges && intendedChanges[sKey] !== newSettings[sKey]) {
-                    // usually those are rounding errors
+                    // usually those are just rounding errors -> measure % difference
+                    // also sometimes width and height could be flipped
                     this.logger.log(
                         `Warning: ${sKey} changed to ${newSettings[sKey]} instead of requested ${intendedChanges[sKey]}`
                     );
@@ -697,10 +696,9 @@ export class MediaElement extends HTMLElement {
             }
         });
 
-        this.logger.log(`Changes ${JSON.stringify(changes, null, 2)}`);
+        this.logger.log(`Actual changes ${JSON.stringify(changes, null, 2)}`);
 
         if (controlsReset && trackKind === "video") {
-            this.streamTracks.video.settings = newSettings;
             this.streamTracks.video.capabilities = this.streamTracks.video.getCapabilities
                 ? this.streamTracks.video.getCapabilities()
                 : {};
