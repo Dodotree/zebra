@@ -387,9 +387,10 @@ export class MediaElement extends HTMLElement {
                 : {},
         };
         this.streamTracks[track.kind] = current;
-        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}\n`
-            + "Settings:\n" + JSON.stringify(current.settings, null, 2)
-            + "Stats:\n" + JSON.stringify(track.stats, null, 2));
+        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`
+            + "\nCapabilities:\n" + JSON.stringify(current.capabilities, null, 2)
+            + "\nSettings:\n" + JSON.stringify(current.settings, null, 2)
+            + "\nStats:\n" + JSON.stringify(track.stats, null, 2));
     }
 
     setStream(device, constraints, stream, onRelease) {
@@ -469,7 +470,7 @@ export class MediaElement extends HTMLElement {
         if (!this.trackResolution) return;
         const [w, h] = this.env.whFromResolution(this.trackResolution);
         // request if it's possible to flip width and height (so aspect ratio too?)
-        this.requestTrackChanges("video", "number", { width: w, height: h });
+        this.requestTrackChanges("video", "number", { width: w, height: h, aspectRatio: w / h });
     }
 
     onRequestResolution(event) {
@@ -478,7 +479,7 @@ export class MediaElement extends HTMLElement {
             return;
         }
         const [w, h] = this.env.whFromResolution(event.target.value);
-        this.requestTrackChanges("video", "number", { width: w, height: h });
+        this.requestTrackChanges("video", "number", { width: w, height: h, aspectRatio: w / h });
     }
 
     selectCurrentResolution() {
