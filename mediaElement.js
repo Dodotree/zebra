@@ -581,9 +581,9 @@ export class MediaElement extends HTMLElement {
         // add required and min/max/ideal/exact
         // type could be useful for min/max reset if needed
         const constraints = Object.keys(changes).reduce((acc, key) => {
-            acc[key] = { [key]: { ideal: changes[key], exact: changes[key] } };
+            acc[key] = { ideal: changes[key], exact: changes[key] };
             return acc;
-        }, { advanced: [changes] });
+        }, { advanced: changes });
 
         track
             .applyConstraints(constraints)
@@ -621,11 +621,14 @@ export class MediaElement extends HTMLElement {
     // returns false if anything changed
     // returns intended change keys with their actual values (previous that stayed the same)
     static nothingChanged(newSettings, oldSettings, intendedChanges, log) {
+        log("Nothing changed test:\n"
+            + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
+            + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2));
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                log(`Found change new/old: [${key}] ${newSettings[key]} != ${oldSettings[key]}\n`
-                + `Intended change: ${key} ${intendedChanges[key]}\n`
+                log(`Found change [${key}] new/old:  ${newSettings[key]} != ${oldSettings[key]}\n`
+                + `Intended change: [${key}] = ${intendedChanges[key]}\n`
                 + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
                 return false;
             }
