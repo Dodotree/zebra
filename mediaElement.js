@@ -570,8 +570,9 @@ export class MediaElement extends HTMLElement {
     requestTrackChanges(trackKind, type, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
-        this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`);
-        this.logger.log("Pre-check if such request really needed changes/old:");
+        this.logger.log(`Requesting changes ${JSON.stringify(changes, null, 2)}`
+            + `Current track settings ${JSON.stringify(oldSettings, null, 2)}`
+            + "Pre-check if such request really needed changes/old:");
         if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
@@ -598,6 +599,7 @@ export class MediaElement extends HTMLElement {
                 );
                 if (unchanged) {
                     this.reportUnchanged(unchanged, changes, 1);
+                    // it will restore control inputs if unsuccessful too
                     this.requestStreamChanges(trackKind, changes, constraints);
                     return;
                 }
@@ -605,7 +607,9 @@ export class MediaElement extends HTMLElement {
                 this.logger.log("Success initiating changes:\n"
                     + "Track Constraints:\n" + JSON.stringify(constraints, null, 2)
                     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
+                    + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2)
                     + "Stats:\n" + JSON.stringify(track.stats, null, 2));
+                // only need oldChanges for comparison since newSettings are already set
                 this.changeSetting(trackKind, oldSettings, changes);
             })
             .catch((e) => {
@@ -622,7 +626,7 @@ export class MediaElement extends HTMLElement {
             if (newSettings[key] !== oldSettings[key]) {
                 log(`Found change new/old: [${key}] ${newSettings[key]} != ${oldSettings[key]}\n`
                 + `Intended change: ${key} ${intendedChanges[key]}\n`
-                + `typeof ${typeof oldSettings[key]} ${typeof newSettings[key]}`);
+                + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
                 return false;
             }
         }

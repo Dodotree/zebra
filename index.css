@@ -62,6 +62,7 @@ media-controls form fieldset {
 video,
 canvas {
     display: block;
+    border: 1px solid mediumslateblue;
 }
 
 footer {
