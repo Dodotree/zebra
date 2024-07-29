@@ -547,7 +547,7 @@ export class MediaElement extends HTMLElement {
                             this.logger.log
                         );
                         if (unchanged) {
-                            this.reportUnchanged(unchanged, changes, 2);
+                            this.reportUnchanged(constraints, unchanged, changes, 2);
                             // restore to the actual value instead of what we tried to set
                             this.changeControls(trackKind, unchanged);
                             return;
