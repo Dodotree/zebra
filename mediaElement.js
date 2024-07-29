@@ -633,9 +633,10 @@ export class MediaElement extends HTMLElement {
         return unchanged;
     }
 
-    reportUnchanged(unchanged, intendedChanges, attempt) {
+    reportUnchanged(constraints, unchanged, intendedChanges, attempt) {
         this.logger.log(
-            `Warning: Nothing changed. Intended changes ${JSON.stringify(intendedChanges, null, 2)}`
+            `Warning: Nothing changed.\nIntended changes ${JSON.stringify(intendedChanges, null, 2)}`
+            + `Used Constraints ${JSON.stringify(constraints, null, 2)}`
             + `Attempt ${attempt} left unchanged ${JSON.stringify(unchanged, null, 2)}`
         );
     }
