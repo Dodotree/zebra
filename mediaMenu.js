@@ -153,6 +153,7 @@ export class MediaMenu extends HTMLElement {
             let [w, h] = this.env.orientedResolution(640, 480);
             constraints.video.width = { ideal: w };
             constraints.video.height = { ideal: h };
+            constraints.video.aspectRatio = { ideal: w / h };
         }
 
         this.logger.log(`Selected ${deviceLabel}`);
