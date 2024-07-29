@@ -334,14 +334,19 @@ export class MediaElement extends HTMLElement {
             },
         }));
         this.video.onloadedmetadata = this.onVideoLoaded.bind(this);
+        this.video.onloadeddata = this.onVideoLoaded.bind(this);
         this.video.onplaying = this.onVideoLoaded.bind(this);
+        this.video.onwaiting = this.onVideoLoaded.bind(this);
+        this.video.onstalled = this.onVideoLoaded.bind(this);
+        this.video.onsuspend = this.onVideoLoaded.bind(this);
+        this.video.onemptied = this.onVideoLoaded.bind(this);
+        this.video.onerror = this.onVideoLoaded.bind(this);
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
     onVideoLoaded(event) {
         this.logger.log(
-            `Video ${this.video.videoWidth}x${this.video.videoHeight}`
-            + JSON.stringify(event, null, 2)
+            `Video ${event.type} resolution: ${this.video.videoWidth}x${this.video.videoHeight}`
         );
     }
 
@@ -396,10 +401,10 @@ export class MediaElement extends HTMLElement {
                 : {},
         };
         this.streamTracks[track.kind] = current;
-        this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`
-            + "\nCapabilities:\n" + JSON.stringify(current.capabilities, null, 2)
-            + "\nSettings:\n" + JSON.stringify(current.settings, null, 2)
-            + "\nStats:\n" + JSON.stringify(track.stats, null, 2));
+        // this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`
+        //     + "\nCapabilities:\n" + JSON.stringify(current.capabilities, null, 2)
+        //     + "\nSettings:\n" + JSON.stringify(current.settings, null, 2)
+        //     + "\nStats:\n" + JSON.stringify(track.stats, null, 2));
     }
 
     setStream(device, constraints, stream, onRelease) {
@@ -503,6 +508,8 @@ export class MediaElement extends HTMLElement {
     }
 
     setResolution(w, h) {
+        this.onVideoLoaded({ type: "setting-resolution" });
+
         // keep in mind video frame should be set to size/pixelRatio
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
@@ -510,7 +517,7 @@ export class MediaElement extends HTMLElement {
         this.initGL(w, h);
         // keeping the standard order in naming resolutions
         this.trackResolution = (w > h) ? `${w}x${h}` : `${h}x${w}`;
-        this.logger.log(`Resolution set to ${this.trackResolution}`);
+        this.logger.log(`Resolution is set to ${this.trackResolution}`);
         this.selectCurrentResolution();
     }
 
@@ -580,9 +587,9 @@ export class MediaElement extends HTMLElement {
     requestTrackChanges(trackKind, type, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
-        this.logger.log(`Requesting track changes ${JSON.stringify(changes, null, 2)}`
-            + `Current track settings ${JSON.stringify(oldSettings, null, 2)}`
-            + "Pre-check if such request really needed changes/old:");
+        // this.logger.log(`Requesting track changes ${JSON.stringify(changes, null, 2)}`
+        //     + `Current track settings ${JSON.stringify(oldSettings, null, 2)}`
+        //     + "Pre-check if such request really needed changes/old:");
         if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
@@ -612,11 +619,11 @@ export class MediaElement extends HTMLElement {
                     return;
                 }
                 // Successful
-                this.logger.log("Success initiating changes:\n"
-                    + "Track Constraints:\n" + JSON.stringify(constraints, null, 2)
-                    + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
-                    + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2)
-                    + "Stats:\n" + JSON.stringify(track.stats, null, 2));
+                // this.logger.log("Success initiating changes:\n"
+                //     + "Track Constraints:\n" + JSON.stringify(constraints, null, 2)
+                //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
+                //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2)
+                //     + "Stats:\n" + JSON.stringify(track.stats, null, 2));
                 // only need oldChanges for comparison since newSettings are already set
                 this.changeSetting(trackKind, oldSettings, changes);
             })
@@ -630,15 +637,15 @@ export class MediaElement extends HTMLElement {
     // returns false if anything changed
     // returns intended change keys with their actual values (previous that stayed the same)
     static nothingChanged(newSettings, oldSettings, intendedChanges, log) {
-        log("Nothing changed test:\n"
-            + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
-            + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2));
+        // log("Nothing changed test:\n"
+        //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
+        //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2));
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                log(`Found change [${key}] new/old:  ${newSettings[key]} != ${oldSettings[key]}\n`
-                + `Intended change: [${key}] = ${intendedChanges[key]}\n`
-                + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
+                // log(`Found change [${key}] new/old:  ${newSettings[key]} != ${oldSettings[key]}\n`
+                // + `Intended change: [${key}] = ${intendedChanges[key]}\n`
+                // + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
                 return false;
             }
         }
