@@ -152,6 +152,7 @@ export class MediaElement extends HTMLElement {
         this.toggleAttribute("showvideo", value);
         if (!this.video) return;
         // those dimensions could be different from track settings
+        // could be 0 if not loaded or waiting
         this.setVideoSize(
             this.video.videoWidth,
             this.video.videoHeight
