@@ -513,8 +513,6 @@ export class MediaElement extends HTMLElement {
     }
 
     setResolution(w, h) {
-        this.onVideoLoaded({ type: "setting-resolution" });
-
         // keep in mind video frame should be set to size/pixelRatio
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
