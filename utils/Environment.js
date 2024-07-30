@@ -73,7 +73,7 @@ export default class Environment extends EventEmitter {
             this.logger.log("Error: resolution should be in format \"width x height\"");
             return [];
         }
-        return this.orientedResolution(w, h);
+        return [w, h]; // this.orientedResolution(w, h);
     }
 
     watchOrientation() {

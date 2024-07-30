@@ -487,9 +487,9 @@ export class MediaElement extends HTMLElement {
 
     setOrientation() {
         if (!this.trackResolution) return;
-        const [w, h] = this.env.whFromResolution(this.trackResolution);
+        // const [w, h] = this.env.whFromResolution(this.trackResolution);
         // request if it's possible to flip width and height (so aspect ratio too?)
-        this.requestTrackChanges("video", "number", { width: w, height: h });
+        // this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
     onRequestResolution(event) {
@@ -521,7 +521,7 @@ export class MediaElement extends HTMLElement {
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
         // keeping the standard order in naming resolutions
-        this.trackResolution = (w > h) ? `${w}x${h}` : `${h}x${w}`;
+        this.trackResolution = `${w}x${h}`;
         this.logger.log(`Resolution is set to ${this.trackResolution}`);
         this.selectCurrentResolution();
     }
