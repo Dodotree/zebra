@@ -303,7 +303,7 @@ export default class VideoGL {
     }
 
     destroy() {
-        this.logger.log("Drawing frame");
+        this.logger.log("Destroying webGL");
 
         try {
             this.clock.stop();

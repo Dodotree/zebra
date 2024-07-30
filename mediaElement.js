@@ -93,6 +93,7 @@ export class MediaElement extends HTMLElement {
         this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
         this.onShowChange = this.onShowChange.bind(this);
         this.setOrientation = this.setOrientation.bind(this);
+        this.onVideoPlayed = this.onVideoPlayed.bind(this)
 
         /**
          * [config] Default `false`.
@@ -351,14 +352,22 @@ export class MediaElement extends HTMLElement {
                 crossOrigin: "anonymous",
             },
         }));
-        this.video.onloadedmetadata = this.onVideoPlayed.bind(this);
-        this.video.onloadeddata = this.onVideoPlayed.bind(this);
-        this.video.onplaying = this.onVideoPlayed.bind(this);
-        this.video.onwaiting = this.onVideoPlayed.bind(this);
-        this.video.onstalled = this.onVideoPlayed.bind(this);
-        this.video.onsuspend = this.onVideoPlayed.bind(this);
-        this.video.onemptied = this.onVideoPlayed.bind(this);
-        this.video.onerror = this.onVideoPlayed.bind(this);
+        // loadstart, loadedmetadata, loadeddata, emptied, suspend, waiting, stalled, error
+        // canplay, canplaythrough, completed, ended,
+        // audioprocess, progress, timeupdate, playing,
+        // play, pause, seeked, seeking, volumechange, ratechange
+        this.video.onloadedmetadata = this.onVideoPlayed;
+        this.video.onloadeddata = this.onVideoPlayed;
+        this.video.onplaying = this.onVideoPlayed;
+        this.video.onemptied = this.onVideoPlayed;
+        this.video.onsuspend = this.onVideoPlayed;
+        this.video.onwaiting = this.onVideoPlayed;
+        this.video.onstalled = this.onVideoPlayed;
+        this.video.onerror = this.onVideoPlayed;
+        this.video.oncompleted = this.onVideoPlayed;
+        this.video.onended = this.onVideoPlayed;
+        this.video.onplay = this.onVideoPlayed;
+        this.video.onpause = this.onVideoPlayed;
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
@@ -467,6 +476,9 @@ export class MediaElement extends HTMLElement {
             } else if (track.kind === "audio") {
                 this.initAudioTrackUI(stream);
             }
+            track.onended = this.onVideoPlayed.bind(this);
+            track.onmute = this.onVideoPlayed.bind(this);
+            track.onunmute = this.onVideoPlayed.bind(this);
         });
 
         this.env.on("orientation", this.setOrientation);
@@ -853,11 +865,13 @@ export class MediaElement extends HTMLElement {
     stopDeviceTracks() {
         if (!this.video || !this.video.srcObject) return;
         this.video.srcObject.getTracks().forEach((track) => {
+            // TODO: remove track event listeners
             track.stop();
         });
+        // TODO: remove video event listeners
         this.video.srcObject = null;
         this.streamTracks.audio.track = null;
-        this.streamTracks.audio.video = null;
+        this.streamTracks.video.track = null;
     }
 
     destroy() {
