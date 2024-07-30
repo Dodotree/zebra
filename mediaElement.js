@@ -163,6 +163,7 @@ export class MediaElement extends HTMLElement {
             ? [vidW / this.env.pixelRatio, vidH / this.env.pixelRatio] : [1, 1];
         this.video.style.width = `${w}px`;
         this.video.style.height = `${h}px`;
+        this.logger.log(`Video style size set to ${w}x${h} from ${vidW}x${vidH} resolution`);
     }
 
     /**
