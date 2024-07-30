@@ -152,7 +152,7 @@ export class MediaElement extends HTMLElement {
         this.toggleAttribute("showvideo", value);
         if (!this.video) return;
         // those dimensions could be different from track settings
-        // could be 0 if not loaded or waiting
+        // could be 0 if not loaded or stalled, waiting etc.
         this.setVideoSize(
             this.video.videoWidth,
             this.video.videoHeight
@@ -165,6 +165,22 @@ export class MediaElement extends HTMLElement {
         this.video.style.width = `${w}px`;
         this.video.style.height = `${h}px`;
         this.logger.log(`Video style size set to ${w}x${h} from ${vidW}x${vidH} resolution`);
+    }
+
+    setOrientation() {
+        if (!this.trackResolution) return;
+        this.onVideoPlayed({ type: "orientation" });
+    }
+
+    onVideoPlayed(event) {
+        this.logger.log(
+            `Video ${event.type} resolution: ${this.video.videoWidth}x${this.video.videoHeight}`
+        );
+        if (this.video.videoWidth
+            && this.video.videoHeight
+            && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
+            this.setResolution(this.video.videoWidth, this.video.videoHeight);
+        }
     }
 
     /**
@@ -335,18 +351,18 @@ export class MediaElement extends HTMLElement {
                 crossOrigin: "anonymous",
             },
         }));
-        this.video.onloadedmetadata = this.onVideoLoaded.bind(this);
-        this.video.onloadeddata = this.onVideoLoaded.bind(this);
-        this.video.onplaying = this.onVideoLoaded.bind(this);
-        this.video.onwaiting = this.onVideoLoaded.bind(this);
-        this.video.onstalled = this.onVideoLoaded.bind(this);
-        this.video.onsuspend = this.onVideoLoaded.bind(this);
-        this.video.onemptied = this.onVideoLoaded.bind(this);
-        this.video.onerror = this.onVideoLoaded.bind(this);
+        this.video.onloadedmetadata = this.onVideoPlayed.bind(this);
+        this.video.onloadeddata = this.onVideoPlayed.bind(this);
+        this.video.onplaying = this.onVideoPlayed.bind(this);
+        this.video.onwaiting = this.onVideoPlayed.bind(this);
+        this.video.onstalled = this.onVideoPlayed.bind(this);
+        this.video.onsuspend = this.onVideoPlayed.bind(this);
+        this.video.onemptied = this.onVideoPlayed.bind(this);
+        this.video.onerror = this.onVideoPlayed.bind(this);
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
-    onVideoLoaded(event) {
+    onVideoPlayed(event) {
         this.logger.log(
             `Video ${event.type} resolution: ${this.video.videoWidth}x${this.video.videoHeight}`
         );
@@ -485,13 +501,6 @@ export class MediaElement extends HTMLElement {
             this.env.os
         );
         this.setResolution(settings.width, settings.height);
-    }
-
-    setOrientation() {
-        if (!this.trackResolution) return;
-        // const [w, h] = this.env.whFromResolution(this.trackResolution);
-        // request if it's possible to flip width and height (so aspect ratio too?)
-        // this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
     onRequestResolution(event) {
