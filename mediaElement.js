@@ -150,11 +150,11 @@ export class MediaElement extends HTMLElement {
      */
     set showvideo(value) {
         this.toggleAttribute("showvideo", value);
-
         if (!this.video) return;
+        // those dimensions could be different from track settings
         this.setVideoSize(
-            this.streamTracks.video.settings.width,
-            this.streamTracks.video.settings.height
+            this.video.videoWidth,
+            this.video.videoHeight
         );
     }
 
