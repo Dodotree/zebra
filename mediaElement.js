@@ -174,9 +174,6 @@ export class MediaElement extends HTMLElement {
 
     setOrientation() {
         if (!this.trackResolution || !this.video) return;
-        this.video.pause();
-        this.video.play();
-        this.video.srcObject = this.video.srcObject;
         this.onVideoPlayed({ type: "orientation" });
     }
 
@@ -372,16 +369,24 @@ export class MediaElement extends HTMLElement {
         // play, pause, seeked, seeking, volumechange, ratechange
         this.video.onloadedmetadata = this.onVideoPlayed;
         this.video.onloadeddata = this.onVideoPlayed;
-        this.video.onplaying = this.onVideoPlayed;
         this.video.onemptied = this.onVideoPlayed;
+
         this.video.onsuspend = this.onVideoPlayed;
         this.video.onwaiting = this.onVideoPlayed;
         this.video.onstalled = this.onVideoPlayed;
         this.video.onerror = this.onVideoPlayed;
+
         this.video.oncompleted = this.onVideoPlayed;
         this.video.onended = this.onVideoPlayed;
+
         this.video.onplay = this.onVideoPlayed;
         this.video.onpause = this.onVideoPlayed;
+        this.video.onseeked = this.onVideoPlayed;
+        this.video.onseeking = this.onVideoPlayed;
+
+        this.video.onplaying = this.onVideoPlayed;
+        this.video.onprogress = this.onVideoPlayed;
+        this.video.ontimeupdate = this.onVideoPlayed;
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
