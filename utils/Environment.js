@@ -29,8 +29,10 @@ export default class Environment extends EventEmitter {
         this.logger = logger || console;
 
         this.setOrientation = utilsUI.throttle(this.setOrientation.bind(this), 400);
+        this.watchResizeOrientation = this.watchResizeOrientation.bind(this);
 
         this.watchOrientation();
+        window.addEventListener("resize", this.watchResizeOrientation.bind(this));
     }
 
     static getOS() {
@@ -74,6 +76,10 @@ export default class Environment extends EventEmitter {
             return [];
         }
         return [w, h]; // this.orientedResolution(w, h);
+    }
+
+    watchResizeOrientation() {
+        this.setOrientation(window.innerWidth > window.innerHeight);
     }
 
     watchOrientation() {
