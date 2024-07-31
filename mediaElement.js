@@ -163,7 +163,9 @@ export class MediaElement extends HTMLElement {
     }
 
     setVideoSize(vidW, vidH) {
-        const [w, h] = this.getAttribute("showvideo")
+        const isVisible = this.getAttribute("showvideo");
+        this.video.classList.toggle("keep-on-screen", !isVisible);
+        const [w, h] = isVisible
             ? [vidW / this.env.pixelRatio, vidH / this.env.pixelRatio] : [1, 1];
         this.video.style.width = `${w}px`;
         this.video.style.height = `${h}px`;
