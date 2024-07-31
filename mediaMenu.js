@@ -148,7 +148,7 @@ export class MediaMenu extends HTMLElement {
             constraints.video.frameRate = { ideal: 110 };
         } else if (device === "R200 Depth") {
             constraints.video.width = { ideal: 628, max: 640 };
-        } else {
+        } else if (constraints.video) {
             // default webcam dimensions adjusted for orientation
             let [w, h] = this.env.orientedResolution(640, 480);
             constraints.video.width = { ideal: w };
