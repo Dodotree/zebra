@@ -17,6 +17,12 @@ export class MediaMenu extends HTMLElement {
          */
         this.select = null;
 
+        /**
+         * Each device has an array of cloned streamIDs.
+         * @type {Object.<string, [string, string]>}
+         */
+        this.deviceIDstreams = {};
+
         this.onReleaseDevice = this.onReleaseDevice.bind(this);
     }
 
@@ -72,6 +78,7 @@ export class MediaMenu extends HTMLElement {
                         })
                     );
                     groups[groupId].forEach((mediaDevice) => {
+                        this.deviceIDstreams[mediaDevice.deviceId] = [];
                         const kind = mediaDevice.kind.replace("input", "");
                         const label = mediaDevice.label || (kind === "video" ? `Camera ${index}` : `Microphone ${index}`);
                         group.appendChild(
@@ -86,7 +93,7 @@ export class MediaMenu extends HTMLElement {
                             })
                         );
 
-                        this.logger.log(`Steam ${index} id=${mediaDevice.deviceId}`);
+                        this.logger.log(`Steam ${index} deviceId=${mediaDevice.deviceId}`);
                         if (mediaDevice.getCapabilities) {
                             this.logger.log(
                                 `Capabilities:\n${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`
@@ -111,18 +118,27 @@ export class MediaMenu extends HTMLElement {
         // const supportedOptions = navigator.mediaDevices.getSupportedConstraints();
     }
 
-    getStream(id, device, constraints) {
+    addStream(stream, deviceId, deviceName, constraints) {
+        this.deviceIDstreams[deviceId].push(stream);
+        const mediaUI = new MediaElement(this.env, deviceId, stream.id);
+        document.body.insertBefore(
+            mediaUI,
+            document.querySelector("footer")
+        );
+        mediaUI.setStream(deviceName, constraints, stream, this.onReleaseDevice);
+    }
+
+    getStream(deviceId, deviceName, constraints) {
+        if (this.deviceIDstreams[deviceId].length > 0) {
+            const stream = this.deviceIDstreams[deviceId][0].clone();
+            this.deviceIDstreams[deviceId].push(stream);
+            this.addStream(stream, deviceId, deviceName, constraints);
+            return;
+        }
         navigator.mediaDevices
             .getUserMedia(constraints)
             .then((stream) => {
-                const mediaUI = new MediaElement(this.env);
-                document.body.insertBefore(
-                    mediaUI,
-                    document.querySelector("footer")
-                );
-                mediaUI.id = id;
-                mediaUI.setStream(device, constraints, stream, this.onReleaseDevice);
-                this.select.options[this.select.selectedIndex].disabled = true;
+                this.addStream(stream, deviceId, deviceName, constraints);
             })
             .catch((error) => {
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
@@ -132,21 +148,19 @@ export class MediaMenu extends HTMLElement {
 
     onAddStream() {
         const selected = this.select.options[this.select.selectedIndex];
-        if (selected.disabled) {
-            return;
-        }
         const deviceLabel = selected.text;
+        const deviceId = selected.value;
         const constraints = selected.getAttribute("kind") === "audioinput"
-            ? { audio: { deviceId: { exact: this.select.value } } }
-            : { video: { deviceId: { exact: this.select.value } } };
+            ? { audio: { deviceId: { exact: deviceId } } }
+            : { video: { deviceId: { exact: deviceId } } };
 
         // default RealSense on first load (ideal defaults)
-        const device = this.constructor.getDeviceName(deviceLabel);
-        if (device === "SR300 RGB") {
+        const deviceName = this.constructor.getDeviceName(deviceLabel);
+        if (deviceName === "SR300 RGB") {
             constraints.video.width = { ideal: 1280 };
-        } else if (device === "SR300 Depth") {
+        } else if (deviceName === "SR300 Depth") {
             constraints.video.frameRate = { ideal: 110 };
-        } else if (device === "R200 Depth") {
+        } else if (deviceName === "R200 Depth") {
             constraints.video.width = { ideal: 628, max: 640 };
         } else if (constraints.video) {
             // default webcam dimensions adjusted for orientation
@@ -162,7 +176,7 @@ export class MediaMenu extends HTMLElement {
         // but even if we only use deviceId as constrain to get the stream
         // most likely it will provide default webcam 640x480 and not what it's capable of
 
-        this.getStream(this.select.value, device, constraints);
+        this.getStream(this.select.value, deviceName, constraints);
     }
 
     static getDeviceName(label) {
@@ -183,13 +197,9 @@ export class MediaMenu extends HTMLElement {
         return label;
     }
 
-    onReleaseDevice(id) {
-        const index = Array.from(this.select.options).findIndex((option) => option.value === id);
-        if (index === -1) {
-            this.logger.log(`Failed to enable device ${id}, not found in the list`);
-            return;
-        }
-        this.select.options[index].disabled = false;
+    onReleaseDevice(deviceId, streamId) {
+        this.deviceIDstreams[deviceId] = this.deviceIDstreams[deviceId]
+            .filter((stream) => stream.id !== streamId);
     }
 }
 

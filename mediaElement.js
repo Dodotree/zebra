@@ -14,10 +14,12 @@ export class MediaElement extends HTMLElement {
         if (checkbox && checkbox.checked !== newValue) checkbox.checked = newValue;
     }
 
-    constructor(env) {
+    constructor(env, deviceId, streamId) {
         super();
 
         this.env = env;
+        this.deviceId = deviceId;
+        this.streamId = streamId;
 
         /**
          * @type {HTMLVideoElement}
@@ -93,7 +95,7 @@ export class MediaElement extends HTMLElement {
         this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
         this.onShowChange = this.onShowChange.bind(this);
         this.setOrientation = this.setOrientation.bind(this);
-        this.onVideoPlayed = this.onVideoPlayed.bind(this)
+        this.onVideoPlayed = this.onVideoPlayed.bind(this);
 
         /**
          * [config] Default `false`.
@@ -282,7 +284,7 @@ export class MediaElement extends HTMLElement {
                 tag: "input",
                 attrs: {
                     type: "checkbox",
-                    name: `showvideo-${this.id}`,
+                    name: `showvideo-${this.streamId}`,
                     class: "showvideo",
                     value: true,
                 },
@@ -292,7 +294,7 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "label",
                 text: "video",
-                attrs: { htmlFor: `showvideo-${this.id}` },
+                attrs: { htmlFor: `showvideo-${this.streamId}` },
             })
         );
         this.appendChild(
@@ -300,7 +302,7 @@ export class MediaElement extends HTMLElement {
                 tag: "input",
                 attrs: {
                     type: "checkbox",
-                    name: `showwebgl-${this.id}`,
+                    name: `showwebgl-${this.streamId}`,
                     class: "showwebgl",
                     value: true,
                 },
@@ -310,7 +312,7 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "label",
                 text: "webGL",
-                attrs: { htmlFor: `showwebgl-${this.id}` },
+                attrs: { htmlFor: `showwebgl-${this.streamId}` },
             })
         );
         this.appendChild(
@@ -318,7 +320,7 @@ export class MediaElement extends HTMLElement {
                 tag: "input",
                 attrs: {
                     type: "checkbox",
-                    name: `showoutcanvas-${this.id}`,
+                    name: `showoutcanvas-${this.streamId}`,
                     class: "showoutcanvas",
                     value: true,
                 },
@@ -328,7 +330,7 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "label",
                 text: "outCanvas",
-                attrs: { htmlFor: `showoutcanvas-${this.id}` },
+                attrs: { htmlFor: `showoutcanvas-${this.streamId}` },
             })
         );
 
@@ -336,7 +338,7 @@ export class MediaElement extends HTMLElement {
             utilsUI.get({
                 tag: "select",
                 attrs: {
-                    name: `resolution-select-${this.id}`,
+                    name: `resolution-select-${this.streamId}`,
                     class: "resolution-select",
                 },
             })
@@ -369,17 +371,6 @@ export class MediaElement extends HTMLElement {
         this.video.onplay = this.onVideoPlayed;
         this.video.onpause = this.onVideoPlayed;
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
-    }
-
-    onVideoPlayed(event) {
-        this.logger.log(
-            `Video ${event.type} resolution: ${this.video.videoWidth}x${this.video.videoHeight}`
-        );
-        if (this.video.videoWidth
-            && this.video.videoHeight
-            && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
-            this.setResolution(this.video.videoWidth, this.video.videoHeight);
-        }
     }
 
     initAudioTrackUI(stream) {
@@ -897,7 +888,7 @@ export class MediaElement extends HTMLElement {
         }
         this.stopDeviceTracks();
         this.destroyCanvases();
-        this.onRelease(this.id);
+        this.onRelease(this.deviceId, this.streamId);
         this.remove();
     }
 
@@ -913,8 +904,8 @@ export class MediaElement extends HTMLElement {
 
     initGL(w, h) {
         this.destroyCanvases();
-        const webGLCanvasID = "webGLCanvas" + this.streamdevice;
-        const outCanvasID = "outCanvas" + this.streamdevice;
+        const webGLCanvasID = "webGLCanvas" + this.streamId;
+        const outCanvasID = "outCanvas" + this.streamId;
         this.appendChild(
             utilsUI.get({
                 tag: "canvas",
