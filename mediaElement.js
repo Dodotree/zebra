@@ -173,7 +173,9 @@ export class MediaElement extends HTMLElement {
     }
 
     setOrientation() {
-        if (!this.trackResolution) return;
+        if (!this.trackResolution || !this.video) return;
+        this.video.pause();
+        this.video.play();
         this.onVideoPlayed({ type: "orientation" });
     }
 
@@ -184,6 +186,7 @@ export class MediaElement extends HTMLElement {
         if (this.video.videoWidth
             && this.video.videoHeight
             && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
+            this.logger.log("Video resolution changed");
             this.setResolution(this.video.videoWidth, this.video.videoHeight);
         }
     }
