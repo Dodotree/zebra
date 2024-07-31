@@ -181,15 +181,21 @@ export class MediaElement extends HTMLElement {
     }
 
     onVideoPlayed(event) {
-        this.logger.log(
-            `Video ${event.type} resolution: ${this.video.videoWidth}x${this.video.videoHeight}`
-        );
+        this.logger.log(`${event.type} event`);
+        this.logDimensions();
         if (this.video.videoWidth
             && this.video.videoHeight
             && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
             this.logger.log("Video resolution changed");
             this.setResolution(this.video.videoWidth, this.video.videoHeight);
         }
+    }
+
+    logDimensions() {
+        this.logger.log(
+            `Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`
+            + `vs. ${this.trackResolution} resolution`
+        );
     }
 
     /**
@@ -461,6 +467,12 @@ export class MediaElement extends HTMLElement {
                 text: "✕",
             })
         ).onclick = this.destroy.bind(this);
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "?",
+            })
+        ).onclick = this.logDimensions.bind(this);
 
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
