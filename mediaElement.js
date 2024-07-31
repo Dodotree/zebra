@@ -176,6 +176,7 @@ export class MediaElement extends HTMLElement {
         if (!this.trackResolution || !this.video) return;
         this.video.pause();
         this.video.play();
+        this.video.srcObject = this.video.srcObject;
         this.onVideoPlayed({ type: "orientation" });
     }
 
