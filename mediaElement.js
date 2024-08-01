@@ -175,7 +175,7 @@ export class MediaElement extends HTMLElement {
     setOrientation() {
         if (!this.trackResolution || !this.video) return;
         this.onVideoPlayed({ type: "orientation" });
-        this.video.ontimeupdate = this.anticipatedOrientationChange;
+        this.video.ontimeupdate = this.anticipatedOrientationChange.bind(this);
     }
 
     anticipatedOrientationChange() {
