@@ -33,6 +33,9 @@ export default class Environment extends EventEmitter {
 
         this.watchOrientation();
         window.addEventListener("resize", this.watchResizeOrientation.bind(this));
+
+        // TODO could be useful, but still it may vary between devices
+        // const supportedOptions = navigator.mediaDevices.getSupportedConstraints();
     }
 
     static getOS() {

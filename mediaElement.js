@@ -165,6 +165,7 @@ export class MediaElement extends HTMLElement {
     setVideoSize(vidW, vidH) {
         const isVisible = this.getAttribute("showvideo");
         this.video.classList.toggle("keep-on-screen", !isVisible);
+        // keep in mind video frame should be set to size/pixelRatio
         const [w, h] = isVisible
             ? [vidW / this.env.pixelRatio, vidH / this.env.pixelRatio] : [1, 1];
         this.video.style.width = `${w}px`;
@@ -184,7 +185,7 @@ export class MediaElement extends HTMLElement {
             && this.video.videoHeight
             && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
             this.logger.log("Video resolution changed");
-            this.setResolution(this.video.videoWidth, this.video.videoHeight);
+            this.setResolution();
         }
     }
 
@@ -268,13 +269,12 @@ export class MediaElement extends HTMLElement {
     }
 
     openControls() {
+        this.querySelector("#open-controls").style.display = "none";
         Object.keys(this.streamTracks).forEach((kind) => {
-            // TODO reuse controls if possible
-            // remove controls from previous instance if any, connect to this one
             if (this.streamTracks[kind].track) {
                 try {
                     this.controls[kind] = new MediaControls();
-                    document.body.insertBefore(this.controls[kind], this);
+                    this.appendChild(this.controls[kind]);
                     this.controls[kind].init(
                         kind,
                         this.streamTracks[kind],
@@ -390,6 +390,7 @@ export class MediaElement extends HTMLElement {
         // this.video.onplaying = this.onVideoPlayed;
         // this.video.onprogress = this.onVideoPlayed;
         // this.video.ontimeupdate = this.onVideoPlayed;
+        // deprecated but might be still working
         // this.video.audioprocess = this.onVideoPlayed;
 
         // HTMLVideoElement events
@@ -474,21 +475,9 @@ export class MediaElement extends HTMLElement {
         caption.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "⚙",
-            })
-        ).onclick = this.openControls.bind(this);
-        caption.appendChild(
-            utilsUI.get({
-                tag: "button",
                 text: "✕",
             })
         ).onclick = this.destroy.bind(this);
-        caption.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "?",
-            })
-        ).onclick = this.logDimensions.bind(this);
 
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
@@ -501,11 +490,17 @@ export class MediaElement extends HTMLElement {
             } else if (track.kind === "audio") {
                 this.initAudioTrackUI(stream);
             }
-            track.onended = this.onVideoPlayed.bind(this);
-            track.onmute = this.onVideoPlayed.bind(this);
-            track.onunmute = this.onVideoPlayed.bind(this);
+            track.onended = this.onVideoPlayed;
+            track.onmute = this.onVideoPlayed;
+            track.onunmute = this.onVideoPlayed;
         });
-
+        this.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "⚙ Open track controls",
+                attrs: { id: "open-controls" },
+            })
+        ).onclick = this.openControls.bind(this);
         this.env.on("orientation", this.setOrientation);
     }
 
@@ -537,7 +532,6 @@ export class MediaElement extends HTMLElement {
             this.streamdevice,
             this.env.os
         );
-        this.setResolution(settings.width, settings.height);
     }
 
     onRequestResolution(event) {
@@ -560,8 +554,9 @@ export class MediaElement extends HTMLElement {
         }
     }
 
-    setResolution(w, h) {
-        // keep in mind video frame should be set to size/pixelRatio
+    setResolution() {
+        // TODO: verify influence of cut/resize constraint on this
+        const [w, h] = [this.video.videoWidth, this.video.videoHeight];
         this.setVideoSize(w, h);
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
@@ -771,18 +766,11 @@ export class MediaElement extends HTMLElement {
                 ? this.streamTracks.video.getCapabilities()
                 : {};
             this.resetResolutions();
+            // TODO: reset controls
             return;
         }
 
         this.changeControls(trackKind, changes);
-
-        if (["width", "height", "aspectRatio"].some(v=> Object.keys(changes).indexOf(v) >= 0)) {
-            // aspectRatio adjusts width and height to closest value in integers w,h
-            this.setResolution(
-                newSettings.width,
-                newSettings.height
-            );
-        }
     }
 
     static getAspectRatioTag(width, height) {
@@ -940,7 +928,7 @@ export class MediaElement extends HTMLElement {
         this.destroyCanvases();
         const webGLCanvasID = "webGLCanvas" + this.streamId;
         const outCanvasID = "outCanvas" + this.streamId;
-        this.appendChild(
+        this.insertBefore(
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
@@ -950,9 +938,10 @@ export class MediaElement extends HTMLElement {
                     height: h,
                     style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
                 },
-            })
+            }),
+            this.video
         );
-        this.appendChild(
+        this.insertBefore(
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
@@ -962,7 +951,8 @@ export class MediaElement extends HTMLElement {
                     height: h,
                     style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
                 },
-            })
+            }),
+            this.video
         );
         try {
             this.canvasGL = new VideoGL(

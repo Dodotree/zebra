@@ -11,16 +11,6 @@ select {
 button {
     font-size: 1.61rem;
 }
-details {
-    margin: 1rem;
-}
-details select {
-    padding: 0.33rem;
-}
-summary {
-    background-color: #eee;
-    padding: 1rem;
-}
 
 media-menu{
     display: block;
@@ -43,6 +33,13 @@ media-element[showoutcanvas] canvas.outCanvas{
         display: block;
 }
 
+details select {
+    padding: 0.33rem;
+}
+summary {
+    background-color: #eee;
+    padding: 1rem;
+}
 media-controls form {
     padding: 20px;
     column-count: 3;

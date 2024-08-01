@@ -11,12 +11,18 @@ export class MediaControls extends HTMLElement {
         this.reset();
         const details = this.appendChild(document.createElement("details"));
 
-        details.appendChild(
+        const summary = details.appendChild(
             utilsUI.get({
                 tag: "summary",
                 text: `${kind} ${trackInfo.label} controls`,
             })
         );
+        summary.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ).onclick = this.destroy.bind(this);
 
         this.form = details.appendChild(document.createElement("form"));
         this.form.kind = kind;
@@ -218,6 +224,11 @@ export class MediaControls extends HTMLElement {
             inpNum.addEventListener("input", callback);
         }
         return pElement;
+    }
+
+    destroy() {
+        this.reset();
+        this.remove();
     }
 }
 
