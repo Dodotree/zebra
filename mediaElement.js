@@ -175,10 +175,9 @@ export class MediaElement extends HTMLElement {
     setOrientation() {
         if (!this.trackResolution || !this.video) return;
         this.onVideoPlayed({ type: "orientation" });
+        // phones adjust orientation as they wish
         this.video.ontimeupdate = this.anticipatedChange.bind(this);
-        setTimeout(() => {
-            this.video.ontimeupdate = null;
-        }, 200);
+        setTimeout(() => { this.video.ontimeupdate = null; }, 1000);
     }
 
     anticipatedChange() {
@@ -373,6 +372,7 @@ export class MediaElement extends HTMLElement {
                 crossOrigin: "anonymous",
             },
         }));
+        // HTMLMediaElement events
         // loadstart, loadedmetadata, loadeddata, emptied, suspend, waiting, stalled, error
         // canplay, canplaythrough, completed, ended,
         // audioprocess, progress, timeupdate, playing,
@@ -386,6 +386,7 @@ export class MediaElement extends HTMLElement {
         this.video.onstalled = this.onVideoPlayed;
         this.video.onerror = this.onVideoPlayed;
 
+        this.video.onabort = this.onVideoPlayed;
         this.video.oncompleted = this.onVideoPlayed;
         this.video.onended = this.onVideoPlayed;
 
@@ -396,6 +397,11 @@ export class MediaElement extends HTMLElement {
 
         this.video.onplaying = this.onVideoPlayed;
         // this.video.onprogress = this.onVideoPlayed;
+
+        // HTMLVideoElement events
+        this.video.onenterpictureinpicture = this.onVideoPlayed;
+        this.video.onleavepictureinpicture = this.onVideoPlayed;
+        this.video.onresize = this.onVideoPlayed;
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
