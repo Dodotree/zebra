@@ -175,15 +175,6 @@ export class MediaElement extends HTMLElement {
     setOrientation() {
         if (!this.trackResolution || !this.video) return;
         this.onVideoPlayed({ type: "orientation" });
-        // phones adjust orientation as they wish
-        this.video.ontimeupdate = this.anticipatedChange.bind(this);
-        setTimeout(() => { this.video.ontimeupdate = null; }, 1000);
-    }
-
-    anticipatedChange() {
-        if (`${this.video.videoWidth}x${this.video.videoHeight}` === this.trackResolution) return;
-        this.video.ontimeupdate = null;
-        this.onVideoPlayed({ type: "anticipated" });
     }
 
     onVideoPlayed(event) {
@@ -373,13 +364,12 @@ export class MediaElement extends HTMLElement {
             },
         }));
         // HTMLMediaElement events
-        // loadstart, loadedmetadata, loadeddata, emptied, suspend, waiting, stalled, error
-        // canplay, canplaythrough, completed, ended,
-        // audioprocess, progress, timeupdate, playing,
-        // play, pause, seeked, seeking, volumechange, ratechange
-        this.video.onloadedmetadata = this.onVideoPlayed;
+        // this.video.onloadstart = this.onVideoPlayed;
+        // this.video.onloadedmetadata = this.onVideoPlayed;
         this.video.onloadeddata = this.onVideoPlayed;
-        this.video.onemptied = this.onVideoPlayed;
+        // this.video.onemptied = this.onVideoPlayed;
+        // this.video.oncanplay = this.onVideoPlayed;
+        // this.video.oncanplaythrough = this.onVideoPlayed;
 
         this.video.onsuspend = this.onVideoPlayed;
         this.video.onwaiting = this.onVideoPlayed;
@@ -391,16 +381,22 @@ export class MediaElement extends HTMLElement {
         this.video.onended = this.onVideoPlayed;
 
         this.video.onplay = this.onVideoPlayed;
-        this.video.onpause = this.onVideoPlayed;
-        this.video.onseeked = this.onVideoPlayed;
-        this.video.onseeking = this.onVideoPlayed;
+        // this.video.onpause = this.onVideoPlayed;
+        // this.video.onseeked = this.onVideoPlayed;
+        // this.video.onseeking = this.onVideoPlayed;
+        // this.video.onvolumechange = this.onVideoPlayed;
+        // this.video.onratechange = this.onVideoPlayed;
 
-        this.video.onplaying = this.onVideoPlayed;
+        // this.video.onplaying = this.onVideoPlayed;
         // this.video.onprogress = this.onVideoPlayed;
+        // this.video.ontimeupdate = this.onVideoPlayed;
+        // this.video.audioprocess = this.onVideoPlayed;
 
         // HTMLVideoElement events
         this.video.onenterpictureinpicture = this.onVideoPlayed;
         this.video.onleavepictureinpicture = this.onVideoPlayed;
+        // this is the only event to track phone webcam orientation
+        // because it will flip w/h as it likes even if you add track constraints
         this.video.onresize = this.onVideoPlayed;
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
