@@ -176,9 +176,13 @@ export class MediaElement extends HTMLElement {
         if (!this.trackResolution || !this.video) return;
         this.onVideoPlayed({ type: "orientation" });
         this.video.ontimeupdate = this.anticipatedChange.bind(this);
+        setTimeout(() => {
+            this.video.ontimeupdate = null;
+        }, 200);
     }
 
     anticipatedChange() {
+        if (`${this.video.videoWidth}x${this.video.videoHeight}` === this.trackResolution) return;
         this.video.ontimeupdate = null;
         this.onVideoPlayed({ type: "anticipated" });
     }
