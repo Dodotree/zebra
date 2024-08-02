@@ -112,36 +112,40 @@ export class MediaControls extends HTMLElement {
         this.form.oninput = this.outputConstraints;
     }
 
+    filterOutUnchanged(oldSettings, capabilities) {
+        const pairs = Object.fromEntries(new FormData(this.form).entries());
+        return utilsUI.uniqueKeys(pairs, oldSettings)
+            .filter((key) => ["deviceId", "groupId"].indexOf(key) === -1 && key in capabilities)
+            .filter((key) => {
+                if (key in oldSettings) {
+                    // since FormData converts everything into strings
+                    return pairs[key] !== oldSettings[key].toString();
+                }
+                return true;
+            }).reduce((acc, key) => {
+                acc[key] = "max" in capabilities[key] ? parseFloat(pairs[key]) : pairs[key];
+                return acc;
+            }, {});
+    }
+
     outputConstraints() {
         // tricky part:settings gave no value but capabilities had it
         // aspectRatio on iPhone for example, probably don't use it
 
-        // FormData converts everything into strings
-        // so check capabilities to convert back to numbers
-        const pairs = Object.fromEntries(new FormData(this.form).entries());
-        const changed = utilsUI.uniqueKeys(pairs, this.trackInfo.settings).filter((key) => {
-            if (key === "deviceId" || key === "groupId") {
-                return false;
-            }
-            if (key in this.trackInfo.capabilities) {
-                return pairs[key] !== this.trackInfo.settings[key].toString();
-            }
-            return true;
-        });
+        const changed = this.filterOutUnchanged(
+            this.trackInfo.settings,
+            this.trackInfo.capabilities
+        );
+
         const newConstraints = structuredClone(this.trackInfo.constraints);
         if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
         const mapAdvanced = newConstraints.advanced.reduce((acc, o, index) => {
             Object.keys(o).forEach((key) => { acc[key] = index; });
             return acc;
         }, {});
-        console.log(JSON.stringify(newConstraints), changed, mapAdvanced);
-        changed.forEach((key) => {
-            const value = pairs[key]; // TODO: if min max in capabilities -> Number
-            if (!(key in newConstraints)) {
-                newConstraints[key] = {};
-            }
-            newConstraints[key].ideal = value;
-            newConstraints[key].exact = value;
+        Object.keys(changed).forEach((key) => {
+            const value = changed[key];
+            newConstraints[key] = { ...newConstraints[key], ideal: value, exact: value };
             if (key in mapAdvanced) {
                 newConstraints.advanced[mapAdvanced[key]][key] = value;
             } else {
