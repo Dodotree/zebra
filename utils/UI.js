@@ -53,6 +53,11 @@ export const utilsUI = {
         };
     },
 
+    uniqueKeys(o, oo) {
+        const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
+        return Array.from(sharedKeys.values());
+    },
+
     getValueTypeFromInputType(type) {
         switch (type) {
         case "checkbox":

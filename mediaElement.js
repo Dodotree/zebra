@@ -275,6 +275,7 @@ export class MediaElement extends HTMLElement {
                 try {
                     this.controls[kind] = new MediaControls();
                     this.appendChild(this.controls[kind]);
+                    this.streamTracks[kind].constraints = this.currentConstraints[kind];
                     this.controls[kind].init(
                         kind,
                         this.streamTracks[kind],
@@ -569,8 +570,7 @@ export class MediaElement extends HTMLElement {
 
     // make sure the original obj is not mutated, deep copy with modifications
     mergeOverride(o, oo) {
-        const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
-        return Array.from(sharedKeys.values()).reduce((acc, key) => {
+        return utilsUI.uniqueKeys(o, oo).reduce((acc, key) => {
             if (typeof o[key] === "object" && typeof oo[key] === "object") {
                 acc[key] = this.mergeOverride(o[key], oo[key]);
             } else {
@@ -730,11 +730,7 @@ export class MediaElement extends HTMLElement {
 
         const changes = {};
         let controlsReset = false;
-        const sharedKeys = new Set([
-            ...Object.keys(oldSettings),
-            ...Object.keys(newSettings),
-        ]);
-        sharedKeys.forEach((sKey) => {
+        utilsUI.uniqueKeys(oldSettings, newSettings).forEach((sKey) => {
             if (
                 newSettings[sKey] === undefined
                         || oldSettings[sKey] === undefined

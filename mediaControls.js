@@ -5,10 +5,15 @@ export class MediaControls extends HTMLElement {
         super();
         this.form = null;
         this.callback = null;
+
+        this.outputConstraints = utilsUI.debounce(this.outputConstraints.bind(this), 200);
     }
 
     init(kind, trackInfo, callback) {
         this.reset();
+        this.callback = callback;
+        this.trackInfo = trackInfo;
+
         const details = this.appendChild(document.createElement("details"));
 
         const summary = details.appendChild(
@@ -26,7 +31,6 @@ export class MediaControls extends HTMLElement {
 
         this.form = details.appendChild(document.createElement("form"));
         this.form.kind = kind;
-        this.callback = callback;
 
         const buckets = {
             IDs: ["deviceId", "groupId"],
@@ -93,6 +97,62 @@ export class MediaControls extends HTMLElement {
                 )
             );
         });
+        this.output = this.form.appendChild(
+            utilsUI.get({
+                tag: "Output",
+                attrs: { name: "constraints" },
+            })
+        );
+        this.form.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: { type: "submit", value: "Submit", disabled: true },
+            })
+        ).onclick = callback;
+        this.form.oninput = this.outputConstraints;
+    }
+
+    outputConstraints() {
+        // tricky part:settings gave no value but capabilities had it
+        // aspectRatio on iPhone for example, probably don't use it
+
+        // FormData converts everything into strings
+        // so check capabilities to convert back to numbers
+        const pairs = Object.fromEntries(new FormData(this.form).entries());
+        const changed = utilsUI.uniqueKeys(pairs, this.trackInfo.settings).filter((key) => {
+            if (key === "deviceId" || key === "groupId") {
+                return false;
+            }
+            if (key in this.trackInfo.capabilities) {
+                return pairs[key] !== this.trackInfo.settings[key].toString();
+            }
+            return true;
+        });
+        const newConstraints = structuredClone(this.trackInfo.constraints);
+        if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
+        const mapAdvanced = newConstraints.advanced.reduce((acc, o, index) => {
+            Object.keys(o).forEach((key) => { acc[key] = index; });
+            return acc;
+        }, {});
+        console.log(JSON.stringify(newConstraints), changed, mapAdvanced);
+        changed.forEach((key) => {
+            const value = pairs[key]; // TODO: if min max in capabilities -> Number
+            if (!(key in newConstraints)) {
+                newConstraints[key] = {};
+            }
+            newConstraints[key].ideal = value;
+            newConstraints[key].exact = value;
+            if (key in mapAdvanced) {
+                newConstraints.advanced[mapAdvanced[key]][key] = value;
+            } else {
+                newConstraints.advanced.push({ [key]: value });
+            }
+        });
+        this.output.value = JSON.stringify(
+            newConstraints,
+            null,
+            2
+        );
     }
 
     /**
@@ -113,21 +173,17 @@ export class MediaControls extends HTMLElement {
             input.removeEventListener("input", this.callback);
             input.oninput = null;
         });
-
+        if (this.form) {
+            this.form.oninput = null;
+            this.form = null;
+        }
         this.innerHTML = "";
-        this.form = null;
         this.callback = null;
     }
 
     setControlValue(key, value) {
         if (this.form[key]) {
             this.form[key].value = value;
-        }
-        if (this.form[key + "Range"]) {
-            this.form[key + "Range"].value = value;
-        }
-        if (this.form[key + "Number"]) {
-            this.form[key + "Number"].value = value;
         }
     }
 
@@ -185,7 +241,7 @@ export class MediaControls extends HTMLElement {
                 utilsUI.get({
                     tag: "label",
                     text: `${cKey} ${fix(cOptions.min)} - ${fix(cOptions.max)}, step: ${"step" in cOptions ? fix(cOptions.step) : 1}`,
-                    attrs: { htmlFor: cKey + "Range" },
+                    attrs: { htmlFor: cKey },
                 })
             );
             const inpRange = pElement.appendChild(
@@ -193,14 +249,14 @@ export class MediaControls extends HTMLElement {
                     tag: "input",
                     attrs: {
                         type: "range",
-                        name: cKey + "Range",
+                        name: cKey,
                         key: cKey,
                         min: cOptions.min,
                         max: cOptions.max,
                         step: "step" in cOptions ? cOptions.step : 1,
                         value: cValue, // do not change default value (could be long)
                         class: "control-input",
-                        oninput: `this.form.${cKey + "Number"}.value = this.value`,
+                        oninput: `this.form.${cKey}[1].value = this.value`,
                     },
                 })
             );
@@ -210,14 +266,14 @@ export class MediaControls extends HTMLElement {
                     tag: "input",
                     attrs: {
                         type: "number",
-                        name: cKey + "Number",
+                        name: cKey,
                         key: cKey,
                         min: cOptions.min,
                         max: cOptions.max,
                         step: "step" in cOptions ? cOptions.step : 1,
                         value: cValue,
                         class: "control-input",
-                        oninput: `this.form.${cKey + "Range"}.value = this.value`,
+                        oninput: `this.form.${cKey}[0].value = this.value`,
                     },
                 })
             );

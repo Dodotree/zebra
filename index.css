@@ -40,6 +40,9 @@ summary {
     background-color: #eee;
     padding: 1rem;
 }
+output {
+    white-space: pre;
+}
 media-controls form {
     padding: 20px;
     column-count: 3;
