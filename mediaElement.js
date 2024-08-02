@@ -137,14 +137,6 @@ export class MediaElement extends HTMLElement {
         this.visibilityThreshold = 0;
     }
 
-    toggleAttribute(name, value) {
-        if (value) {
-            this.setAttribute(name, true);
-        } else {
-            this.removeAttribute(name);
-        }
-    }
-
     /**
      * @param {Boolean} value
      * @description Show video element. Since iPhone stops streaming when video is not visible,
@@ -152,7 +144,7 @@ export class MediaElement extends HTMLElement {
      * if you don't care about WebGL on iPhone, you can just use display: none.
      */
     set showvideo(value) {
-        this.toggleAttribute("showvideo", value);
+        utilsUI.toggleAttribute(this, "showvideo", value);
         if (!this.video) return;
         // those dimensions could be different from track settings
         // could be 0 if not loaded or stalled, waiting etc.
@@ -160,6 +152,24 @@ export class MediaElement extends HTMLElement {
             this.video.videoWidth,
             this.video.videoHeight
         );
+    }
+
+    /**
+     * @param {Boolean} value
+     */
+    set showwebgl(value) {
+        utilsUI.toggleAttribute(this, "showwebgl", value);
+    }
+
+    /**
+     * @param {Boolean} value
+     */
+    set showoutcanvas(value) {
+        utilsUI.toggleAttribute(this, "showoutcanvas", value);
+    }
+
+    onShowChange(event) {
+        this[event.target.name.replace(/-.*/, "")] = event.target.checked;
     }
 
     setVideoSize(vidW, vidH) {
@@ -194,24 +204,6 @@ export class MediaElement extends HTMLElement {
             `Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`
             + `vs. ${this.trackResolution} resolution`
         );
-    }
-
-    /**
-     * @param {Boolean} value
-     */
-    set showwebgl(value) {
-        this.toggleAttribute("showwebgl", value);
-    }
-
-    /**
-     * @param {Boolean} value
-     */
-    set showoutcanvas(value) {
-        this.toggleAttribute("showoutcanvas", value);
-    }
-
-    onShowChange(event) {
-        this[event.target.name.replace(/-.*/, "")] = event.target.checked;
     }
 
     // for browsers that don't support autoplay
@@ -516,7 +508,16 @@ export class MediaElement extends HTMLElement {
 
         // sometimes it's required to set "manual" mode before changes
         // but so far it changes between continuous and manual automatically
-        this.requestTrackChanges(trackKind, type, { [key]: value });
+        this.requestTrackChanges(trackKind, { [key]: value });
+    }
+
+    onRequestResolution(event) {
+        if (this.trackResolution === event.target.value) {
+            this.logger.log("Warning: resolution is already set to " + this.trackResolution);
+            return;
+        }
+        const [w, h] = this.env.whFromResolution(event.target.value);
+        this.requestTrackChanges("video", { width: w, height: h });
     }
 
     resetResolutions() {
@@ -533,15 +534,6 @@ export class MediaElement extends HTMLElement {
             this.streamdevice,
             this.env.os
         );
-    }
-
-    onRequestResolution(event) {
-        if (this.trackResolution === event.target.value) {
-            this.logger.log("Warning: resolution is already set to " + this.trackResolution);
-            return;
-        }
-        const [w, h] = this.env.whFromResolution(event.target.value);
-        this.requestTrackChanges("video", "number", { width: w, height: h });
     }
 
     selectCurrentResolution() {
@@ -630,7 +622,7 @@ export class MediaElement extends HTMLElement {
             });
     }
 
-    requestTrackChanges(trackKind, type, changes) {
+    requestTrackChanges(trackKind, changes) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
         // this.logger.log(`Requesting track changes ${JSON.stringify(changes, null, 2)}`

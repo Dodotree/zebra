@@ -33,18 +33,24 @@ media-element[showoutcanvas] canvas.outCanvas{
         display: block;
 }
 
+media-controls {
+    display: block;
+    padding: 1rem;
+    background: #f4f4f4;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin: 1rem 0;
+}
 details select {
     padding: 0.33rem;
 }
 summary {
-    background-color: #eee;
     padding: 1rem;
 }
 output {
     white-space: pre;
 }
 media-controls form {
-    padding: 20px;
     column-count: 3;
     column-gap: 0.3rem;
 }
@@ -56,6 +62,12 @@ media-controls form fieldset {
     media-controls form {
         padding: 5px;
         column-count: 1;
+    }
+}
+@media (min-width: 768px) and (max-width: 1800px) {
+    media-controls form {
+        padding: 5px;
+        column-count: 2;
     }
 }
 

@@ -1,10 +1,61 @@
 import { utilsUI } from "./utils/UI.js";
 
 export class MediaControls extends HTMLElement {
+    static get observedAttributes() {
+        // any attribute for use here should be in low case
+        return ["liveupdates", "debouncetime"];
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        const input = this.querySelector(`.${name}`);
+        if (!input) return;
+        console.log("input, new value, current value, checked:", input, newValue, input.value, input.checked);
+        if (input.type === "checkbox" && input.checked !== newValue) {
+            input.checked = newValue;
+        } else if (input.type === "number" && input.value !== newValue) {
+            input.value = newValue;
+        }
+        if (name === "liveupdates") {
+            utilsUI.toggleAttribute(this.form.submit, "disabled", newValue === "true");
+            utilsUI.toggleAttribute(this.form.editconstraints, "disabled", newValue === "true");
+        }
+        console.log("input, current value, checked:", input, input.value, input.checked);
+    }
+
+    onLiveCheckboxChange(e) {
+        this.liveupdates = e.target.checked;
+    }
+
+    get liveupdates() {
+        return this.getAttribute("liveupdates") === "true";
+    }
+
+    set liveupdates(value) {
+        if (this.liveupdates === value) return;
+        utilsUI.toggleAttribute(this, "liveupdates", value);
+    }
+
+    onDebounceTimeChange(e) {
+        this.setAttribute("debouncetime", e.target.value);
+    }
+
+    get debouncetime() {
+        return Number(this.getAttribute("debouncetime"));
+    }
+
+    set debouncetime(value) {
+        if (this.debouncetime === value) return;
+        this.setAttribute("debouncetime", value);
+        this.debouncetime = value;
+    }
+
     constructor() {
         super();
         this.form = null;
         this.callback = null;
+
+        this.liveupdates = true;
+        this.debouncetime = 400;
 
         this.outputConstraints = utilsUI.debounce(this.outputConstraints.bind(this), 200);
     }
@@ -97,19 +148,79 @@ export class MediaControls extends HTMLElement {
                 )
             );
         });
-        this.output = this.form.appendChild(
+        const outputNode = this.form.appendChild(document.createElement("fieldset"));
+        outputNode.appendChild(
+            utilsUI.get({
+                tag: "legend",
+                text: "Output Constraints",
+            })
+        );
+        this.output = outputNode.appendChild(
             utilsUI.get({
                 tag: "Output",
                 attrs: { name: "constraints" },
             })
         );
+        this.printOutput(trackInfo.constraints);
+
         this.form.appendChild(
             utilsUI.get({
                 tag: "input",
-                attrs: { type: "submit", value: "Submit", disabled: true },
+                attrs: {
+                    type: "button",
+                    name: "editconstraints",
+                    value: "Edit Constraints",
+                    disabled: true
+                },
             })
         ).onclick = callback;
+
+        this.form.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "submit",
+                    name: "submit",
+                    value: "Submit",
+                    disabled: true
+                },
+            })
+        ).onclick = callback;
+
         this.form.oninput = this.outputConstraints;
+
+        this.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "checkbox",
+                    name: "liveupdates",
+                    class: "liveupdates",
+                    checked: this.liveupdates,
+                },
+            })
+        ).onclick = this.onLiveCheckboxChange.bind(this);
+        this.appendChild(
+            utilsUI.get({
+                tag: "label",
+                text: "Live updates in ms ",
+                attrs: { htmlFor: "liveupdates" },
+            })
+        );
+        this.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "number",
+                    name: "debouncetime",
+                    class: "debouncetime",
+                    min: 200,
+                    max: 2000,
+                    step: 50,
+                    value: this.debouncetime,
+                },
+            })
+        ).oninput = this.onDebounceTimeChange.bind(this);
     }
 
     filterOutUnchanged(oldSettings, capabilities) {
@@ -129,7 +240,7 @@ export class MediaControls extends HTMLElement {
     }
 
     outputConstraints() {
-        // tricky part:settings gave no value but capabilities had it
+        // tricky part: settings give no value but capabilities have it
         // aspectRatio on iPhone for example, probably don't use it
 
         const changed = this.filterOutUnchanged(
@@ -152,11 +263,11 @@ export class MediaControls extends HTMLElement {
                 newConstraints.advanced.push({ [key]: value });
             }
         });
-        this.output.value = JSON.stringify(
-            newConstraints,
-            null,
-            2
-        );
+        this.printOutput(newConstraints);
+    }
+
+    printOutput(constraints) {
+        this.output.value = JSON.stringify(constraints, null, 2);
     }
 
     /**
@@ -229,6 +340,7 @@ export class MediaControls extends HTMLElement {
                     attrs: { name: cKey, class: "control-select" },
                 })
             );
+            sel.addEventListener("change", callback);
             cOptions.forEach((option) => {
                 sel.appendChild(
                     utilsUI.get({
@@ -238,7 +350,6 @@ export class MediaControls extends HTMLElement {
                     })
                 );
             });
-            sel.addEventListener("change", callback);
         } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
             function fix(num) { return parseFloat(num.toFixed(4)); }
             pElement.appendChild(
@@ -248,7 +359,7 @@ export class MediaControls extends HTMLElement {
                     attrs: { htmlFor: cKey },
                 })
             );
-            const inpRange = pElement.appendChild(
+            pElement.appendChild(
                 utilsUI.get({
                     tag: "input",
                     attrs: {
@@ -263,9 +374,8 @@ export class MediaControls extends HTMLElement {
                         oninput: `this.form.${cKey}[1].value = this.value`,
                     },
                 })
-            );
-            inpRange.addEventListener("input", callback);
-            const inpNum = pElement.appendChild(
+            ).addEventListener("input", callback);
+            pElement.appendChild(
                 utilsUI.get({
                     tag: "input",
                     attrs: {
@@ -280,8 +390,7 @@ export class MediaControls extends HTMLElement {
                         oninput: `this.form.${cKey}[0].value = this.value`,
                     },
                 })
-            );
-            inpNum.addEventListener("input", callback);
+            ).addEventListener("input", callback);
         }
         return pElement;
     }

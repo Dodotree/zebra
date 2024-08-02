@@ -53,6 +53,14 @@ export const utilsUI = {
         };
     },
 
+    toggleAttribute(pa, name, value) {
+        if (value) {
+            pa.setAttribute(name, true);
+        } else {
+            pa.removeAttribute(name);
+        }
+    },
+
     uniqueKeys(o, oo) {
         const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
         return Array.from(sharedKeys.values());
