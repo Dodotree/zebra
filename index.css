@@ -47,9 +47,6 @@ details select {
 summary {
     padding: 1rem;
 }
-output {
-    white-space: pre;
-}
 media-controls form {
     column-count: 3;
     column-gap: 0.3rem;
@@ -57,6 +54,12 @@ media-controls form {
 media-controls form fieldset {
     break-inside: avoid; 
     page-break-inside: avoid;
+}
+media-controls output {
+    white-space: pre;
+}
+media-controls output[contenteditable]{
+    background-color: #fff;
 }
 @media (max-width: 768px) {
     media-controls form {

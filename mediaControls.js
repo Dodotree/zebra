@@ -9,17 +9,15 @@ export class MediaControls extends HTMLElement {
     attributeChangedCallback(name, oldValue, newValue) {
         const input = this.querySelector(`.${name}`);
         if (!input) return;
-        console.log("input, new value, current value, checked:", input, newValue, input.value, input.checked);
         if (input.type === "checkbox" && input.checked !== newValue) {
             input.checked = newValue;
         } else if (input.type === "number" && input.value !== newValue) {
             input.value = newValue;
         }
         if (name === "liveupdates") {
-            utilsUI.toggleAttribute(this.form.submit, "disabled", newValue === "true");
-            utilsUI.toggleAttribute(this.form.editconstraints, "disabled", newValue === "true");
+            this.toggleAttribute("disabled", newValue === "true", this.form.submit);
+            this.toggleAttribute("disabled", newValue === "true", this.form.editconstraints);
         }
-        console.log("input, current value, checked:", input, input.value, input.checked);
     }
 
     onLiveCheckboxChange(e) {
@@ -32,7 +30,7 @@ export class MediaControls extends HTMLElement {
 
     set liveupdates(value) {
         if (this.liveupdates === value) return;
-        utilsUI.toggleAttribute(this, "liveupdates", value);
+        this.toggleAttribute("liveupdates", value);
     }
 
     onDebounceTimeChange(e) {
@@ -54,13 +52,11 @@ export class MediaControls extends HTMLElement {
         this.form = null;
         this.callback = null;
 
-        this.liveupdates = true;
-        this.debouncetime = 400;
-
+        this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
         this.outputConstraints = utilsUI.debounce(this.outputConstraints.bind(this), 200);
     }
 
-    init(kind, trackInfo, callback) {
+    init(kind, trackInfo, liveupdates, debouncetime, callback) {
         this.reset();
         this.callback = callback;
         this.trackInfo = trackInfo;
@@ -157,7 +153,7 @@ export class MediaControls extends HTMLElement {
         );
         this.output = outputNode.appendChild(
             utilsUI.get({
-                tag: "Output",
+                tag: "output",
                 attrs: { name: "constraints" },
             })
         );
@@ -170,10 +166,9 @@ export class MediaControls extends HTMLElement {
                     type: "button",
                     name: "editconstraints",
                     value: "Edit Constraints",
-                    disabled: true
                 },
             })
-        ).onclick = callback;
+        ).onclick = this.editConstraints.bind(this);
 
         this.form.appendChild(
             utilsUI.get({
@@ -182,7 +177,6 @@ export class MediaControls extends HTMLElement {
                     type: "submit",
                     name: "submit",
                     value: "Submit",
-                    disabled: true
                 },
             })
         ).onclick = callback;
@@ -196,7 +190,6 @@ export class MediaControls extends HTMLElement {
                     type: "checkbox",
                     name: "liveupdates",
                     class: "liveupdates",
-                    checked: this.liveupdates,
                 },
             })
         ).onclick = this.onLiveCheckboxChange.bind(this);
@@ -217,13 +210,18 @@ export class MediaControls extends HTMLElement {
                     min: 200,
                     max: 2000,
                     step: 50,
-                    value: this.debouncetime,
                 },
             })
         ).oninput = this.onDebounceTimeChange.bind(this);
+        this.liveupdates = liveupdates;
+        this.debouncetime = debouncetime;
     }
 
-    filterOutUnchanged(oldSettings, capabilities) {
+    editConstraints() {
+        this.form.constraints.setAttribute("contenteditable", true);
+    }
+
+    getChanges(oldSettings, capabilities) {
         const pairs = Object.fromEntries(new FormData(this.form).entries());
         return utilsUI.uniqueKeys(pairs, oldSettings)
             .filter((key) => ["deviceId", "groupId"].indexOf(key) === -1 && key in capabilities)
@@ -239,30 +237,22 @@ export class MediaControls extends HTMLElement {
             }, {});
     }
 
+    setConstraints(constraints) {
+        this.trackInfo.constraints = constraints;
+        this.printOutput(constraints);
+    }
+
     outputConstraints() {
         // tricky part: settings give no value but capabilities have it
         // aspectRatio on iPhone for example, probably don't use it
+        console.log("outputConstraints");
 
-        const changed = this.filterOutUnchanged(
+        const changed = this.getChanges(
             this.trackInfo.settings,
             this.trackInfo.capabilities
         );
+        const newConstraints = utilsUI.getChangedConstraints(this.trackInfo.constraints, changed);
 
-        const newConstraints = structuredClone(this.trackInfo.constraints);
-        if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
-        const mapAdvanced = newConstraints.advanced.reduce((acc, o, index) => {
-            Object.keys(o).forEach((key) => { acc[key] = index; });
-            return acc;
-        }, {});
-        Object.keys(changed).forEach((key) => {
-            const value = changed[key];
-            newConstraints[key] = { ...newConstraints[key], ideal: value, exact: value };
-            if (key in mapAdvanced) {
-                newConstraints.advanced[mapAdvanced[key]][key] = value;
-            } else {
-                newConstraints.advanced.push({ [key]: value });
-            }
-        });
         this.printOutput(newConstraints);
     }
 
@@ -297,9 +287,21 @@ export class MediaControls extends HTMLElement {
     }
 
     setControlValue(key, value) {
-        if (this.form[key]) {
-            this.form[key].value = value;
+        if (!this.form[key]) return;
+        if (this.form[key][0]) {
+            this.form[key][0].value = value;
+            this.form[key][0].dispatchEvent(new Event("input"));
+            // TODO: 1.777777 setting as 2.003, probably because of the step
+            return;
         }
+        this.form[key].value = value;
+        this.form[key].dispatchEvent(new Event("input"));
+    }
+
+    updateControls(changes) {
+        Object.keys(changes).forEach((key) => {
+            this.setControlValue(key, changes[key]);
+        });
     }
 
     static createInput(cKey, cOptions, cValue, callback) {
@@ -365,7 +367,6 @@ export class MediaControls extends HTMLElement {
                     attrs: {
                         type: "range",
                         name: cKey,
-                        key: cKey,
                         min: cOptions.min,
                         max: cOptions.max,
                         step: "step" in cOptions ? cOptions.step : 1,
@@ -381,7 +382,6 @@ export class MediaControls extends HTMLElement {
                     attrs: {
                         type: "number",
                         name: cKey,
-                        key: cKey,
                         min: cOptions.min,
                         max: cOptions.max,
                         step: "step" in cOptions ? cOptions.step : 1,

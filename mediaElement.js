@@ -97,6 +97,8 @@ export class MediaElement extends HTMLElement {
         this.setOrientation = this.setOrientation.bind(this);
         this.onVideoPlayed = this.onVideoPlayed.bind(this);
 
+        this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
+
         /**
          * [config] Default `false`.
          * @type {boolean}
@@ -144,7 +146,7 @@ export class MediaElement extends HTMLElement {
      * if you don't care about WebGL on iPhone, you can just use display: none.
      */
     set showvideo(value) {
-        utilsUI.toggleAttribute(this, "showvideo", value);
+        this.toggleAttribute("showvideo", value);
         if (!this.video) return;
         // those dimensions could be different from track settings
         // could be 0 if not loaded or stalled, waiting etc.
@@ -158,14 +160,14 @@ export class MediaElement extends HTMLElement {
      * @param {Boolean} value
      */
     set showwebgl(value) {
-        utilsUI.toggleAttribute(this, "showwebgl", value);
+        this.toggleAttribute("showwebgl", value);
     }
 
     /**
      * @param {Boolean} value
      */
     set showoutcanvas(value) {
-        utilsUI.toggleAttribute(this, "showoutcanvas", value);
+        this.toggleAttribute("showoutcanvas", value);
     }
 
     onShowChange(event) {
@@ -270,7 +272,14 @@ export class MediaElement extends HTMLElement {
                     this.streamTracks[kind].constraints = this.currentConstraints[kind];
                     this.controls[kind].init(
                         kind,
-                        this.streamTracks[kind],
+                        {
+                            label: this.streamTracks[kind].label,
+                            constraints: structuredClone(this.streamTracks[kind].constraints),
+                            capabilities: structuredClone(this.streamTracks[kind].capabilities),
+                            settings: structuredClone(this.streamTracks[kind].settings),
+                        },
+                        true,
+                        400,
                         this.controlsCallback
                     );
                 } catch (e) {
@@ -501,14 +510,12 @@ export class MediaElement extends HTMLElement {
     controlsCallback(event) {
         const form = event.target.form;
         const trackKind = form.kind;
-        let key = event.target.getAttribute("key");
-        key = key || event.target.name;
         const type = utilsUI.getValueTypeFromInputType(event.target.type);
         const value = type === "number" ? parseFloat(event.target.value) : event.target.value;
 
         // sometimes it's required to set "manual" mode before changes
         // but so far it changes between continuous and manual automatically
-        this.requestTrackChanges(trackKind, { [key]: value });
+        this.requestTrackChanges(trackKind, { [event.target.name]: value });
     }
 
     onRequestResolution(event) {
@@ -702,16 +709,15 @@ export class MediaElement extends HTMLElement {
         );
     }
 
-    // important! update track[kind].settings before updating controls
-    // otherwise it will trigger another event
     changeControls(trackKind, changes) {
-        if (!this.controls[trackKind]) {
-            return;
-        }
+        if (!this.controls[trackKind]) return;
         try {
-            Object.keys(changes).forEach((key) => {
-                this.controls[trackKind].setControlValue(key, changes[key]);
-            });
+            this.controls[trackKind].updateControls(changes);
+            // TODO: combine previous with the latest constraints
+            // all constraints in one object
+            // so it will be possible to replicate from the start
+            const constrains = this.streamTracks[trackKind].track.getConstraints();
+            this.controls[trackKind].setConstraints(constrains);
         } catch (e) {
             this.logger.error(e);
         }
@@ -754,7 +760,7 @@ export class MediaElement extends HTMLElement {
                 ? this.streamTracks.video.getCapabilities()
                 : {};
             this.resetResolutions();
-            // TODO: reset controls
+            // TODO: total reset of controls
             return;
         }
 

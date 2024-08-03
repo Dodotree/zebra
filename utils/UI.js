@@ -53,17 +53,37 @@ export const utilsUI = {
         };
     },
 
-    toggleAttribute(pa, name, value) {
-        if (value) {
-            pa.setAttribute(name, true);
-        } else {
-            pa.removeAttribute(name);
-        }
-    },
-
     uniqueKeys(o, oo) {
         const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
         return Array.from(sharedKeys.values());
+    },
+
+    getChangedConstraints(oldConstraints, changed) {
+        const newConstraints = structuredClone(oldConstraints);
+        if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
+        // keyLines is key to index of line in advanced array of {} objects
+        const keyLines = newConstraints.advanced.reduce((acc, o, index) => {
+            Object.keys(o).forEach((key) => { acc[key] = index; });
+            return acc;
+        }, {});
+        Object.keys(changed).forEach((key) => {
+            const value = changed[key];
+            newConstraints[key] = { ...newConstraints[key], ideal: value, exact: value };
+            if (key in keyLines) {
+                newConstraints.advanced[keyLines[key]][key] = value;
+            } else {
+                newConstraints.advanced.push({ [key]: value });
+            }
+        });
+    },
+
+    toggleAttribute(name, value, pa) {
+        const node = pa || this;
+        if (value) {
+            node.setAttribute(name, true);
+        } else {
+            node.removeAttribute(name);
+        }
     },
 
     getValueTypeFromInputType(type) {
