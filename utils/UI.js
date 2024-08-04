@@ -68,6 +68,7 @@ export const utilsUI = {
     // Some might require setting "manual" mode first
     // Others should not mix due to Chrome error:
     // Mixing ImageCapture and non-ImageCapture constraints is not currently supported
+    // due to this sequential nature of constraints, cumulative constraints might not work
     getChangedConstraints(oldConstraints, changes) {
         // making sure we are not mutating the original object
         const newConstraints = structuredClone(oldConstraints);
