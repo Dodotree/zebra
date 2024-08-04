@@ -173,8 +173,8 @@ export class MediaMenu extends HTMLElement {
         const deviceLabel = selected.text;
         const deviceId = selected.value;
         const constraints = selected.getAttribute("kind") === "audioinput"
-            ? { audio: { deviceId: { exact: deviceId } } }
-            : { video: { deviceId: { exact: deviceId } } };
+            ? { audio: { deviceId: { exact: deviceId } }, video: true }
+            : { video: { deviceId: { exact: deviceId } }, audio: true };
 
         // default RealSense on first load (ideal defaults)
         const deviceName = this.constructor.getDeviceName(deviceLabel);

@@ -274,7 +274,7 @@ export class MediaElement extends HTMLElement {
                         kind,
                         {
                             label: this.streamTracks[kind].label,
-                            constraints: structuredClone(this.streamTracks[kind].constraints),
+                            constraints: structuredClone(this.currentConstraints[kind]),
                             capabilities: structuredClone(this.streamTracks[kind].capabilities),
                             settings: structuredClone(this.streamTracks[kind].settings),
                         },
@@ -466,6 +466,7 @@ export class MediaElement extends HTMLElement {
         this.setAttribute("streamdevice", device);
 
         this.currentConstraints = constraints;
+        this.logger.log(`Stream constraints:\n ${JSON.stringify(constraints, null, 2)}`);
         this.onRelease = onRelease;
 
         const caption = this.appendChild(
@@ -567,18 +568,6 @@ export class MediaElement extends HTMLElement {
         this.selectCurrentResolution();
     }
 
-    // make sure the original obj is not mutated, deep copy with modifications
-    mergeOverride(o, oo) {
-        return utilsUI.uniqueKeys(o, oo).reduce((acc, key) => {
-            if (typeof o[key] === "object" && typeof oo[key] === "object") {
-                acc[key] = this.mergeOverride(o[key], oo[key]);
-            } else {
-                acc[key] = key in oo ? oo[key] : o[key];
-            }
-            return acc;
-        }, {});
-    }
-
     /**
      * @description Last resort to change track settings through changing stream.
      * rollback if not successful.
@@ -587,10 +576,8 @@ export class MediaElement extends HTMLElement {
         // constrains are more like wishes, not necessarily granted
         const oldSettings = this.streamTracks[trackKind].settings;
         this.stopDeviceTracks();
-        const constraints = this.mergeOverride(
-            this.currentConstraints,
-            { [trackKind]: trackConstraints }
-        );
+        const constraints = structuredClone(this.currentConstraints);
+        constraints[trackKind] = trackConstraints;
         this.logger.log(
             `Requesting *stream* with constraints ${JSON.stringify(constraints, null, 2)}`
         );
@@ -612,6 +599,7 @@ export class MediaElement extends HTMLElement {
                             this.reportUnchanged(constraints, unchanged, changes, 2);
                             // restore to the actual value instead of what we tried to set
                             this.changeControls(trackKind, unchanged);
+                            this.selectCurrentResolution();
                             return;
                         }
                         // Successful
@@ -626,6 +614,8 @@ export class MediaElement extends HTMLElement {
                 this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
                 this.logger.error(error);
                 // rollback. attempt once.
+                // in case of second failure the instance should go into error/retry state
+                // and most likely will need to be closed
             });
     }
 
@@ -639,17 +629,23 @@ export class MediaElement extends HTMLElement {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
-        // type could be useful for min/max reset if needed
-        const constraints = Object.keys(changes).reduce((acc, key) => {
-            acc[key] = { ideal: changes[key], exact: changes[key] };
-            return acc;
-        }, { advanced: [changes] });
+        // it's not necessary to set all constraints, only those that are changed
+        // but it's cleaner way to keep them all at one glance
+        // one exception might be setting "manual" mode before setting values
+        // in my test case it wasn't necessary
+        this.logger.log(`Current constraints ${JSON.stringify(this.currentConstraints, null, 2)}`);
+        this.logger.log(`Requested track changes for ${trackKind} track`);
+        this.logger.log(`from constraints ${JSON.stringify(this.currentConstraints[trackKind], null, 2)}`);
+        const trackConstraints = utilsUI.getChangedConstraints(
+            this.currentConstraints[trackKind],
+            changes
+        );
+        this.logger.log(`Applying track constraints ${JSON.stringify(trackConstraints, null, 2)}`);
 
         track
-            .applyConstraints(constraints)
+            .applyConstraints(trackConstraints)
             .then(() => {
                 const newSettings = track.getSettings();
-                this.streamTracks[trackKind].settings = newSettings;
                 this.logger.log("Post track request check:");
                 const unchanged = this.constructor.nothingChanged(
                     newSettings,
@@ -658,24 +654,35 @@ export class MediaElement extends HTMLElement {
                     this.logger.log
                 );
                 if (unchanged) {
-                    this.reportUnchanged(unchanged, changes, 1);
-                    // it will restore control inputs if unsuccessful too
-                    this.requestStreamChanges(trackKind, changes, constraints);
+                    this.reportUnchanged(trackConstraints, unchanged, changes, 1);
+                    // it will restore control inputs there (if unsuccessful too)
+                    this.requestStreamChanges(trackKind, changes, trackConstraints);
                     return;
                 }
                 // Successful
                 // this.logger.log("Success initiating changes:\n"
-                //     + "Track Constraints:\n" + JSON.stringify(constraints, null, 2)
+                //     + "Track Constraints:\n" + JSON.stringify(trackConstraints, null, 2)
                 //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
                 //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2)
                 //     + "Stats:\n" + JSON.stringify(track.stats, null, 2));
                 // only need oldChanges for comparison since newSettings are already set
+                this.streamTracks[trackKind].settings = newSettings;
+                // not using trackConstraints to make sure they are organized in the right way
+                this.currentConstraints[trackKind] = track.getConstraints();
                 this.changeSetting(trackKind, oldSettings, changes);
             })
             .catch((e) => {
                 this.logger.log(`Failed set track changes ${JSON.stringify(changes, null, 2)}`);
-                this.logger.log(`applyConstraints error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.logger.log(`applyConstraints error for constrains: \n${JSON.stringify(trackConstraints, null, 2)}:`);
                 this.logger.error(e);
+                // since "overconstrained" error means that the track stays the same
+                // we should reset the controls to the actual values (and resolution dropdown)
+                // if (e instanceof DOMException && e.name === "OverconstrainedError") {
+                //     this.changeControls(trackKind, oldSettings);
+                //     this.selectCurrentResolution();
+                // }
+                // OR we can try our luck with the stream
+                this.requestStreamChanges(trackKind, changes, trackConstraints);
             });
     }
 
@@ -685,10 +692,27 @@ export class MediaElement extends HTMLElement {
         // log("Nothing changed test:\n"
         //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
         //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2));
+
+        // The tricky part here is that flipped W/H are not considered as a change
+        // at least not on mobile where it's up to to the device to decide
+        if ("width" in intendedChanges && "height" in intendedChanges) {
+            if (intendedChanges.length === 2
+                && (
+                    (intendedChanges.width === oldSettings.height
+                    && intendedChanges.height === oldSettings.width)
+                        || (intendedChanges.width === oldSettings.width
+                            && intendedChanges.height === oldSettings.height)
+                )
+            ) {
+                log("Warning: Flipped W/H are not considered as a change");
+                return false;
+            }
+        }
         // eslint-disable-next-line no-restricted-syntax
         for (const key in intendedChanges) {
             if (newSettings[key] !== oldSettings[key]) {
-                // log(`Found change [${key}] new/old:  ${newSettings[key]} != ${oldSettings[key]}\n`
+                // log(`Found change [${key}] new/old:  `
+                // + `${newSettings[key]} != ${oldSettings[key]}\n`
                 // + `Intended change: [${key}] = ${intendedChanges[key]}\n`
                 // + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
                 return false;
@@ -703,9 +727,9 @@ export class MediaElement extends HTMLElement {
 
     reportUnchanged(constraints, unchanged, intendedChanges, attempt) {
         this.logger.log(
-            `Warning: Nothing changed.\nIntended changes ${JSON.stringify(intendedChanges, null, 2)}`
-            + `Used Constraints ${JSON.stringify(constraints, null, 2)}`
-            + `Attempt ${attempt} left unchanged ${JSON.stringify(unchanged, null, 2)}`
+            `Warning: Nothing changed.\nIntended changes ${JSON.stringify(intendedChanges, null, 2)}\n`
+            + `Used Constraints ${JSON.stringify(constraints, null, 2)}\n`
+            + `Attempt #${attempt} left unchanged:\n ${JSON.stringify(unchanged, null, 2)}`
         );
     }
 
@@ -713,10 +737,7 @@ export class MediaElement extends HTMLElement {
         if (!this.controls[trackKind]) return;
         try {
             this.controls[trackKind].updateControls(changes);
-            // TODO: combine previous with the latest constraints
-            // all constraints in one object
-            // so it will be possible to replicate from the start
-            const constrains = this.streamTracks[trackKind].track.getConstraints();
+            const constrains = this.currentConstraints[trackKind];
             this.controls[trackKind].setConstraints(constrains);
         } catch (e) {
             this.logger.error(e);

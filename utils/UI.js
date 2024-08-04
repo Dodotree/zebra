@@ -58,7 +58,18 @@ export const utilsUI = {
         return Array.from(sharedKeys.values());
     },
 
-    getChangedConstraints(oldConstraints, changed) {
+    imageConstraints() {
+        return ["whiteBalanceMode", "exposureMode", "exposureCompensation",
+            "exposureTime", "colorTemperature", "iso", "brightness", "contrast",
+            "saturation", "sharpness", "focusDistance", "pan", "tilt", "zoom", "torch"];
+    },
+
+    // sequential application of constraints might be needed
+    // Some might require setting "manual" mode first
+    // Others should not mix due to Chrome error:
+    // Mixing ImageCapture and non-ImageCapture constraints is not currently supported
+    getChangedConstraints(oldConstraints, changes) {
+        // making sure we are not mutating the original object
         const newConstraints = structuredClone(oldConstraints);
         if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
         // keyLines is key to index of line in advanced array of {} objects
@@ -66,8 +77,8 @@ export const utilsUI = {
             Object.keys(o).forEach((key) => { acc[key] = index; });
             return acc;
         }, {});
-        Object.keys(changed).forEach((key) => {
-            const value = changed[key];
+        Object.keys(changes).forEach((key) => {
+            const value = changes[key];
             newConstraints[key] = { ...newConstraints[key], ideal: value, exact: value };
             if (key in keyLines) {
                 newConstraints.advanced[keyLines[key]][key] = value;
@@ -75,6 +86,7 @@ export const utilsUI = {
                 newConstraints.advanced.push({ [key]: value });
             }
         });
+        return newConstraints;
     },
 
     toggleAttribute(name, value, pa) {

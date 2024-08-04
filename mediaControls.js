@@ -243,10 +243,6 @@ export class MediaControls extends HTMLElement {
     }
 
     outputConstraints() {
-        // tricky part: settings give no value but capabilities have it
-        // aspectRatio on iPhone for example, probably don't use it
-        console.log("outputConstraints");
-
         const changed = this.getChanges(
             this.trackInfo.settings,
             this.trackInfo.capabilities
