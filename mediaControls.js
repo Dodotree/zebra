@@ -18,6 +18,10 @@ export class MediaControls extends HTMLElement {
             this.toggleAttribute("disabled", newValue === "true", this.form.submit);
             this.toggleAttribute("disabled", newValue === "true", this.form.editconstraints);
         }
+        if (name === "debouncetime" && typeof this.debouncedOutput === "function") {
+            this.debouncedOutput("debounceTerminatedNow");
+            this.debouncedOutput = utilsUI.debounce(this.outputConstraints, newValue);
+        }
     }
 
     onLiveCheckboxChange(e) {
@@ -53,12 +57,13 @@ export class MediaControls extends HTMLElement {
         this.callback = null;
 
         this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
-        this.outputConstraints = utilsUI.debounce(this.outputConstraints.bind(this), 200);
+        this.outputConstraints = this.outputConstraints.bind(this);
     }
 
     init(kind, trackInfo, liveupdates, debouncetime, callback) {
         this.reset();
         this.callback = callback;
+        this.debouncedOutput = utilsUI.debounce(this.outputConstraints, debouncetime);
         this.trackInfo = trackInfo;
 
         const details = this.appendChild(document.createElement("details"));
@@ -79,26 +84,7 @@ export class MediaControls extends HTMLElement {
         this.form = details.appendChild(document.createElement("form"));
         this.form.kind = kind;
 
-        const buckets = {
-            IDs: ["deviceId", "groupId"],
-            Box: ["resizeMode", "aspectRatio", "width", "height", "frameRate"],
-            Exposure: [
-                "exposureMode",
-                "exposureTime",
-                "exposureCompensation",
-                "iso",
-                "whiteBalanceMode",
-            ],
-            Focus: ["focusMode", "focusDistance", "focusRange"],
-            Color: [
-                "brightness",
-                "colorTemperature",
-                "contrast",
-                "saturation",
-                "sharpness",
-            ],
-        };
-
+        const buckets = utilsUI.buckets();
         const usedSoFar = [];
 
         Object.keys(buckets).forEach((buck) => {
@@ -116,8 +102,7 @@ export class MediaControls extends HTMLElement {
                         this.constructor.createInput(
                             cKey,
                             trackInfo.capabilities[cKey],
-                            trackInfo.settings[cKey],
-                            callback
+                            trackInfo.settings[cKey]
                         )
                     );
                 }
@@ -139,8 +124,7 @@ export class MediaControls extends HTMLElement {
                 this.constructor.createInput(
                     cKey,
                     trackInfo.capabilities[cKey],
-                    trackInfo.settings[cKey],
-                    callback
+                    trackInfo.settings[cKey]
                 )
             );
         });
@@ -179,9 +163,9 @@ export class MediaControls extends HTMLElement {
                     value: "Submit",
                 },
             })
-        ).onclick = callback;
+        );
 
-        this.form.oninput = this.outputConstraints;
+        this.form.oninput = this.debouncedOutput;
 
         this.appendChild(
             utilsUI.get({
@@ -250,6 +234,9 @@ export class MediaControls extends HTMLElement {
         const newConstraints = utilsUI.getChangedConstraints(this.trackInfo.constraints, changed);
 
         this.printOutput(newConstraints);
+        if (this.liveupdates) {
+            this.callback(this.form.kind, changed, newConstraints);
+        }
     }
 
     printOutput(constraints) {
@@ -265,14 +252,17 @@ export class MediaControls extends HTMLElement {
     }
 
     reset() {
-        this.querySelectorAll(".control-select").forEach((select) => {
-            select.removeEventListener("change", this.callback);
-        });
+        if (typeof this.debouncedOutput !== "function") return;
 
-        const inps = document.querySelectorAll(".control-input");
+        this.debouncedOutput("debounceTerminatedNow");
+        const inps = this.querySelectorAll("input");
         inps.forEach((input) => {
-            input.removeEventListener("input", this.callback);
             input.oninput = null;
+            input.onclick = null; // for checkboxes
+        });
+        const buttons = this.querySelectorAll("button");
+        buttons.forEach((button) => {
+            button.onclick = null;
         });
         if (this.form) {
             this.form.oninput = null;
@@ -280,14 +270,17 @@ export class MediaControls extends HTMLElement {
         }
         this.innerHTML = "";
         this.callback = null;
+        this.debouncedOutput = null;
     }
 
     setControlValue(key, value) {
         if (!this.form[key]) return;
-        if (this.form[key][0]) {
-            this.form[key][0].value = value;
-            this.form[key][0].dispatchEvent(new Event("input"));
-            // TODO: 1.777777 setting as 2.003, probably because of the step
+        // set value on input, not on range
+        // range sets 1.777777 as 2.0013888 probably due to range pixel step
+        if (this.form[key][1]) {
+            const input = (this.form[key][1].type === "number") ? this.form[key][1] : this.form[key][0];
+            input.value = value;
+            input.dispatchEvent(new Event("input"));
             return;
         }
         this.form[key].value = value;
@@ -300,7 +293,7 @@ export class MediaControls extends HTMLElement {
         });
     }
 
-    static createInput(cKey, cOptions, cValue, callback) {
+    static createInput(cKey, cOptions, cValue) {
         const pElement = document.createElement("p");
 
         // string or String wrapper
@@ -338,7 +331,6 @@ export class MediaControls extends HTMLElement {
                     attrs: { name: cKey, class: "control-select" },
                 })
             );
-            sel.addEventListener("change", callback);
             cOptions.forEach((option) => {
                 sel.appendChild(
                     utilsUI.get({
@@ -371,7 +363,7 @@ export class MediaControls extends HTMLElement {
                         oninput: `this.form.${cKey}[1].value = this.value`,
                     },
                 })
-            ).addEventListener("input", callback);
+            );
             pElement.appendChild(
                 utilsUI.get({
                     tag: "input",
@@ -386,7 +378,7 @@ export class MediaControls extends HTMLElement {
                         oninput: `this.form.${cKey}[0].value = this.value`,
                     },
                 })
-            ).addEventListener("input", callback);
+            );
         }
         return pElement;
     }

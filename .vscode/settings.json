@@ -1,10 +1,17 @@
 {
     "liveServer.settings.port": 5502,
     "cSpell.words": [
+        "contenteditable",
+        "oncompleted",
+        "onenterpictureinpicture",
+        "onleavepictureinpicture",
         "streamdevice",
         "showvideo",
         "showwebgl",
         "showoutcanvas",
+        "debouncetime",
+        "liveupdates",
+        "editconstraints",
         "verts",
         "inds",
         "inps",

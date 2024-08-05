@@ -44,10 +44,15 @@ export class MediaElement extends HTMLElement {
         this.currentConstraints = null;
 
         /**
-         * [internal] WxH actual dimensions of the *video* track.
-         * @type {string}
+         * [internal] WxH actual dimensions of the video track.
+         * @description str is plain WxH string, name is sorted WxH or HxW.
+         * @description name does not depend on orientation.
+         * @description name is used for options in resolution dropdown.
+         * @type {{w: number, h: number, str: string, name: string}}
          */
-        this.trackResolution = "";
+        this.trackResolution = {
+            w: 0, h: 0, str: "0x0", name: "0x0"
+        };
 
         /**
          * @type {{
@@ -92,7 +97,7 @@ export class MediaElement extends HTMLElement {
         this.logger = null;
 
         // to make bound callback event listener removable
-        this.controlsCallback = utilsUI.debounce(this.controlsCallback.bind(this), 400);
+        this.requestTrackChanges = this.requestTrackChanges.bind(this);
         this.onShowChange = this.onShowChange.bind(this);
         this.setOrientation = this.setOrientation.bind(this);
         this.onVideoPlayed = this.onVideoPlayed.bind(this);
@@ -186,7 +191,7 @@ export class MediaElement extends HTMLElement {
     }
 
     setOrientation() {
-        if (!this.trackResolution || !this.video) return;
+        if (!this.video) return;
         this.onVideoPlayed({ type: "orientation" });
     }
 
@@ -195,8 +200,8 @@ export class MediaElement extends HTMLElement {
         this.logDimensions();
         if (this.video.videoWidth
             && this.video.videoHeight
-            && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution) {
-            this.logger.log("Video resolution changed");
+            && `${this.video.videoWidth}x${this.video.videoHeight}` !== this.trackResolution.str) {
+            this.logger.log("Video resolution or orientation changed");
             this.setResolution();
         }
     }
@@ -204,7 +209,7 @@ export class MediaElement extends HTMLElement {
     logDimensions() {
         this.logger.log(
             `Video dimensions: ${this.video.videoWidth}x${this.video.videoHeight}`
-            + `vs. ${this.trackResolution} resolution`
+            + `vs. ${this.trackResolution.str} resolution`
         );
     }
 
@@ -280,7 +285,7 @@ export class MediaElement extends HTMLElement {
                         },
                         true,
                         400,
-                        this.controlsCallback
+                        this.requestTrackChanges
                     );
                 } catch (e) {
                     this.logger.error(e);
@@ -353,7 +358,7 @@ export class MediaElement extends HTMLElement {
                     class: "resolution-select",
                 },
             })
-        ).onchange = this.onRequestResolution.bind(this);
+        ).onchange = this.onResolutionDropdownChange.bind(this);
         this.video = this.appendChild(utilsUI.get({
             tag: "video",
             attrs: {
@@ -445,7 +450,7 @@ export class MediaElement extends HTMLElement {
         // don't know about all environments
         // track has: kind, contentHint
         // id, label, muted, enabled, readyState(live, ended), onmute, onunmute, onended
-        const current = {
+        this.streamTracks[track.kind] = {
             track,
             contentHint: track.contentHint,
             label: track.label,
@@ -454,11 +459,25 @@ export class MediaElement extends HTMLElement {
                 ? track.getCapabilities()
                 : {},
         };
-        this.streamTracks[track.kind] = current;
-        // this.logger.log(`Track ${track.kind} ${track.contentHint} ${track.label}`
-        //     + "\nCapabilities:\n" + JSON.stringify(current.capabilities, null, 2)
-        //     + "\nSettings:\n" + JSON.stringify(current.settings, null, 2)
-        //     + "\nStats:\n" + JSON.stringify(track.stats, null, 2));
+    }
+
+    setTrackSettingsConstraints(trackKind, settings, constraints) {
+        this.streamTracks[trackKind].settings = settings;
+        this.currentConstraints[trackKind] = constraints;
+        if (!this.controls[trackKind]) return;
+        // TODO: update controls with new settings
+        this.controls[trackKind].setConstraints(constraints);
+    }
+
+    updateControls(trackKind, changes) {
+        if (!this.controls[trackKind]) return;
+        try {
+            this.controls[trackKind].updateControls(changes);
+            const constraints = this.currentConstraints[trackKind];
+            this.controls[trackKind].setConstraints(constraints);
+        } catch (e) {
+            this.logger.error(e);
+        }
     }
 
     setStream(device, constraints, stream, onRelease) {
@@ -507,29 +526,20 @@ export class MediaElement extends HTMLElement {
         this.env.on("orientation", this.setOrientation);
     }
 
-    // TODO: after throttle maybe check for other keys too
-    controlsCallback(event) {
-        const form = event.target.form;
-        const trackKind = form.kind;
-        const type = utilsUI.getValueTypeFromInputType(event.target.type);
-        const value = type === "number" ? parseFloat(event.target.value) : event.target.value;
-
-        // sometimes it's required to set "manual" mode before changes
-        // but so far it changes between continuous and manual automatically
-        this.requestTrackChanges(trackKind, { [event.target.name]: value });
-    }
-
-    onRequestResolution(event) {
-        if (this.trackResolution === event.target.value) {
-            this.logger.log("Warning: resolution is already set to " + this.trackResolution);
+    onResolutionDropdownChange(event) {
+        if (this.trackResolution.name === event.target.value) {
+            this.logger.log("Warning: resolution is already set to " + this.trackResolution.name);
             return;
         }
-        const [w, h] = this.env.whFromResolution(event.target.value);
-        this.requestTrackChanges("video", { width: w, height: h });
+        const changes = this.env.parseResolutionName(event.target.value);
+        const trackConstraints = utilsUI.getChangedConstraints(
+            this.currentConstraints.video,
+            changes
+        );
+        this.requestTrackChanges("video", changes, trackConstraints);
     }
 
     resetResolutions() {
-        // settings should provide width and height, and aspect ratio
         const settings = this.streamTracks.video.settings;
         const capabilities = this.streamTracks.video.capabilities;
 
@@ -562,18 +572,36 @@ export class MediaElement extends HTMLElement {
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
         this.initGL(w, h);
-        // keeping the standard order in naming resolutions
-        this.trackResolution = `${w}x${h}`;
-        this.logger.log(`Resolution is set to ${this.trackResolution}`);
+        this.trackResolution = {
+            w, h, str: `${w}x${h}`, name: w > h ? `${w}x${h}` : `${h}x${w}`
+        };
+        this.logger.log(`Resolution is set to ${this.trackResolution.str}`);
         this.selectCurrentResolution();
+    }
+
+    rollbackStream() {
+        navigator.mediaDevices
+            .getUserMedia(this.currentConstraints)
+            .then((stream) => {
+                stream.getTracks().forEach((track) => {
+                    this.setTrack(track);
+                    this.updateControls(track.kind, this.streamTracks[track.kind]);
+                    if (track.kind === "video") {
+                        this.selectCurrentResolution();
+                    }
+                });
+            })
+            .catch((error) => {
+                this.logger.log("RollBack error for constrains:\n"
+                    + JSON.stringify(this.currentConstraints, null, 2));
+                this.logger.error(error);
+            });
     }
 
     /**
      * @description Last resort to change track settings through changing stream.
-     * rollback if not successful.
      */
     requestStreamChanges(trackKind, changes, trackConstraints) {
-        // constrains are more like wishes, not necessarily granted
         const oldSettings = this.streamTracks[trackKind].settings;
         this.stopDeviceTracks();
         const constraints = structuredClone(this.currentConstraints);
@@ -589,87 +617,86 @@ export class MediaElement extends HTMLElement {
                     if (track.kind === "video") {
                         this.video.srcObject = stream;
                         this.logger.log("Post stream request check:");
-                        const unchanged = this.constructor.nothingChanged(
-                            this.streamTracks[trackKind].settings,
+                        const unchanged = utilsUI.nothingChanged(
+                            this.streamTracks[track.kind].settings,
                             oldSettings,
-                            changes,
-                            this.logger.log
+                            changes
                         );
                         if (unchanged) {
                             this.reportUnchanged(constraints, unchanged, changes, 2);
                             // restore to the actual value instead of what we tried to set
-                            this.changeControls(trackKind, unchanged);
+                            this.updateControls(track.kind, unchanged);
                             this.selectCurrentResolution();
                             return;
                         }
                         // Successful
                         this.currentConstraints = constraints;
-                        this.changeSetting(trackKind, oldSettings, changes);
+                        this.compareNewOldSettings(track.kind, oldSettings, changes);
                     } else if (track.kind === "audio") {
                         // this.initAudioTrackUI(stream);
                     }
                 });
             })
             .catch((error) => {
-                this.logger.log(`getUserMedia error for constrains: \n${JSON.stringify(constraints, null, 2)}:`);
+                this.logger.log("Request stream changes error for constrains:\n"
+                    + JSON.stringify(constraints, null, 2));
                 this.logger.error(error);
-                // rollback. attempt once.
-                // in case of second failure the instance should go into error/retry state
-                // and most likely will need to be closed
+                this.rollbackStream();
             });
     }
 
-    requestTrackChanges(trackKind, changes) {
+    requestTrackChanges(trackKind, changes, trackConstraints) {
         const track = this.streamTracks[trackKind].track;
         const oldSettings = this.streamTracks[trackKind].settings;
-        // this.logger.log(`Requesting track changes ${JSON.stringify(changes, null, 2)}`
-        //     + `Current track settings ${JSON.stringify(oldSettings, null, 2)}`
-        //     + "Pre-check if such request really needed changes/old:");
-        if (this.constructor.nothingChanged(changes, oldSettings, changes, this.logger.log)) {
+        if (utilsUI.nothingChanged(changes, oldSettings, changes)) {
             this.logger.log("Warning: Matches current settings. Nothing to change");
             return;
         }
+        const stages = utilsUI.getConstraintStages(trackConstraints);
+        if (stages.length === 0) {
+            this.logger.log("Warning: No constraints to apply");
+            return;
+        }
         // it's not necessary to set all constraints, only those that are changed
-        // but it's cleaner way to keep them all at one glance
-        // one exception might be setting "manual" mode before setting values
-        // in my test case it wasn't necessary
-        this.logger.log(`Current constraints ${JSON.stringify(this.currentConstraints, null, 2)}`);
-        this.logger.log(`Requested track changes for ${trackKind} track`);
+        // but it's cleaner way to keep them all of them at one glance
+        // to avoid "overconstrained" error we should set them in stages
+        // "media" and "imageCapture" constraints should be separated
+        // as well as switch to "manual" might require separate call
+        this.logger.log(`Requested track changes for ${trackKind} track:\n`
+            + JSON.stringify(changes, null, 2));
         this.logger.log(`from constraints ${JSON.stringify(this.currentConstraints[trackKind], null, 2)}`);
-        const trackConstraints = utilsUI.getChangedConstraints(
-            this.currentConstraints[trackKind],
-            changes
-        );
-        this.logger.log(`Applying track constraints ${JSON.stringify(trackConstraints, null, 2)}`);
+        this.logger.log(`New track constraints ${JSON.stringify(trackConstraints, null, 2)}`);
+        this.logger.log(`Applying constraints in stages:\n ${JSON.stringify(stages, null, 2)}`);
 
         track
-            .applyConstraints(trackConstraints)
+            .applyConstraints(stages[0])
+            .then(() => {
+                if (stages.length > 1) {
+                    return track.applyConstraints(stages[1]);
+                } return Promise.resolve();
+            })
+            .then(() => {
+                if (stages.length > 2) {
+                    return track.applyConstraints(stages[2]);
+                } return Promise.resolve();
+            })
             .then(() => {
                 const newSettings = track.getSettings();
                 this.logger.log("Post track request check:");
-                const unchanged = this.constructor.nothingChanged(
+                const unchanged = utilsUI.nothingChanged(
                     newSettings,
                     oldSettings,
-                    changes,
-                    this.logger.log
+                    changes
                 );
                 if (unchanged) {
                     this.reportUnchanged(trackConstraints, unchanged, changes, 1);
-                    // it will restore control inputs there (if unsuccessful too)
                     this.requestStreamChanges(trackKind, changes, trackConstraints);
                     return;
                 }
                 // Successful
-                // this.logger.log("Success initiating changes:\n"
-                //     + "Track Constraints:\n" + JSON.stringify(trackConstraints, null, 2)
-                //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
-                //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2)
-                //     + "Stats:\n" + JSON.stringify(track.stats, null, 2));
+                this.setTrackSettingsConstraints(trackKind, newSettings, trackConstraints);
                 // only need oldChanges for comparison since newSettings are already set
-                this.streamTracks[trackKind].settings = newSettings;
-                // not using trackConstraints to make sure they are organized in the right way
-                this.currentConstraints[trackKind] = track.getConstraints();
-                this.changeSetting(trackKind, oldSettings, changes);
+                this.compareNewOldSettings(trackKind, oldSettings, changes);
             })
             .catch((e) => {
                 this.logger.log(`Failed set track changes ${JSON.stringify(changes, null, 2)}`);
@@ -678,51 +705,12 @@ export class MediaElement extends HTMLElement {
                 // since "overconstrained" error means that the track stays the same
                 // we should reset the controls to the actual values (and resolution dropdown)
                 // if (e instanceof DOMException && e.name === "OverconstrainedError") {
-                //     this.changeControls(trackKind, oldSettings);
+                //     this.updateControls(trackKind, oldSettings);
                 //     this.selectCurrentResolution();
                 // }
-                // OR we can try our luck with the stream
+                // OR we can try our luck with the stream (which is unlikely and hides the error)
                 this.requestStreamChanges(trackKind, changes, trackConstraints);
             });
-    }
-
-    // returns false if anything changed
-    // returns intended change keys with their actual values (previous that stayed the same)
-    static nothingChanged(newSettings, oldSettings, intendedChanges, log) {
-        // log("Nothing changed test:\n"
-        //     + "New Settings:\n" + JSON.stringify(newSettings, null, 2)
-        //     + "Old Settings:\n" + JSON.stringify(oldSettings, null, 2));
-
-        // The tricky part here is that flipped W/H are not considered as a change
-        // at least not on mobile where it's up to to the device to decide
-        if ("width" in intendedChanges && "height" in intendedChanges) {
-            if (intendedChanges.length === 2
-                && (
-                    (intendedChanges.width === oldSettings.height
-                    && intendedChanges.height === oldSettings.width)
-                        || (intendedChanges.width === oldSettings.width
-                            && intendedChanges.height === oldSettings.height)
-                )
-            ) {
-                log("Warning: Flipped W/H are not considered as a change");
-                return false;
-            }
-        }
-        // eslint-disable-next-line no-restricted-syntax
-        for (const key in intendedChanges) {
-            if (newSettings[key] !== oldSettings[key]) {
-                // log(`Found change [${key}] new/old:  `
-                // + `${newSettings[key]} != ${oldSettings[key]}\n`
-                // + `Intended change: [${key}] = ${intendedChanges[key]}\n`
-                // + `typeof ${typeof newSettings[key]} ${typeof oldSettings[key]}`);
-                return false;
-            }
-        }
-        const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-            acc[key] = newSettings[key];
-            return acc;
-        }, {});
-        return unchanged;
     }
 
     reportUnchanged(constraints, unchanged, intendedChanges, attempt) {
@@ -733,18 +721,7 @@ export class MediaElement extends HTMLElement {
         );
     }
 
-    changeControls(trackKind, changes) {
-        if (!this.controls[trackKind]) return;
-        try {
-            this.controls[trackKind].updateControls(changes);
-            const constrains = this.currentConstraints[trackKind];
-            this.controls[trackKind].setConstraints(constrains);
-        } catch (e) {
-            this.logger.error(e);
-        }
-    }
-
-    changeSetting(trackKind, oldSettings, intendedChanges) {
+    compareNewOldSettings(trackKind, oldSettings, intendedChanges) {
         const newSettings = this.streamTracks[trackKind].settings;
 
         const changes = {};
@@ -785,16 +762,7 @@ export class MediaElement extends HTMLElement {
             return;
         }
 
-        this.changeControls(trackKind, changes);
-    }
-
-    static getAspectRatioTag(width, height) {
-        let [w, h] = width > height ? [width, height] : [height, width];
-        const aspKeys = [0, 0, 1, 1, 2, 3, 4, 5, 6, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10];
-        const aspTags = ["1:1", "5:4", "4:3", "1.43:1 IMAX", "3:2", "8:5", "5:3", "16:9", "15:8 HDTV", "2.39:1", "2.75:1"];
-        const keyIndex = Math.round(12 * (w / h)) - 12;
-        if (keyIndex < 0 || keyIndex > aspKeys.length) return "";
-        return aspTags[aspKeys[keyIndex]];
+        this.updateControls(trackKind, changes);
     }
 
     initResolutionsUI(givenRs, camera, os) {
@@ -805,77 +773,8 @@ export class MediaElement extends HTMLElement {
         // TODO 3: scan resolutions that will not switch to cut/resize in vid.settings
         const resHolder = this.querySelector(".resolution-select");
         resHolder.innerHTML = "";
+        const resolutions = utilsUI.getResolutions(givenRs, camera, os);
 
-        let resolutions = [];
-        const camResolutions = {
-            "SR300 RGB": [
-                [1920, 1080, "16:9 1080p Full HD", 30],
-                [1280, 720, "16:9 720p HD", 60],
-                [960, 540, "16:9", 60],
-                [848, 480, "16:9 ~480p", 60],
-                [640, 360, "16:9 360p", 60],
-                [424, 240, "16:9", 60],
-                [320, 180, "16:9", 60],
-                [640, 480, "4:3", 60],
-                [320, 240, "4:3", 60],
-            ],
-            "SR300 Depth": [
-                [640, 480, "4:3 480p SD", 110],
-            ],
-            "R200 RGB": [
-                [1920, 1080, "16:9 1080p Full HD", 30],
-                [640, 480, "4:3 480p SD", 60],
-            ],
-            "R200 Depth": [
-                [628, 468, "", 60],
-                [480, 360, "4:3", 60],
-                [320, 240, "4:3", 60],
-            ]
-        };
-        const osResolutions = {
-            iOS: [
-                [4032, 3024, "4:3 12M", 60],
-                [3264, 2448, "4:3", 60],
-                [3088, 2320, "4:3", 60],
-                [1280, 960, "4:3 720p HD", 60],
-                [640, 480, "4:3 480p SD", 60],
-                [3840, 2160, "1:1.9 2160p 4K Ultra HD", 60],
-                [1920, 1080, "16:9 1080p Full HD", 60],
-                [1280, 720, "16:9", 60],
-            ],
-            Android: [
-                [4032, 3024, "4:3", 60],
-                [4032, 1908, "Full", 60],
-                [3024, 3024, "1:1", 60],
-                [4032, 2268, "16:9", 60],
-            ],
-        };
-        const defaultResolutions = [
-            [640, 360, "16:9 360p", 60],
-            [640, 480, "4:3 480p SD", 60],
-            [1280, 720, "16:9 720p HD", 60],
-            [1920, 1080, "16:9 1080p Full HD", 60],
-            [2560, 1440, "16:9 1440p 2K", 60],
-            [3840, 2160, "1:1.9 2160p 4K Ultra HD", 60],
-            [7680, 4320, "16:9 8K Full Ultra HD", 60],
-        ];
-        if (camera in camResolutions) {
-            resolutions = camResolutions[camera];
-        } else if (os in osResolutions) {
-            resolutions = osResolutions[os];
-        } else {
-            resolutions = defaultResolutions;
-        }
-        givenRs.forEach((res) => {
-            if (!resolutions.some((r) => r[0] === res[0] && r[1] === res[1])) {
-                res.push(this.constructor.getAspectRatioTag(res[0], res[1]));
-                resolutions.push(res);
-            }
-        });
-        // last givenRs is the maximum dimensions w,h provided by capabilities
-        if (givenRs.length === 2) {
-            resolutions = resolutions.filter((r) => r[0] <= givenRs[1][0] && r[1] <= givenRs[1][1]);
-        }
         resolutions.forEach((row) => {
             const res = `${row[0]}x${row[1]}`;
             resHolder.appendChild(

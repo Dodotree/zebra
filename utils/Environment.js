@@ -72,13 +72,13 @@ export default class Environment extends EventEmitter {
         return [w, h];
     }
 
-    whFromResolution(resolution) {
-        const [w, h] = resolution.split("x").map(Number);
-        if (w.isNan || h.isNan) {
+    parseResolutionName(resolution) {
+        const [width, height] = resolution.split("x").map(Number);
+        if (width.isNan || height.isNan) {
             this.logger.log("Error: resolution should be in format \"width x height\"");
             return [];
         }
-        return [w, h]; // this.orientedResolution(w, h);
+        return { width, height };
     }
 
     watchResizeOrientation() {
