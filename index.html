@@ -56,9 +56,8 @@
 
             <script type="module">
                 const footer = document.querySelector("footer");
-                document.body.insertBefore(
+                document.body.appendChild(
                     document.createElement("screen-logger"),
-                    footer
                 );
                 document.body.insertBefore(
                     document.createElement("media-menu"),

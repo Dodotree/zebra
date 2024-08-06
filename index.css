@@ -57,6 +57,7 @@ media-controls form fieldset {
 }
 media-controls output {
     white-space: pre;
+    font-family: monospace;
 }
 media-controls output[contenteditable]{
     background-color: #fff;

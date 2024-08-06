@@ -69,6 +69,12 @@ export const utilsUI = {
         return Array.from(sharedKeys.values());
     },
 
+    constraintKeys(constraints) {
+        const requiredKeys = Object.keys(constraints).filter((key) => key !== "advanced");
+        const advanced = constraints.advanced || [];
+        return advanced.reduce((acc, o) => this.uniqueKeys(Object.keys(o), acc), requiredKeys);
+    },
+
     imageCaptureConstraints() {
         const buckets = this.buckets();
         return [
@@ -173,7 +179,36 @@ export const utilsUI = {
         return stages;
     },
 
+    getChanges(pairs, oldSettings) {
+        return Object.keys(pairs)
+            .filter((key) => !(key in oldSettings) || pairs[key] !== oldSettings[key])
+            .reduce((acc, key) => {
+                acc[key] = pairs[key];
+                return acc;
+            }, {});
+    },
+
+    getConstraints(keyValues) {
+        const keys = Object.keys(keyValues);
+        const idConstraints = ["deviceId", "groupId"].reduce((acc, key) => {
+            if (keys.indexOf(key) > -1) {
+                acc[key] = { exact: keyValues[key] };
+                keys.splice(keys.indexOf(key), 1);
+            }
+            return acc;
+        }, {});
+        const constraints = keys.reduce((acc, key) => {
+            acc[key] = { ideal: keyValues[key], exact: keyValues[key] };
+            return acc;
+        }, idConstraints);
+        if (keys.length > 0) {
+            constraints.advanced = keys.map((key) => ({ [key]: keyValues[key] }));
+        }
+        return constraints;
+    },
+
     getChangedConstraints(oldConstraints, changes) {
+        if (!changes || !Object.keys(changes)) return oldConstraints;
         // making sure we are not mutating the original object
         const newConstraints = structuredClone(oldConstraints);
         if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }

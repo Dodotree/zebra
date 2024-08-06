@@ -274,12 +274,15 @@ export class MediaElement extends HTMLElement {
                 try {
                     this.controls[kind] = new MediaControls();
                     this.appendChild(this.controls[kind]);
-                    this.streamTracks[kind].constraints = this.currentConstraints[kind];
+                    // if it was just boolean make it {}
+                    const constraints = typeof this.currentConstraints[kind] !== "boolean"
+                        ? structuredClone(this.currentConstraints[kind]) : {};
                     this.controls[kind].init(
                         kind,
                         {
                             label: this.streamTracks[kind].label,
-                            constraints: structuredClone(this.currentConstraints[kind]),
+                            constraints: constraints,
+                            enabled: utilsUI.constraintKeys(constraints),
                             capabilities: structuredClone(this.streamTracks[kind].capabilities),
                             settings: structuredClone(this.streamTracks[kind].settings),
                         },
