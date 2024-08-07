@@ -413,7 +413,6 @@ export class MediaElement extends HTMLElement {
     }
 
     initAudioTrackUI(stream, label) {
-        // TODO: visualization of sound to show it's working
         this.logger.log("Audio track");
         this.audioPlace.appendChild(
             utilsUI.get({
@@ -481,12 +480,12 @@ export class MediaElement extends HTMLElement {
             settings: track.getSettings(),
             capabilities: track.getCapabilities
                 ? track.getCapabilities()
-                : {},
+                : utilsUI.theoreticalConstraints(),
         };
+        this.logger.log(JSON.stringify(this.streamTracks[track.kind], null, 2));
     }
 
     setTrackSettingsConstraints(trackKind, settings, constraints) {
-        console.log("constraints", constraints);
         this.streamTracks[trackKind].settings = settings;
         this.currentConstraints[trackKind] = constraints;
         if (!this.controls[trackKind]) return;

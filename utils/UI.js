@@ -64,64 +64,108 @@ export const utilsUI = {
         };
     },
 
-    imageCaptureConstraints() {
+    imageCaptureKeys() {
         const buckets = this.buckets();
         return [
-            ...buckets.Color,
-            ...buckets.Exposure,
-            ...buckets.Focus,
-            ...buckets.CropAndZoom,
-            ...buckets.Flash
+            ...Object.keys(buckets.Color),
+            ...Object.keys(buckets.Exposure),
+            ...Object.keys(buckets.Focus),
+            ...Object.keys(buckets.CropAndZoom),
+            ...Object.keys(buckets.Flash),
+            ...Object.keys(buckets.Photo)
         ];
     },
 
-    nonImageCaptureConstraints() {
+    nonImageCaptureKeys() {
         const buckets = this.buckets();
         return [
-            ...buckets.IDs,
-            ...buckets.Box,
-            ...buckets.Audio
+            ...Object.keys(buckets.IDs),
+            ...Object.keys(buckets.Box),
+            ...Object.keys(buckets.Audio)
         ];
     },
 
+    theoreticalConstraints() {
+        const buckets = this.buckets();
+        return (Object.keys(this.buckets()))
+            .reduce((acc, key)=> Object.assign(acc, buckets[key]), {});
+    },
+
+    /* "min" and "max" usually include "step" too (though not always true) */
+    /* some features have to be enable at getUserMedia {pan: true} to become available */
+    /* where possible values for pan tilt zoom are  (boolean or ConstrainDouble) */
     buckets() {
         return {
-            IDs: ["deviceId", "groupId"],
-            Box: [
-                "facingMode",
-                "resizeMode",
-                "aspectRatio",
-                "width",
-                "height",
-                "frameRate"
-            ],
-            Audio: [
-                "autoGainControl",
-                "channelCount",
-                "echoCancellation",
-                "latency",
-                "noiseSuppression",
-                "sampleRate",
-                "sampleSize",
-                "volume",
-            ],
-            Exposure: [
-                "whiteBalanceMode",
-                "exposureMode",
-                "exposureTime",
-                "exposureCompensation",
-                "iso",
-            ],
-            Flash: ["torch"],
-            Focus: ["focusMode", "focusDistance", "focusRange"],
-            Color: [
-                "brightness",
-                "colorTemperature",
-                "contrast",
-                "saturation",
-                "sharpness",
-            ],
-            CropAndZoom: ["pan", "tilt", "zoom"],
+            IDs: { deviceId: "", groupId: "" },
+            Box: {
+                /* left and right sides in user direction */
+                facingMode: ["environment", "user", "left", "right"],
+                /* downscaled (not up scaled) and/or cropped from a higher camera resolution */
+                resizeMode: ["none", "crop-and-scale"],
+                /* value is the width divided by the height and is rounded to ten decimal places */
+                aspectRatio: { min: 0, exact: 1.3333333332, max: 10000 },
+                width: { min: 0, ideal: 640, max: 10000 },
+                height: { min: 0, ideal: 480, max: 10000 },
+                /* can be affected by lighting conditions */
+                frameRate: { min: 0, ideal: 30, max: 110 }
+            },
+            Audio: {
+                sampleRate: { min: 0, ideal: 48000, max: 96000 },
+                /* The linear sample size in bits. If device produces *linear* samples */
+                sampleSize: { min: 0, ideal: 16, max: 32 },
+                echoCancellation: { exact: true },
+                autoGainControl: { exact: true },
+                noiseSuppression: { exact: true },
+                latency: { min: 0.1, ideal: 0.01, max: 0.1 },
+                channelCount: { min: 0, ideal: 2, max: 2 },
+                /* deprecated */
+                volume: { min: 0.0, ideal: 0.5, max: 1.0 }
+            },
+            Exposure: {
+                /* chances are that only "manual" and "continuous" are available */
+                exposureMode: ["none", "manual", "single-shot", "continuous"],
+                /* only works in manual mode */
+                exposureTime: { min: 4.8828125, step: 4.8828125, ideal: 1250, max: 2500 },
+                /* only works in continuous or single-shot mode */
+                exposureCompensation: { min: 0, ideal: 0, max: 255 },
+                /* sensitivity of the camera to light */
+                iso: { min: 0, ideal: 100, max: 800 },
+            },
+            Flash: {
+                /* light stays on as long as the track is active  */
+                torch: { exact: false },
+            },
+            Photo: {
+                imageHeight: { min: 0, ideal: 480, max: 10000 },
+                imageWidth: { min: 0, ideal: 640, max: 10000 },
+                fillLightMode: ["off", "auto", "flash"],
+                redEyeReduction: ["never", "always", "controllable"],
+            },
+            Focus: {
+                focusMode: ["none", "manual", "single-shot", "continuous"],
+                /* usually in meters */
+                focusDistance: { min: 0, ideal: 5, max: 600 },
+                focusRange: { min: 0, ideal: 0.5, max: 1 },
+                backgroundBlur: { exact: false },
+                /* in use by Focus, Exposure and Auto White Balance, in normalized coords 0.0-1.0 */
+                pointsOfInterest: { exact: { x: 0.5, y: 0.5 } },
+            },
+            Color: {
+                whiteBalanceMode: ["none", "manual", "single-shot", "continuous"],
+                /* enabled in manual white balance mode */
+                colorTemperature: { min: 2000, step: 10, ideal: 3950, max: 7500 },
+                brightness: { min: 0, ideal: 128, max: 255 },
+                contrast: { min: 0, ideal: 128, max: 255 },
+                saturation: { min: 0, ideal: 128, max: 255 },
+                sharpness: { min: 0, ideal: 128, max: 255 }
+            },
+            CropAndZoom: {
+                /* getUserMedia with  {pan: true, tilt: true, zoom: true} */
+                /* and then .applyConstraints({advanced: [{pan: event.target.value}]}); */
+                pan: { min: -180000, step: 3600, ideal: 0, max: 180000 },
+                tilt: { min: -180000, step: 3600, ideal: 0, max: 180000 },
+                zoom: { min: 100, ideal: 100, max: 400 }
+            },
         };
     },
 
@@ -133,7 +177,7 @@ export const utilsUI = {
         const stage1 = { advanced: [] };
         const stage2 = { advanced: [] };
         const stage3 = { advanced: [] };
-        const mediaConstraints = this.nonImageCaptureConstraints();
+        const mediaConstraints = this.nonImageCaptureKeys();
         Object.keys(constraints).forEach((key) => {
             if (key === "advanced") {
                 constraints.advanced.forEach((o) => {
@@ -210,6 +254,14 @@ export const utilsUI = {
         return constraints;
     },
 
+    // TODO: advanced should be overridden in reverse order
+    // since the lower set in the advanced is the least priority
+    // each set in advanced is either satisfied or failed together
+    // all values in the set treated as "exact"
+    // if advanced fails it tries to go as close as possible to "ideal"
+    // so technically we should check by getConstraints() which one was satisfied
+    // on each step and save that to know for sure what worked
+    // BUT that is in theory, in practice advanced support is iffy
     getChangedConstraints(oldConstraints, changes, deleteKeys) {
         const merged = (oldConstraints.advanced || [])
             .reduce((acc, o)=> Object.assign(acc, o), {});
@@ -234,7 +286,6 @@ export const utilsUI = {
                 return acc;
             }, []);
         }
-        console.log("changing", oldConstraints, changes, constraints);
         return constraints;
     },
 

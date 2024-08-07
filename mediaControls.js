@@ -106,7 +106,7 @@ export class MediaControls extends HTMLElement {
                     text: buck,
                 })
             );
-            buckets[buck].forEach((cKey) => {
+            Object.keys(buckets[buck]).forEach((cKey) => {
                 if (cKey in trackInfo.capabilities) {
                     usedSoFar.push(cKey);
                     bucketNode.appendChild(
