@@ -14,10 +14,22 @@ button {
 
 media-menu{
     display: block;
+    flex-direction: column;
 }
 media-element {
-    display: inline-block;
+    display: inline-grid;
+    grid-template-columns: min-content;
+    grid-template-areas:
+        "caption"
+        "video"
+        "audio";
     margin: 2rem;
+}
+media-element h4{
+    grid-area: caption;
+}
+media-element div.firstChild{
+    grid-area: video;
 }
 /* hack for iPhone video stop streaming if not in view */
 media-element video{
@@ -31,6 +43,13 @@ media-element canvas.outCanvas{
 media-element[showwebgl] canvas.webGLCanvas,
 media-element[showoutcanvas] canvas.outCanvas{
         display: block;
+}
+media-element div{
+    align-items: center;
+}
+media-element #toggle-audio{
+    display: inline-block;
+    transform: scale(-1);
 }
 
 media-controls {

@@ -71,6 +71,7 @@ export class MediaControls extends HTMLElement {
     }
 
     init(kind, trackInfo, liveupdates, debouncetime, callback) {
+        console.log("init", kind, trackInfo);
         this.reset();
         this.callback = callback;
         this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, debouncetime);

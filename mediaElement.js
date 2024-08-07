@@ -298,7 +298,7 @@ export class MediaElement extends HTMLElement {
     }
 
     initVideoTrackUI() {
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
                 attrs: {
@@ -309,14 +309,14 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).addEventListener("change", this.onShowChange);
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "label",
                 text: "video",
                 attrs: { htmlFor: `showvideo-${this.streamId}` },
             })
         );
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
                 attrs: {
@@ -327,14 +327,14 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).addEventListener("change", this.onShowChange);
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "label",
                 text: "webGL",
                 attrs: { htmlFor: `showwebgl-${this.streamId}` },
             })
         );
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
                 attrs: {
@@ -345,7 +345,7 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).addEventListener("change", this.onShowChange);
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "label",
                 text: "outCanvas",
@@ -353,7 +353,7 @@ export class MediaElement extends HTMLElement {
             })
         );
 
-        this.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "select",
                 attrs: {
@@ -362,7 +362,7 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).onchange = this.onResolutionDropdownChange.bind(this);
-        this.video = this.appendChild(utilsUI.get({
+        this.video = this.videoPlace.appendChild(utilsUI.get({
             tag: "video",
             attrs: {
                 controls: true,
@@ -412,19 +412,40 @@ export class MediaElement extends HTMLElement {
         // TODO: captureButton.addEventListener('click', takeScreenshot); // webGL
     }
 
-    initAudioTrackUI(stream) {
+    initAudioTrackUI(stream, label) {
         // TODO: visualization of sound to show it's working
         this.logger.log("Audio track");
-        this.audio = this.appendChild(
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "🕪", // "🕩🕨",
+                attrs: { id: "toggle-audio" },
+            })
+        ); // TODO: mute audio
+        this.audio = this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "meter",
                 attrs: {
+                    name: label,
                     max: 1,
                     value: 0,
                     hight: 0.25
                 },
             })
         );
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "label",
+                text: label,
+                attrs: { htmlFor: label },
+            })
+        );
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ); // TODO: remove audio track
         try {
             // TODO: separate as audio visualizer component
             this.clock = new Clock();
@@ -465,6 +486,7 @@ export class MediaElement extends HTMLElement {
     }
 
     setTrackSettingsConstraints(trackKind, settings, constraints) {
+        console.log("constraints", constraints);
         this.streamTracks[trackKind].settings = settings;
         this.currentConstraints[trackKind] = constraints;
         if (!this.controls[trackKind]) return;
@@ -504,6 +526,9 @@ export class MediaElement extends HTMLElement {
             })
         ).onclick = this.destroy.bind(this);
 
+        this.videoPlace = this.appendChild(utilsUI.get({ tag: "div" }));
+        this.audioPlace = this.appendChild(utilsUI.get({ tag: "div" }));
+
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
 
@@ -513,7 +538,7 @@ export class MediaElement extends HTMLElement {
                 this.resetResolutions();
                 this.showwebgl = true;
             } else if (track.kind === "audio") {
-                this.initAudioTrackUI(stream);
+                this.initAudioTrackUI(stream, track.label);
             }
             track.onended = this.onVideoPlayed;
             track.onmute = this.onVideoPlayed;
@@ -522,7 +547,7 @@ export class MediaElement extends HTMLElement {
         this.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "⚙ Open track controls",
+                text: "⚙ Open controls",
                 attrs: { id: "open-controls" },
             })
         ).onclick = this.openControls.bind(this);
@@ -537,7 +562,8 @@ export class MediaElement extends HTMLElement {
         const changes = this.env.parseResolutionName(event.target.value);
         const trackConstraints = utilsUI.getChangedConstraints(
             this.currentConstraints.video,
-            changes
+            changes,
+            ["aspectRatio"]
         );
         this.requestTrackChanges("video", changes, trackConstraints);
     }
@@ -845,7 +871,7 @@ export class MediaElement extends HTMLElement {
         this.destroyCanvases();
         const webGLCanvasID = "webGLCanvas" + this.streamId;
         const outCanvasID = "outCanvas" + this.streamId;
-        this.insertBefore(
+        this.videoPlace.insertBefore(
             utilsUI.get({
                 tag: "canvas",
                 attrs: {
@@ -858,7 +884,7 @@ export class MediaElement extends HTMLElement {
             }),
             this.video
         );
-        this.insertBefore(
+        this.videoPlace.insertBefore(
             utilsUI.get({
                 tag: "canvas",
                 attrs: {

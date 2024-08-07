@@ -64,17 +64,6 @@ export const utilsUI = {
         };
     },
 
-    uniqueKeys(o, oo) {
-        const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
-        return Array.from(sharedKeys.values());
-    },
-
-    constraintKeys(constraints) {
-        const requiredKeys = Object.keys(constraints).filter((key) => key !== "advanced");
-        const advanced = constraints.advanced || [];
-        return advanced.reduce((acc, o) => this.uniqueKeys(Object.keys(o), acc), requiredKeys);
-    },
-
     imageCaptureConstraints() {
         const buckets = this.buckets();
         return [
@@ -179,6 +168,20 @@ export const utilsUI = {
         return stages;
     },
 
+    uniqueKeys(o, oo) {
+        const sharedKeys = new Set([...Object.keys(o), ...Object.keys(oo)]);
+        return Array.from(sharedKeys.values());
+    },
+
+    constraintKeys(constraints) {
+        const advanced = constraints.advanced || [];
+        const keysSet = advanced.reduce(
+            (acc, o) => acc.union(new Set(Object.keys(o))),
+            new Set(Object.keys(constraints))
+        );
+        return Array.from(keysSet.values()).filter((key) => key !== "advanced");
+    },
+
     getChanges(pairs, oldSettings) {
         return Object.keys(pairs)
             .filter((key) => !(key in oldSettings) || pairs[key] !== oldSettings[key])
@@ -193,40 +196,46 @@ export const utilsUI = {
         const idConstraints = ["deviceId", "groupId"].reduce((acc, key) => {
             if (keys.indexOf(key) > -1) {
                 acc[key] = { exact: keyValues[key] };
-                keys.splice(keys.indexOf(key), 1);
             }
             return acc;
         }, {});
-        const constraints = keys.reduce((acc, key) => {
+        const advancedKeys = keys.filter((key) => ["deviceId", "groupId"].indexOf(key) === -1);
+        const constraints = advancedKeys.reduce((acc, key) => {
             acc[key] = { ideal: keyValues[key], exact: keyValues[key] };
             return acc;
         }, idConstraints);
-        if (keys.length > 0) {
+        if (advancedKeys.length > 0) {
             constraints.advanced = keys.map((key) => ({ [key]: keyValues[key] }));
         }
         return constraints;
     },
 
-    getChangedConstraints(oldConstraints, changes) {
-        if (!changes || !Object.keys(changes)) return oldConstraints;
-        // making sure we are not mutating the original object
-        const newConstraints = structuredClone(oldConstraints);
-        if (!("advanced" in newConstraints)) { newConstraints.advanced = []; }
-        // keyLines is key to index of line in advanced array of {} objects
-        const keyLines = newConstraints.advanced.reduce((acc, o, index) => {
-            Object.keys(o).forEach((key) => { acc[key] = index; });
+    getChangedConstraints(oldConstraints, changes, deleteKeys) {
+        const merged = (oldConstraints.advanced || [])
+            .reduce((acc, o)=> Object.assign(acc, o), {});
+        Object.assign(merged, changes);
+        const keys = this.uniqueKeys(merged, oldConstraints)
+            .filter((key) => key !== "advanced" && deleteKeys.indexOf(key) === -1);
+        const constraints = keys.reduce((acc, key) => {
+            const a = oldConstraints[key] || {};
+            // "ideal" here is more for the sake of overriding old "ideal"
+            const b = key in merged ? { exact: merged[key], ideal: merged[key] } : {};
+            acc[key] = Object.assign({}, a, b);
             return acc;
         }, {});
-        Object.keys(changes).forEach((key) => {
-            const value = changes[key];
-            newConstraints[key] = { ...newConstraints[key], ideal: value, exact: value };
-            if (key in keyLines) {
-                newConstraints.advanced[keyLines[key]][key] = value;
-            } else {
-                newConstraints.advanced.push({ [key]: value });
-            }
-        });
-        return newConstraints;
+        const advancedKeys = keys.filter((key) => ["deviceId", "groupId"].indexOf(key) === -1);
+        if (advancedKeys.length > 0) {
+            constraints.advanced = advancedKeys.reduce((acc, key) => {
+                if ("exact" in constraints[key]) {
+                    acc.push({ [key]: constraints[key].exact });
+                } else if ("ideal" in constraints[key]) {
+                    acc.push({ [key]: constraints[key].ideal });
+                }
+                return acc;
+            }, []);
+        }
+        console.log("changing", oldConstraints, changes, constraints);
+        return constraints;
     },
 
     // returns false if anything changed
