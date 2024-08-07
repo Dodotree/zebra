@@ -125,7 +125,9 @@ export const utilsUI = {
                 /* chances are that only "manual" and "continuous" are available */
                 exposureMode: ["none", "manual", "single-shot", "continuous"],
                 /* only works in manual mode */
-                exposureTime: { min: 4.8828125, step: 4.8828125, ideal: 1250, max: 2500 },
+                exposureTime: {
+                    min: 4.8828125, step: 4.8828125, ideal: 1250, max: 2500
+                },
                 /* only works in continuous or single-shot mode */
                 exposureCompensation: { min: 0, ideal: 0, max: 255 },
                 /* sensitivity of the camera to light */
@@ -153,7 +155,9 @@ export const utilsUI = {
             Color: {
                 whiteBalanceMode: ["none", "manual", "single-shot", "continuous"],
                 /* enabled in manual white balance mode */
-                colorTemperature: { min: 2000, step: 10, ideal: 3950, max: 7500 },
+                colorTemperature: {
+                    min: 2000, step: 10, ideal: 3950, max: 7500
+                },
                 brightness: { min: 0, ideal: 128, max: 255 },
                 contrast: { min: 0, ideal: 128, max: 255 },
                 saturation: { min: 0, ideal: 128, max: 255 },
@@ -162,8 +166,12 @@ export const utilsUI = {
             CropAndZoom: {
                 /* getUserMedia with  {pan: true, tilt: true, zoom: true} */
                 /* and then .applyConstraints({advanced: [{pan: event.target.value}]}); */
-                pan: { min: -180000, step: 3600, ideal: 0, max: 180000 },
-                tilt: { min: -180000, step: 3600, ideal: 0, max: 180000 },
+                pan: {
+                    min: -180000, step: 3600, ideal: 0, max: 180000
+                },
+                tilt: {
+                    min: -180000, step: 3600, ideal: 0, max: 180000
+                },
                 zoom: { min: 100, ideal: 100, max: 400 }
             },
         };
@@ -371,6 +379,11 @@ export const utilsUI = {
                 [4032, 1908, "Full", 60],
                 [3024, 3024, "1:1", 60],
                 [4032, 2268, "16:9", 60],
+                // added below for the sake of diversity, not sure if they are natively supported
+                [2560, 1440, "16:9 1440p 2K", 60],
+                [1920, 1080, "16:9 1080p Full HD", 60],
+                [1280, 720, "16:9 720p HD", 60],
+                [640, 480, "4:3 480p SD", 60],
             ],
         };
         const defaultResolutions = [
