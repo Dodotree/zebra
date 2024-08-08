@@ -70,10 +70,11 @@ export class MediaControls extends HTMLElement {
         this.debounceOnFormInput = null;
     }
 
-    init(kind, trackInfo, liveupdates, debouncetime, callback) {
+    init(kind, trackInfo, liveupdates, debouncetime, callback, destroyCallback) {
         console.log("init", kind, trackInfo);
         this.reset();
         this.callback = callback;
+        this.destroyCallback = destroyCallback;
         this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, debouncetime);
         this.trackInfo = trackInfo;
 
@@ -431,6 +432,7 @@ export class MediaControls extends HTMLElement {
     }
 
     destroy() {
+        this.destroyCallback(this.form.kind);
         this.reset();
         this.remove();
     }

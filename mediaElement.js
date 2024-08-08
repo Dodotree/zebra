@@ -101,6 +101,8 @@ export class MediaElement extends HTMLElement {
         this.onShowChange = this.onShowChange.bind(this);
         this.setOrientation = this.setOrientation.bind(this);
         this.onVideoPlayed = this.onVideoPlayed.bind(this);
+        this.openControls = this.openControls.bind(this);
+        this.onControlsDestroyed = this.onControlsDestroyed.bind(this);
 
         this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
 
@@ -267,37 +269,64 @@ export class MediaElement extends HTMLElement {
         }
     }
 
-    openControls() {
-        this.querySelector("#open-controls").style.display = "none";
-        Object.keys(this.streamTracks).forEach((kind) => {
-            if (this.streamTracks[kind].track) {
-                try {
-                    this.controls[kind] = new MediaControls();
-                    this.appendChild(this.controls[kind]);
-                    // if it was just boolean make it {}
-                    const constraints = typeof this.currentConstraints[kind] !== "boolean"
-                        ? structuredClone(this.currentConstraints[kind]) : {};
-                    this.controls[kind].init(
-                        kind,
-                        {
-                            label: this.streamTracks[kind].label,
-                            constraints: constraints,
-                            enabled: utilsUI.constraintKeys(constraints),
-                            capabilities: structuredClone(this.streamTracks[kind].capabilities),
-                            settings: structuredClone(this.streamTracks[kind].settings),
-                        },
-                        true,
-                        400,
-                        this.requestTrackChanges
-                    );
-                } catch (e) {
-                    this.logger.error(e);
-                }
-            }
-        });
+    onControlsDestroyed(kind) {
+        this.controls[kind] = null;
+        this.querySelector(`.open-controls[kind=${kind}]`).disabled = false;
     }
 
-    initVideoTrackUI() {
+    openControls(e) {
+        e.target.disabled = true;
+        const kind = e.target.getAttribute("kind");
+        if (!this.streamTracks[kind]) return;
+
+        try {
+            this.controls[kind] = new MediaControls();
+            this.appendChild(this.controls[kind]);
+            // if it was just boolean make it {}
+            const constraints = typeof this.currentConstraints[kind] !== "boolean"
+                ? structuredClone(this.currentConstraints[kind]) : {};
+            this.controls[kind].init(
+                kind,
+                {
+                    label: this.streamTracks[kind].label,
+                    constraints: constraints,
+                    enabled: utilsUI.constraintKeys(constraints),
+                    capabilities: structuredClone(this.streamTracks[kind].capabilities),
+                    settings: structuredClone(this.streamTracks[kind].settings),
+                },
+                true,
+                400,
+                this.requestTrackChanges,
+                this.onControlsDestroyed
+            );
+        } catch (event) {
+            this.logger.error(event);
+        }
+    }
+
+    initVideoTrackUI(label) {
+        const caption = this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "h4",
+                text: label,
+            })
+        );
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "⚙",
+                attrs: {
+                    class: "open-controls",
+                    kind: "video",
+                },
+            })
+        ).onclick = this.openControls;
+        caption.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ).onclick = this.destroy.bind(this);
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
@@ -442,6 +471,16 @@ export class MediaElement extends HTMLElement {
         this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "button",
+                text: "⚙",
+                attrs: {
+                    class: "open-controls",
+                    kind: "audio",
+                },
+            })
+        ).onclick = this.openControls;
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
                 text: "✕",
             })
         ); // TODO: remove audio track
@@ -512,19 +551,6 @@ export class MediaElement extends HTMLElement {
         this.logger.log(`Stream constraints:\n ${JSON.stringify(constraints, null, 2)}`);
         this.onRelease = onRelease;
 
-        const caption = this.appendChild(
-            utilsUI.get({
-                tag: "h4",
-                text: device,
-            })
-        );
-        caption.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "✕",
-            })
-        ).onclick = this.destroy.bind(this);
-
         this.videoPlace = this.appendChild(utilsUI.get({ tag: "div" }));
         this.audioPlace = this.appendChild(utilsUI.get({ tag: "div" }));
 
@@ -532,7 +558,7 @@ export class MediaElement extends HTMLElement {
             this.setTrack(track);
 
             if (track.kind === "video") {
-                this.initVideoTrackUI();
+                this.initVideoTrackUI(track.label || device);
                 this.video.srcObject = stream;
                 this.resetResolutions();
                 this.showwebgl = true;
@@ -543,13 +569,6 @@ export class MediaElement extends HTMLElement {
             track.onmute = this.onVideoPlayed;
             track.onunmute = this.onVideoPlayed;
         });
-        this.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "⚙ Open controls",
-                attrs: { id: "open-controls" },
-            })
-        ).onclick = this.openControls.bind(this);
         this.env.on("orientation", this.setOrientation);
     }
 
