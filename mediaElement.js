@@ -613,6 +613,7 @@ export class MediaElement extends HTMLElement {
     }
 
     setResolution() {
+        if (!this.video) return;
         // TODO: verify influence of cut/resize constraint on this
         const [w, h] = [this.video.videoWidth, this.video.videoHeight];
         this.setVideoSize(w, h);
