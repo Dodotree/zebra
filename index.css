@@ -55,7 +55,7 @@ media-element #toggle-audio{
 media-controls {
     display: block;
     padding: 1rem;
-    background: #f4f4f4;
+    background: #f4f4f4; /* #afb9c8; */
     border: 1px solid #ccc;
     border-radius: 5px;
     margin: 1rem 0;

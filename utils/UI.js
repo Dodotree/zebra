@@ -113,9 +113,10 @@ export const utilsUI = {
                 sampleRate: { min: 0, ideal: 48000, max: 96000 },
                 /* The linear sample size in bits. If device produces *linear* samples */
                 sampleSize: { min: 0, ideal: 16, max: 32 },
-                echoCancellation: { exact: true },
-                autoGainControl: { exact: true },
-                noiseSuppression: { exact: true },
+                echoCancellation: [true, false],
+                autoGainControl: [true, false],
+                noiseSuppression: [true, false],
+                voiceIsolation: [true, false],
                 latency: { min: 0.1, ideal: 0.01, max: 0.1 },
                 channelCount: { min: 0, ideal: 2, max: 2 },
                 /* deprecated */
@@ -135,7 +136,7 @@ export const utilsUI = {
             },
             Flash: {
                 /* light stays on as long as the track is active  */
-                torch: { exact: false },
+                torch: [true, false],
             },
             Photo: {
                 imageHeight: { min: 0, ideal: 480, max: 10000 },
@@ -148,7 +149,7 @@ export const utilsUI = {
                 /* usually in meters */
                 focusDistance: { min: 0, ideal: 5, max: 600 },
                 focusRange: { min: 0, ideal: 0.5, max: 1 },
-                backgroundBlur: { exact: false },
+                backgroundBlur: [true, false],
                 /* in use by Focus, Exposure and Auto White Balance, in normalized coords 0.0-1.0 */
                 pointsOfInterest: { exact: { x: 0.5, y: 0.5 } },
             },
@@ -297,7 +298,7 @@ export const utilsUI = {
         return constraints;
     },
 
-    // returns false if anything changed
+    // nothing (intentionally) changed, returns false if anything changed
     // returns intended change keys with their actual values (previous that stayed the same)
     nothingChanged(newSettings, oldSettings, intendedChanges) {
         // The tricky part here is that flipped W/H are not considered as a change
@@ -413,6 +414,16 @@ export const utilsUI = {
             resolutions = resolutions.filter((r) => r[0] <= givenRs[1][0] && r[1] <= givenRs[1][1]);
         }
         return resolutions;
+    },
+
+    parseValue(txt, item) {
+        if (txt === "true" || txt === "false") {
+            return txt === "true";
+        }
+        if (typeof item === "object" && "max" in item) {
+            return parseFloat(txt);
+        }
+        return txt;
     },
 
     getValueTypeFromInputType(type) {

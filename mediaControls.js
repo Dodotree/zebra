@@ -240,8 +240,7 @@ export class MediaControls extends HTMLElement {
                 return pairs[key] !== null && pairs[key] !== undefined;
             })
             .reduce((acc, key) => {
-                const item = capabilities[key];
-                acc[key] = typeof item === "object" && "max" in item ? parseFloat(pairs[key]) : pairs[key];
+                acc[key] = utilsUI.parseValue(pairs[key], capabilities[key]);
                 return acc;
             }, {});
     }
@@ -310,6 +309,7 @@ export class MediaControls extends HTMLElement {
         this.form[key][0].checked = enabled;
         // set value on input, not on range
         // range sets 1.777777 as 2.0013888 probably due to range pixel step
+        console.log(key, value, this.form[key][1], this.form[key][2]);
         if (this.form[key][2]) {
             const input = (this.form[key][1].type === "number") ? this.form[key][2] : this.form[key][1];
             input.value = value;
@@ -317,7 +317,9 @@ export class MediaControls extends HTMLElement {
             return;
         }
         this.form[key][1].value = value;
-        this.form[key].dispatchEvent(new Event("input"));
+        if (this.form[key][1].tagName === "input") {
+            this.form[key].dispatchEvent(new Event("input"));
+        }
     }
 
     updateControls(changes) {
@@ -375,6 +377,7 @@ export class MediaControls extends HTMLElement {
             );
             input.disabled = !enabled;
         } else if (Array.isArray(cOptions) && cOptions.length > 0) {
+            // Select is better than checkbox for boolean values
             const sel = pElement.appendChild(
                 utilsUI.get({
                     tag: "select",
@@ -389,11 +392,12 @@ export class MediaControls extends HTMLElement {
                 sel.appendChild(
                     utilsUI.get({
                         tag: "option",
-                        text: option,
-                        attrs: { value: option },
+                        text: option.toString(),
+                        attrs: { value: option.toString() },
                     })
                 );
             });
+            sel.value = cValue.toString();
         } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
             const range = pElement.appendChild(
                 utilsUI.get({
