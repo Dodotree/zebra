@@ -1,62 +1,105 @@
-body{
+body {
     font-family: Verdana, Geneva, sans-serif;
 }
+
 textarea {
     width: 100%;
     height: 240px;
 }
+
 label {
     padding-right: 1.2rem;
 }
+
 select {
     padding: 0.57rem;
 }
-option{
+
+option {
     word-wrap: normal !important;
     white-space: normal;
 }
+
 button {
     font-size: 1.61rem;
     vertical-align: middle;
 }
 
-media-menu{
+h5 {
+    margin: 0;
+}
+
+media-menu {
     display: block;
     flex-direction: column;
 }
+
 media-element {
     display: inline-grid;
     grid-template-columns: min-content;
     grid-template-areas:
-        "caption"
         "video"
-        "audio";
+        "audio"
+        "controls";
     padding: 1rem;
     background-color: #e2dff7;
 }
-media-element h4{
+
+media-element h4 {
     grid-area: caption;
 }
-media-element div.firstChild{
+
+media-element div:first-child {
     grid-area: video;
+    display: grid;
+    grid-template-columns: 1.5rem 3rem 1.5rem 3rem 1.5rem 3rem 1fr 1fr 3rem 3rem;
+    align-items:center;
+    align-content:space-evenly;
+    justify-content: center;
+    justify-items: end;
 }
+media-element div:first-child h5{
+    grid-column: 1/10;
+}
+media-element div:first-child button,
+media-element div:first-child input,
+media-element div:first-child label {
+    grid-column: span 1;
+}
+media-element div:first-child select {
+    grid-column: 8/12;
+}
+media-element div:first-child video, media-element div:first-child canvas {
+    grid-column: 1/12;
+}
+media-element div:nth-child(2) {
+    grid-area: audio;
+}
+media-element div:nth-child(3) {
+    grid-area: controls;
+}
+
 /* hack for iPhone video stop streaming if not in view */
-media-element video{
+media-element video {
     width: 1px;
     height: 1px;
 }
+
 media-element canvas.webGLCanvas,
-media-element canvas.outCanvas{
-        display: none;
+media-element canvas.outCanvas {
+    display: none;
 }
+
 media-element[showwebgl] canvas.webGLCanvas,
-media-element[showoutcanvas] canvas.outCanvas{
-        display: block;
+media-element[showoutcanvas] canvas.outCanvas {
+    display: block;
 }
-media-element div{
+
+media-element div {
     align-items: center;
 }
-media-element #toggle-audio{
+
+media-element #toggle-audio {
     display: inline-block;
     transform: scale(-1);
 }
@@ -64,41 +107,50 @@ media-element #toggle-audio{
 media-controls {
     display: block;
     padding: 0.62rem;
-    background: #f5f4fc; /* #f4f4f4;  #afb9c8; */
+    background: #f5f4fc;
+    /* #f4f4f4;  #afb9c8; */
     border: 1px solid #ccc;
     border-radius: 5px;
-    margin: 1rem 0;
 }
+
 details select {
     padding: 0.33rem;
 }
+
 summary {
     padding: 1rem;
 }
+
 media-controls form {
     column-count: 3;
     column-gap: 0.3rem;
 }
+
 media-controls form fieldset {
-    break-inside: avoid; 
+    break-inside: avoid;
     page-break-inside: avoid;
 }
+
 media-controls output {
     white-space: pre;
     font-family: monospace;
 }
-media-controls output[contenteditable]{
+
+media-controls output[contenteditable] {
     background-color: #fff;
 }
+
 @media (max-width: 768px) {
     media-element {
         padding: 0;
     }
+
     media-controls form {
         padding: 5px;
         column-count: 1;
     }
 }
+
 @media (min-width: 768px) and (max-width: 1800px) {
     media-controls form {
         padding: 5px;
@@ -112,7 +164,8 @@ canvas {
     border: 1px solid mediumslateblue;
     position: relative;
 }
-video.keep-on-screen{
+
+video.keep-on-screen {
     position: fixed;
     top: 0;
     left: 0;

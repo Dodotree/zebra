@@ -304,13 +304,13 @@ export class MediaElement extends HTMLElement {
     }
 
     initVideoTrackUI(label) {
-        const caption = this.videoPlace.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
-                tag: "h4",
+                tag: "h5",
                 text: label,
             })
         );
-        caption.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "button",
                 text: "⚙",
@@ -320,7 +320,7 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).onclick = this.openControls;
-        caption.appendChild(
+        this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "button",
                 text: "✕",
@@ -441,14 +441,6 @@ export class MediaElement extends HTMLElement {
     }
 
     initAudioTrackUI(stream, label) {
-        this.logger.log("Audio track");
-        this.audioPlace.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "🕪", // "🕩🕨",
-                attrs: { id: "toggle-audio" },
-            })
-        ); // TODO: mute audio
         this.audio = this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "meter",
@@ -462,11 +454,11 @@ export class MediaElement extends HTMLElement {
         );
         this.audioPlace.appendChild(
             utilsUI.get({
-                tag: "label",
-                text: "Audio track #1",
-                attrs: { htmlFor: label },
+                tag: "button",
+                text: "🔈", // "🕩🕨",
+                attrs: { id: "toggle-audio" },
             })
-        );
+        ); // TODO: mute audio
         this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "button",

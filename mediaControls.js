@@ -78,7 +78,12 @@ export class MediaControls extends HTMLElement {
         this.trackInfo = trackInfo;
         this.trackInfo.enabled = utilsUI.constraintKeys(trackInfo.constraints);
 
-        const details = this.appendChild(document.createElement("details"));
+        const details = this.appendChild(
+            utilsUI.get({
+                tag: "details",
+                attrs: { open: true },
+            })
+        );
 
         const summary = details.appendChild(
             utilsUI.get({

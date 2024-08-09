@@ -227,12 +227,22 @@ export const utilsUI = {
     },
 
     constraintKeys(constraints) {
-        const advanced = constraints.advanced || [];
-        const keysSet = advanced.reduce(
-            (acc, o) => acc.union(new Set(Object.keys(o))),
-            new Set(Object.keys(constraints))
-        );
-        return Array.from(keysSet.values()).filter((key) => key !== "advanced");
+        const keysRequired = Object.keys(constraints).reduce((acc, key) => {
+            acc[key] = true;
+            return acc;
+        }, {});
+        const keysSet = Object.keys(constraints.advanced || []).reduce((acc, o) => {
+            Object.assign(acc, o);
+            return acc;
+        }, keysRequired);
+        return Object.keys(keysSet);
+        // set.union() is not supported on mobile
+        // const advanced = constraints.advanced || [];
+        // const keysSet = advanced.reduce(
+        //     (acc, o) => acc.union(new Set(Object.keys(o))),
+        //     new Set(Object.keys(constraints))
+        // );
+        // return Array.from(keysSet.values()).filter((key) => key !== "advanced");
     },
 
     getChanges(pairs, oldSettings) {
@@ -254,7 +264,7 @@ export const utilsUI = {
         }, {});
         const advancedKeys = keys.filter((key) => ["deviceId", "groupId"].indexOf(key) === -1);
         const constraints = advancedKeys.reduce((acc, key) => {
-            acc[key] = { ideal: keyValues[key], exact: keyValues[key] };
+            acc[key] = { ideal: keyValues[key] };
             return acc;
         }, idConstraints);
         if (advancedKeys.length > 0) {

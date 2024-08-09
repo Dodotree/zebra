@@ -194,16 +194,13 @@ export class MediaMenu extends HTMLElement {
             constraints.video.width = { ideal: 628, max: 640 };
         } else if (constraints.video && constraints.video.deviceId) {
             // default webcam dimensions adjusted for orientation
-            let [w, h] = this.env.orientedResolution(640, 480);
-            constraints.video.width = { ideal: w };
-            constraints.video.height = { ideal: h };
+            // let [w, h] = this.env.orientedResolution(640, 480);
+            constraints.video.width = { ideal: 640 };
+            constraints.video.height = { ideal: 480 };
         }
 
         this.logger.log(`Selected ${deviceLabel}`);
         this.logger.log(`Get constrains ${JSON.stringify(constraints, null, 2)}`);
-        // should be prior to apply constrains: track.getConstrains();
-        // but even if we only use deviceId as constrain to get the stream
-        // most likely it will provide default webcam 640x480 and not what it's capable of
 
         this.getStream(this.select.value, deviceName, constraints);
     }
