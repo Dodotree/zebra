@@ -322,19 +322,32 @@ export class MediaControls extends HTMLElement {
         }
     }
 
-    updateControls(constraints, changes) {
+    updateControls(constraints, changes, unchanged, settings) {
         this.locked = true;
 
+        this.trackInfo.settings = settings;
         this.trackInfo.constraints = constraints;
         this.form.changes.constraints = JSON.stringify(this.constraints, null, 2);
 
         this.trackInfo.enabled = utilsUI.constraintKeys(constraints);
         Object.keys(changes).forEach((key) => {
-            this.setControlValue(key, changes[key], this.trackInfo.enabled.indexOf(key) !== -1);
+            this.setControlValue(
+                key,
+                changes[key],
+                this.trackInfo.enabled.indexOf(key) !== -1
+            );
+        });
+        Object.keys(unchanged).forEach((key) => {
+            this.setControlValue(
+                key,
+                unchanged[key].unchanged,
+                this.trackInfo.enabled.indexOf(key) !== -1
+            );
         });
 
         this.changes = {};
-        this.form.changes.value = "";
+        // as message, nothing else
+        this.form.changes.value = JSON.stringify(unchanged, null, 2);
 
         this.locked = false;
     }

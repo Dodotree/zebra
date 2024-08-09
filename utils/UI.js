@@ -312,8 +312,13 @@ export const utilsUI = {
         return constraints;
     },
 
-    // nothing (intentionally) changed, returns false if anything changed
-    // returns intended change keys with their actual values (previous that stayed the same)
+    // separate function for the sake of keeping one standard
+    getUnchangedItem(actual, intended) {
+        return { unchanged: actual, intended };
+    },
+
+    // nothing (intentionally) changed, returns false immediately if anything changed
+    // returns unchanged only if not one of the intended changes was applied
     nothingChanged(newSettings, oldSettings, intendedChanges) {
         // The tricky part here is that flipped W/H are not considered as a change
         // at least not on mobile where it's up to to the device to decide
@@ -336,7 +341,7 @@ export const utilsUI = {
             }
         }
         const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-            acc[key] = newSettings[key];
+            acc[key] = this.getUnchangedItem(newSettings[key], intendedChanges[key]);
             return acc;
         }, {});
         return unchanged;
