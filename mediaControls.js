@@ -71,12 +71,12 @@ export class MediaControls extends HTMLElement {
     }
 
     init(kind, trackInfo, liveupdates, debouncetime, callback, destroyCallback) {
-        console.log("init", kind, trackInfo);
         this.reset();
         this.callback = callback;
         this.destroyCallback = destroyCallback;
         this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, debouncetime);
         this.trackInfo = trackInfo;
+        this.trackInfo.enabled = utilsUI.constraintKeys(trackInfo.constraints);
 
         const details = this.appendChild(document.createElement("details"));
 
@@ -245,10 +245,6 @@ export class MediaControls extends HTMLElement {
             }, {});
     }
 
-    setConstraints(constraints) {
-        this.trackInfo.constraints = constraints;
-    }
-
     onSubmit(e) {
         if (e) {
             e.preventDefault();
@@ -309,7 +305,6 @@ export class MediaControls extends HTMLElement {
         this.form[key][0].checked = enabled;
         // set value on input, not on range
         // range sets 1.777777 as 2.0013888 probably due to range pixel step
-        console.log(key, value, this.form[key][1], this.form[key][2]);
         if (this.form[key][2]) {
             const input = (this.form[key][1].type === "number") ? this.form[key][2] : this.form[key][1];
             input.value = value;
@@ -322,11 +317,20 @@ export class MediaControls extends HTMLElement {
         }
     }
 
-    updateControls(changes) {
+    updateControls(constraints, changes) {
         this.locked = true;
+
+        this.trackInfo.constraints = constraints;
+        this.form.changes.constraints = JSON.stringify(this.constraints, null, 2);
+
+        this.trackInfo.enabled = utilsUI.constraintKeys(constraints);
         Object.keys(changes).forEach((key) => {
-            this.setControlValue(key, changes[key]);
+            this.setControlValue(key, changes[key], this.trackInfo.enabled.indexOf(key) !== -1);
         });
+
+        this.changes = {};
+        this.form.changes.value = "";
+
         this.locked = false;
     }
 

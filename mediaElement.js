@@ -290,7 +290,6 @@ export class MediaElement extends HTMLElement {
                 {
                     label: this.streamTracks[kind].label,
                     constraints: constraints,
-                    enabled: utilsUI.constraintKeys(constraints),
                     capabilities: structuredClone(this.streamTracks[kind].capabilities),
                     settings: structuredClone(this.streamTracks[kind].settings),
                 },
@@ -464,7 +463,7 @@ export class MediaElement extends HTMLElement {
         this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "label",
-                text: label,
+                text: "Audio track #1",
                 attrs: { htmlFor: label },
             })
         );
@@ -484,6 +483,12 @@ export class MediaElement extends HTMLElement {
                 text: "✕",
             })
         ); // TODO: remove audio track
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "h5",
+                text: label,
+            })
+        );
         try {
             // TODO: separate as audio visualizer component
             this.clock = new Clock();
@@ -615,7 +620,7 @@ export class MediaElement extends HTMLElement {
             .then((stream) => {
                 stream.getTracks().forEach((track) => {
                     this.setTrack(track);
-                    this.updateControls(track.kind, this.streamTracks[track.kind].settings);
+                    this.updateTrackControls(track.kind, this.streamTracks[track.kind].settings);
                     if (track.kind === "video") {
                         this.selectCurrentResolution();
                     }
@@ -731,7 +736,7 @@ export class MediaElement extends HTMLElement {
                 // since "overconstrained" error means that the track stays the same
                 // we should reset the controls to the actual values (and resolution dropdown)
                 // if (e instanceof DOMException && e.name === "OverconstrainedError") {
-                //     this.updateControls(trackKind, oldSettings);
+                //     this.updateTrackControls(trackKind, oldSettings);
                 //     this.selectCurrentResolution();
                 // }
                 // OR we can try our luck with the stream (which is unlikely and hides the error)
@@ -754,7 +759,7 @@ export class MediaElement extends HTMLElement {
                     return;
                 }
                 // roll back input values (instead of what we attempted to set)
-                this.updateControls(kind, unchanged);
+                this.updateTrackControls(kind, unchanged);
                 if (kind === "video") {
                     this.selectCurrentResolution();
                 }
@@ -777,11 +782,13 @@ export class MediaElement extends HTMLElement {
         );
     }
 
-    updateControls(trackKind, changes) {
+    updateTrackControls(trackKind, changes) {
         if (!this.controls[trackKind]) return;
         try {
-            this.controls[trackKind].updateControls(changes);
-            this.controls[trackKind].setConstraints(this.currentConstraints[trackKind]);
+            this.controls[trackKind].updateControls(
+                this.currentConstraints[trackKind],
+                changes
+            );
         } catch (e) {
             this.logger.error(e);
         }
@@ -826,7 +833,7 @@ export class MediaElement extends HTMLElement {
             return;
         }
 
-        this.updateControls(trackKind, changes);
+        this.updateTrackControls(trackKind, changes);
     }
 
     initResolutionsUI(givenRs, camera, os) {

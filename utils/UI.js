@@ -268,6 +268,10 @@ export const utilsUI = {
     // each set in advanced is either satisfied or failed together
     // all values in the set treated as "exact"
     // if advanced fails it tries to go as close as possible to "ideal"
+    // "max", "min", or "exact" are always treated as mandatory
+    // meaning if it's not possible to satisfy Promise will be rejected
+    // in one hand you'll know it's not possible and act on it
+    // (in the other hand it might get somewhat satisfied without "exact")
     // so technically we should check by getConstraints() which one was satisfied
     // on each step and save that to know for sure what worked
     // BUT that is in theory, in practice advanced support is iffy

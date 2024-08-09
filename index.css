@@ -1,3 +1,6 @@
+body{
+    font-family: Verdana, Geneva, sans-serif;
+}
 textarea {
     width: 100%;
     height: 240px;
@@ -6,10 +9,15 @@ label {
     padding-right: 1.2rem;
 }
 select {
-    padding: 1rem;
+    padding: 0.57rem;
+}
+option{
+    word-wrap: normal !important;
+    white-space: normal;
 }
 button {
     font-size: 1.61rem;
+    vertical-align: middle;
 }
 
 media-menu{
@@ -23,7 +31,8 @@ media-element {
         "caption"
         "video"
         "audio";
-    margin: 2rem;
+    padding: 1rem;
+    background-color: #e2dff7;
 }
 media-element h4{
     grid-area: caption;
@@ -54,8 +63,8 @@ media-element #toggle-audio{
 
 media-controls {
     display: block;
-    padding: 1rem;
-    background: #f4f4f4; /* #afb9c8; */
+    padding: 0.62rem;
+    background: #f5f4fc; /* #f4f4f4;  #afb9c8; */
     border: 1px solid #ccc;
     border-radius: 5px;
     margin: 1rem 0;
@@ -82,6 +91,9 @@ media-controls output[contenteditable]{
     background-color: #fff;
 }
 @media (max-width: 768px) {
+    media-element {
+        padding: 0;
+    }
     media-controls form {
         padding: 5px;
         column-count: 1;

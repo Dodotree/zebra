@@ -42,13 +42,6 @@ export class MediaMenu extends HTMLElement {
         this.logger = document.getElementsByTagName("screen-logger")[0];
         this.env = new Environment(this.logger);
 
-        this.appendChild(
-            utilsUI.get({
-                tag: "label",
-                text: "Available streams:",
-                attrs: { htmlFor: "device-select" },
-            })
-        );
         this.select = this.appendChild(
             utilsUI.get({
                 tag: "select",
@@ -82,6 +75,16 @@ export class MediaMenu extends HTMLElement {
 
     getDeviceList() {
         this.select.innerHTML = "";
+        this.select.appendChild(
+            utilsUI.get({
+                tag: "option",
+                text: "Select from available streaming devices and click Add+",
+                attrs: {
+                    value: "",
+                    disabled: true,
+                },
+            })
+        );
         navigator.mediaDevices.enumerateDevices().then((devices) => {
             const groups = devices.reduce((acc, device) => {
                 if (device.kind.includes("output")) {
