@@ -51,9 +51,15 @@ export class MediaMenu extends HTMLElement {
         this.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "Add +",
+                text: "Single Track",
             })
-        ).onclick = this.onAddStream.bind(this);
+        ).onclick = this.onAddStream.bind(this, false);
+        this.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "Video + Audio",
+            })
+        ).onclick = this.onAddStream.bind(this, true);
 
         // test stream needed only to activate mediaDevices (firefox has incomplete info otherwise)
         // using Promises instead of async/await because we are inside lifecycle callback
@@ -171,17 +177,17 @@ export class MediaMenu extends HTMLElement {
             });
     }
 
-    onAddStream() {
+    onAddStream(withOtherTrack) {
         const selected = this.select.options[this.select.selectedIndex];
         const deviceLabel = selected.text;
         const deviceId = selected.value;
         const constraints = selected.getAttribute("kind") === "audioinput"
-            ? { audio: { deviceId: { exact: deviceId } }, video: true }
+            ? { audio: { deviceId: { exact: deviceId } }, video: withOtherTrack }
             : {
                 video: {
                     deviceId: { exact: deviceId }, pan: true, tilt: true, zoom: true
                 },
-                audio: true
+                audio: withOtherTrack
             };
 
         // default RealSense on first load (ideal defaults)

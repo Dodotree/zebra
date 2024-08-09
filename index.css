@@ -31,7 +31,10 @@ h5 {
 
 media-menu {
     display: block;
-    flex-direction: column;
+    margin-bottom: 1rem
+}
+media-menu select{
+    width: min(100%, 30rem);
 }
 
 media-element {
@@ -52,32 +55,44 @@ media-element h4 {
 media-element div:first-child {
     grid-area: video;
     display: grid;
-    grid-template-columns: 1.5rem 3rem 1.5rem 3rem 1.5rem 3rem 1fr 1fr 3rem 3rem;
+    grid-template-columns: 1.5rem 4rem 1.5rem 4rem 1.5rem 1fr 2.5rem 2.5rem;
     align-items:center;
     align-content:space-evenly;
     justify-content: center;
-    justify-items: end;
+    justify-items: start;
 }
-media-element div:first-child h5{
-    grid-column: 1/10;
+media-element div:first-child h5,
+media-element div:nth-child(2) h5{
+    grid-column: 1/9;
 }
 media-element div:first-child button,
 media-element div:first-child input,
-media-element div:first-child label {
+media-element div:first-child label,
+media-element div:nth-child(2) button {
     grid-column: span 1;
 }
 media-element div:first-child select {
-    grid-column: 8/12;
+    grid-column: 1/7;
+    width: 100%;
 }
 media-element div:first-child video, media-element div:first-child canvas {
-    grid-column: 1/12;
+    grid-column: 1/9;
 }
 media-element div:nth-child(2) {
     grid-area: audio;
+    display: grid;
+    grid-template-columns: 1fr 2.5rem 2.5rem 2.5rem;
 }
 media-element div:nth-child(3) {
     grid-area: controls;
 }
+media-element meter{
+    width: 100%;
+}
+media-element button{
+    width: 2.5rem;
+}
+
 
 /* hack for iPhone video stop streaming if not in view */
 media-element video {

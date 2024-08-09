@@ -77,6 +77,8 @@ export class MediaControls extends HTMLElement {
         this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, debouncetime);
         this.trackInfo = trackInfo;
         this.trackInfo.enabled = utilsUI.constraintKeys(trackInfo.constraints);
+        // will be changed by onFormInput
+        this.constraints = structuredClone(trackInfo.constraints);
 
         const details = this.appendChild(
             utilsUI.get({
@@ -175,6 +177,7 @@ export class MediaControls extends HTMLElement {
                 attrs: { name: "constraints" },
             })
         );
+        this.form.constraints.value = JSON.stringify(this.constraints, null, 2);
 
         this.form.appendChild(
             utilsUI.get({
@@ -186,6 +189,16 @@ export class MediaControls extends HTMLElement {
                 },
             })
         ).onclick = this.editConstraints.bind(this);
+        this.form.appendChild(
+            utilsUI.get({
+                tag: "input",
+                attrs: {
+                    type: "button",
+                    name: "saveconstraints",
+                    value: "Download JSON",
+                },
+            })
+        );
 
         this.form.appendChild(
             utilsUI.get({
@@ -327,7 +340,7 @@ export class MediaControls extends HTMLElement {
 
         this.trackInfo.settings = settings;
         this.trackInfo.constraints = constraints;
-        this.form.changes.constraints = JSON.stringify(this.constraints, null, 2);
+        this.form.constraints.value = JSON.stringify(this.constraints, null, 2);
 
         this.trackInfo.enabled = utilsUI.constraintKeys(constraints);
         Object.keys(changes).forEach((key) => {
