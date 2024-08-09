@@ -51,13 +51,13 @@ export class MediaMenu extends HTMLElement {
         this.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "Single Track",
+                text: "Cam/Mic",
             })
         ).onclick = this.onAddStream.bind(this, false);
         this.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "Video + Audio",
+                text: "Cam&Mic",
             })
         ).onclick = this.onAddStream.bind(this, true);
 
