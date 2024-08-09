@@ -310,6 +310,12 @@ export class MediaElement extends HTMLElement {
                 text: label,
             })
         );
+        this.resolutionLabel = this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "output",
+                text: "set resolution",
+            })
+        );
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
@@ -374,6 +380,15 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).onchange = this.onResolutionDropdownChange.bind(this);
+        this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "⛶",
+                attrs: {
+                    kind: "video",
+                },
+            })
+        );
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "button",
@@ -590,6 +605,8 @@ export class MediaElement extends HTMLElement {
         if (index !== -1) {
             resHolder.selectedIndex = index;
         }
+        this.resolutionLabel.textContent = (index !== -1)
+            ? this.trackResolution.str : resHolder.options[resHolder.selectedIndex].textContent;
     }
 
     setResolution() {

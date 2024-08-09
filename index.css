@@ -55,7 +55,7 @@ media-element h4 {
 media-element div:first-child {
     grid-area: video;
     display: grid;
-    grid-template-columns: 1.5rem 4rem 1.5rem 4rem 1.5rem 1fr 2.5rem 2.5rem;
+    grid-template-columns: 1.5rem 4rem 1.5rem 4rem 1.5rem 1fr 2.5rem 2.5rem 2.5rem;
     align-items:center;
     align-content:space-evenly;
     justify-content: center;
@@ -63,7 +63,11 @@ media-element div:first-child {
 }
 media-element div:first-child h5,
 media-element div:nth-child(2) h5{
-    grid-column: 1/9;
+    grid-column: 1/7;
+}
+media-element div:first-child output{
+    grid-column: span 3;
+    font-size: 0.61rem;
 }
 media-element div:first-child button,
 media-element div:first-child input,
@@ -76,7 +80,7 @@ media-element div:first-child select {
     width: 100%;
 }
 media-element div:first-child video, media-element div:first-child canvas {
-    grid-column: 1/9;
+    grid-column: 1/10;
 }
 media-element div:nth-child(2) {
     grid-area: audio;
