@@ -21,8 +21,24 @@ option {
 }
 
 button {
-    font-size: 1.61rem;
+    appearance: none;
     vertical-align: middle;
+    width: fit-content;
+    padding: 0px 6px;
+    text-align: center;
+    display: flex;
+    flex-grow: 0;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.61rem;
+    line-height: 2.2rem;
+    text-decoration: none;
+    border-radius: 0.2rem;
+    outline: none;
+    border: 1px solid #aca3eb /* #9084e5 */;
+    background-color:#d0cbf4;
+    cursor: pointer;
+    user-select: none;
 }
 
 h5 {
@@ -30,11 +46,17 @@ h5 {
 }
 
 media-menu {
-    display: block;
+    display: flex;
+    gap: 0.5rem;
     margin-bottom: 1rem
 }
-media-menu select{
+media-menu select {
     width: min(100%, 30rem);
+    border: 1px solid #aca3eb /* #9084e5 */;
+}
+media-menu button{
+    font-weight: bold;
+    font-size: 1rem;
 }
 
 media-element {
@@ -57,44 +79,53 @@ media-element div:first-child {
     grid-area: video;
     display: grid;
     grid-template-columns: 1.5rem 4rem 1.5rem 4rem 1.5rem 1fr 2.5rem 2.5rem 2.5rem;
-    align-items:center;
-    align-content:space-evenly;
+    align-items: center;
+    align-content: space-evenly;
     justify-content: center;
     justify-items: start;
 }
+
 media-element div:first-child h5,
-media-element div:nth-child(2) h5{
+media-element div:nth-child(2) h5 {
     grid-column: 1/7;
 }
-media-element div:first-child output{
+
+media-element div:first-child output {
     grid-column: span 3;
     font-size: 0.61rem;
 }
+
 media-element div:first-child button,
 media-element div:first-child input,
 media-element div:first-child label,
 media-element div:nth-child(2) button {
     grid-column: span 1;
 }
+
 media-element div:first-child select {
     grid-column: 1/6;
     width: 100%;
 }
+
 media-element div:first-child video, media-element div:first-child canvas {
     grid-column: 1/10;
 }
+
 media-element div:nth-child(2) {
     grid-area: audio;
     display: grid;
     grid-template-columns: 1fr 2.5rem 2.5rem 2.5rem;
 }
+
 media-element div:nth-child(3) {
     grid-area: controls;
 }
-media-element meter{
+
+media-element meter {
     width: 100%;
 }
-media-element button{
+
+media-element button {
     width: 2.5rem;
     appearance: none;
 }
