@@ -34,12 +34,12 @@ export default class VideoGL {
         }
 
         this.out2DCanvasID = out2DCanvasID;
-        this.outCanvas = document.getElementById(out2DCanvasID);
-        if (!this.outCanvas) {
+        const outCanvas = document.getElementById(out2DCanvasID);
+        if (!outCanvas) {
             throw new Error(`glVideo.js: There is no canvas with id ${out2DCanvasID}`);
         }
 
-        this.context_2d = this.outCanvas.getContext("2d", {
+        this.context_2d = outCanvas.getContext("2d", {
             antialias: false,
             willReadFrequently: true,
         });
@@ -286,20 +286,6 @@ export default class VideoGL {
             img.data[i + 3] = 255;
         }
         this.context_2d.putImageData(img, 0, 0);
-    }
-
-    captureImage() {
-        // this.context_2d.drawImage(this.video, 0, 0, this.w, this.h);
-        const anchor = document.createElement("a");
-        anchor.href = this.outCanvas.toDataURL("image/jpeg");
-
-        const ts = new Date()
-            .toISOString()
-            .substring(0, 19)
-            .replaceAll("-", "")
-            .replaceAll(":", "");
-        anchor.download = `snapshot_${ts}.jpeg`;
-        anchor.click();
     }
 
     destroy() {

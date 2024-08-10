@@ -198,7 +198,7 @@ export class MediaControls extends HTMLElement {
                     value: "Download JSON",
                 },
             })
-        );
+        ).onclick = this.saveConstraints.bind(this);
 
         this.form.appendChild(
             utilsUI.get({
@@ -249,6 +249,10 @@ export class MediaControls extends HTMLElement {
 
     editConstraints() {
         this.form.constraints.setAttribute("contenteditable", true);
+    }
+
+    saveConstraints() {
+        utilsUI.downloadJSON(this.form.constraints.value, "constraints");
     }
 
     getFormKeyValues(capabilities) {
@@ -432,7 +436,9 @@ export class MediaControls extends HTMLElement {
                     })
                 );
             });
-            sel.value = cValue.toString();
+            if (cValue) {
+                sel.value = cValue.toString();
+            }
         } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
             const range = pElement.appendChild(
                 utilsUI.get({

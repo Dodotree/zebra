@@ -469,4 +469,47 @@ export const utilsUI = {
         // Resize screen when the browser has triggered the resize event
         window.addEventListener("resize", expandFullScreen);
     },
+
+    downloadJSONold(exportObj, exportName) {
+        const anchor = document.createElement("a");
+        anchor.setAttribute("href", "data:text/json;charset=utf-8,"
+            + encodeURIComponent(JSON.stringify(exportObj, null, 2)));
+        anchor.setAttribute("download", exportName + ".json");
+        document.body.appendChild(anchor); // required for firefox
+        anchor.click();
+        anchor.remove();
+    },
+
+    downloadJSON(exportObj, exportName) {
+        const anchor = document.createElement("a");
+        const json = JSON.stringify(exportObj, null, "\t");
+        const data = json.replace(/\n/g, "\n\r");
+        console.log(data, `${json}`.replace(/\n/g, "***"));
+        const blob = new Blob(
+            [data],
+            { type: "application/json;charset=utf-8" }
+        );
+        const jsonObjectUrl = URL.createObjectURL(blob);
+        anchor.setAttribute("href", jsonObjectUrl);
+        anchor.setAttribute("download", exportName + ".json");
+        document.body.appendChild(anchor); // required for firefox
+        anchor.click();
+        URL.revokeObjectURL(jsonObjectUrl);
+        anchor.remove();
+    },
+
+    downloadImage(canvas) {
+        const anchor = document.createElement("a");
+        anchor.setAttribute("href", canvas.toDataURL("image/jpeg"));
+
+        const ts = new Date()
+            .toISOString()
+            .substring(0, 19)
+            .replaceAll("-", "")
+            .replaceAll(":", "");
+        anchor.setAttribute("download", `snapshot_${ts}.jpg`);
+        document.body.appendChild(anchor); // required for firefox
+        anchor.click();
+        anchor.remove();
+    }
 };

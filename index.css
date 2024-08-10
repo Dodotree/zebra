@@ -46,6 +46,7 @@ media-element {
         "controls";
     padding: 1rem;
     background-color: #e2dff7;
+    vertical-align: top;
 }
 
 media-element h4 {
@@ -76,7 +77,7 @@ media-element div:nth-child(2) button {
     grid-column: span 1;
 }
 media-element div:first-child select {
-    grid-column: 1/7;
+    grid-column: 1/6;
     width: 100%;
 }
 media-element div:first-child video, media-element div:first-child canvas {
@@ -95,6 +96,7 @@ media-element meter{
 }
 media-element button{
     width: 2.5rem;
+    appearance: none;
 }
 
 
@@ -120,7 +122,6 @@ media-element div {
 
 media-element #toggle-audio {
     display: inline-block;
-    transform: scale(-1);
 }
 
 media-controls {

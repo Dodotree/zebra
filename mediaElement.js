@@ -392,6 +392,12 @@ export class MediaElement extends HTMLElement {
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "button",
+                text: "📸",
+            })
+        ).onclick = this.takeSnapshot.bind(this);
+        this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
                 text: "⚙",
                 attrs: {
                     class: "open-controls",
@@ -471,7 +477,7 @@ export class MediaElement extends HTMLElement {
         this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "🔈", // "🕩🕨",
+                text: "🔇", // "🔈🕩🕨",
                 attrs: { id: "toggle-audio" },
             })
         ); // TODO: mute audio
@@ -973,6 +979,12 @@ export class MediaElement extends HTMLElement {
         } catch (e) {
             this.logger.error(e);
         }
+    }
+
+    takeSnapshot() {
+        if (!this.canvasGL || !this.canvasGL.out2DCanvasID) return;
+        const canvas = document.getElementById(this.canvasGL.out2DCanvasID);
+        utilsUI.downloadImage(canvas);
     }
 
     get hasAudio() {
