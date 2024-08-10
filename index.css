@@ -43,6 +43,7 @@ button {
 }
 select{
     appearance: none;
+    font-size: 1rem;
     color: black;
     border-radius: 0.2rem;
     border: 1px solid #aca3eb /* #9084e5 */;
@@ -61,7 +62,6 @@ media-menu select {
     width: min(100%, 30rem);
 }
 media-menu button{
-    font-weight: bold;
     font-size: 1rem;
 }
 
