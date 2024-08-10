@@ -318,6 +318,12 @@ export class MediaElement extends HTMLElement {
         );
         this.videoPlace.appendChild(
             utilsUI.get({
+                tag: "button",
+                text: "✕",
+            })
+        ).onclick = this.destroy.bind(this);
+        this.videoPlace.appendChild(
+            utilsUI.get({
                 tag: "input",
                 attrs: {
                     type: "checkbox",
@@ -405,12 +411,6 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).onclick = this.openControls;
-        this.videoPlace.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "✕",
-            })
-        ).onclick = this.destroy.bind(this);
 
         this.video = this.videoPlace.appendChild(utilsUI.get({
             tag: "video",

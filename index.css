@@ -9,13 +9,14 @@ textarea {
     height: 240px;
 }
 
-label {
-    padding-right: 1.2rem;
-}
-
 select {
     padding: 0.57rem;
-    background: #f5f4fc
+    background: #f5f4fc;
+    appearance: none;
+    font-size: 1rem;
+    color: black;
+    border-radius: 0.2rem;
+    border: 1px solid #aca3eb /* #9084e5 */;
 }
 
 option {
@@ -47,13 +48,6 @@ button {
     cursor: pointer;
     user-select: none;
 }
-select{
-    appearance: none;
-    font-size: 1rem;
-    color: black;
-    border-radius: 0.2rem;
-    border: 1px solid #aca3eb /* #9084e5 */;
-}
 
 h5 {
     margin: 0;
@@ -84,43 +78,44 @@ media-element {
     vertical-align: top;
 }
 
-media-element h4 {
-    grid-area: caption;
-}
-
 media-element div:first-child {
     grid-area: video;
     display: grid;
+    grid-row-gap: 0.61rem;
     grid-template-columns: 1.5rem 4rem 1.5rem 4rem 1.5rem 1fr 2.5rem 2.5rem 2.5rem;
     align-items: center;
     align-content: space-evenly;
     justify-content: center;
     justify-items: start;
 }
-
 media-element div:first-child h5,
 media-element div:nth-child(2) h5 {
-    grid-column: 1/7;
+    grid-column: 1/6;
+    align-self: start;
+    font-size: 1rem;
+    font-style: italic;
 }
-
 media-element div:first-child output {
     grid-column: span 3;
-    font-size: 0.61rem;
+    place-self: start end;
+    padding-right: 0.4rem
 }
-
+media-element div:first-child select {
+    grid-column: 1/7;
+    width: 100%;
+}
 media-element div:first-child button,
 media-element div:first-child input,
 media-element div:first-child label,
 media-element div:nth-child(2) button {
     grid-column: span 1;
 }
-
-media-element div:first-child select {
-    grid-column: 1/6;
-    width: 100%;
+media-element div:first-child output,
+media-element div:first-child label {
+    font-size: 0.79rem;
 }
-
-media-element div:first-child video, media-element div:first-child canvas {
+media-element div:first-child video,
+media-element div:first-child canvas {
     grid-column: 1/10;
 }
 
@@ -129,7 +124,6 @@ media-element div:nth-child(2) {
     display: grid;
     grid-template-columns: 1fr 2.5rem 2.5rem 2.5rem;
 }
-
 media-element div:nth-child(3) {
     grid-area: controls;
 }
@@ -137,7 +131,6 @@ media-element div:nth-child(3) {
 media-element meter {
     width: 100%;
 }
-
 media-element button {
     width: 2.5rem;
     appearance: none;
