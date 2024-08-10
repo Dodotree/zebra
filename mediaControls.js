@@ -252,7 +252,7 @@ export class MediaControls extends HTMLElement {
     }
 
     saveConstraints() {
-        utilsUI.downloadJSON(this.form.constraints.value, "constraints");
+        utilsUI.downloadJSON(this.constraints, "constraints");
     }
 
     getFormKeyValues(capabilities) {

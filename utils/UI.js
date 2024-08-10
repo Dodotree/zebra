@@ -482,11 +482,8 @@ export const utilsUI = {
 
     downloadJSON(exportObj, exportName) {
         const anchor = document.createElement("a");
-        const json = JSON.stringify(exportObj, null, "\t");
-        const data = json.replace(/\n/g, "\n\r");
-        console.log(data, `${json}`.replace(/\n/g, "***"));
         const blob = new Blob(
-            [data],
+            [JSON.stringify(exportObj, null, 2)],
             { type: "application/json;charset=utf-8" }
         );
         const jsonObjectUrl = URL.createObjectURL(blob);
