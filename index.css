@@ -15,6 +15,7 @@ label {
 
 select {
     padding: 0.57rem;
+    background: #f5f4fc
 }
 
 option {
@@ -36,7 +37,6 @@ button {
 
     font-size: 1.61rem;
     font-weight: normal;
-    font-style: italic;
 
     line-height: 2.2rem;
     text-decoration: none;
@@ -69,6 +69,7 @@ media-menu select {
 }
 media-menu button{
     font-size: 1rem;
+    font-style: italic;
 }
 
 media-element {
