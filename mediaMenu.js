@@ -84,7 +84,7 @@ export class MediaMenu extends HTMLElement {
         this.select.appendChild(
             utilsUI.get({
                 tag: "option",
-                text: "Select from available streaming devices and click Add+",
+                text: "Select camera/microphone",
                 attrs: {
                     value: "",
                     disabled: true,
