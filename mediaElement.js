@@ -551,7 +551,7 @@ export class MediaElement extends HTMLElement {
         this.streamdevice = device;
         this.setAttribute("streamdevice", device);
 
-        this.currentConstraints = constraints;
+        const returnConstraints = {};
         this.logger.log(`Stream constraints:\n ${JSON.stringify(constraints, null, 2)}`);
         this.onRelease = onRelease;
 
@@ -560,6 +560,7 @@ export class MediaElement extends HTMLElement {
 
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
+            returnConstraints[track.kind] = track.getConstraints();
 
             if (track.kind === "video") {
                 this.initVideoTrackUI(track.label || device);
@@ -574,6 +575,10 @@ export class MediaElement extends HTMLElement {
             track.onunmute = this.onVideoPlayed;
         });
         this.env.on("orientation", this.setOrientation);
+
+        this.currentConstraints = constraints;
+        console.log("Current constraints", this.currentConstraints, returnConstraints);
+        console.log("separated", utilsUI.separateConstraints(constraints, returnConstraints));
     }
 
     onResolutionDropdownChange(event) {

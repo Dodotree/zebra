@@ -254,6 +254,34 @@ export const utilsUI = {
             }, {});
     },
 
+    separateConstraints(initC, returnedC) {
+        const initConstraints = {};
+        const constraints = {};
+        ["video", "audio"].forEach((kind) => {
+            if (initC[kind] === !!initC[kind]) { // skip boolean values
+                initConstraints[kind] = initC[kind];
+                return;
+            }
+            initConstraints[kind] = {};
+            constraints[kind] = {};
+            const filteredInitC = {};
+            Object.keys(initC[kind]).forEach((key) => {
+                if (["deviceId", "groupId", "pan", "tilt", "zoom"].indexOf(key) > -1) {
+                    initConstraints[kind][key] = initC[kind][key];
+                } else {
+                    filteredInitC[key] = initC[kind][key];
+                }
+            });
+            console.log("filteredInitC", filteredInitC);
+            Object.keys(filteredInitC).forEach((key) => {
+                if (key in returnedC[kind]) {
+                    constraints[kind][key] = returnedC[kind][key];
+                }
+            });
+        });
+        return [initConstraints, constraints];
+    },
+
     getConstraints(keyValues) {
         const keys = Object.keys(keyValues);
         const idConstraints = ["deviceId", "groupId"].reduce((acc, key) => {

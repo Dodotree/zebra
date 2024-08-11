@@ -199,10 +199,7 @@ export class MediaMenu extends HTMLElement {
         } else if (deviceName === "R200 Depth") {
             constraints.video.width = { ideal: 628, max: 640 };
         } else if (constraints.video && constraints.video.deviceId) {
-            // default webcam dimensions adjusted for orientation
-            // let [w, h] = this.env.orientedResolution(640, 480);
-            constraints.video.width = { ideal: 640 };
-            constraints.video.height = { ideal: 480 };
+            constraints.video.advanced = [{ width: 640, height: 480 }];
         }
 
         this.logger.log(`Selected ${deviceLabel}`);
