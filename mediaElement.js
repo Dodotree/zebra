@@ -576,17 +576,9 @@ export class MediaElement extends HTMLElement {
     }
 
     onResolutionDropdownChange(event) {
-        if (this.trackResolution.name === event.target.value) {
-            this.logger.log("Warning: resolution is already set to " + this.trackResolution.name);
-            return;
-        }
+        if (!event || !event.target || !event.target.value) return;
         const changes = this.env.parseResolutionName(event.target.value);
-        const trackConstraints = utilsUI.getChangedConstraints(
-            this.currentConstraints.video,
-            changes,
-            ["aspectRatio"]
-        );
-        this.requestTrackChanges("video", changes, trackConstraints);
+        this.changeResolution(changes);
     }
 
     onFullscreenClick() {
@@ -594,21 +586,21 @@ export class MediaElement extends HTMLElement {
         const resolutions = structuredClone(this.resolutionsList);
         resolutions.sort((a, b) => Math.abs((b[0] - w) * (b[1] - h))
             - Math.abs((a[0] - w) * (a[1] - h)));
-        this.logger.log(`${[
-            window.innerWidth,
-            window.innerHeight,
-            w,
-            h
-        ]}`);
-        resolutions.forEach((res) => {
-            this.logger.log(`${[
-                res,
-                w - res[0] + "px",
-                h - res[1] + "px",
-                Math.round(100 * ((w - res[0]) / w)) + "%",
-                Math.round(100 * ((h - res[1]) / h)) + "%"
-            ]}`);
-        });
+        const optimal = resolutions.pop();
+        this.changeResolution({ width: optimal[0], height: optimal[1] });
+    }
+
+    changeResolution(newRes) {
+        if (this.trackResolution.name === `${newRes[0]}x${newRes[1]}`) {
+            this.logger.log("Warning: resolution is already set to " + this.trackResolution.name);
+            return;
+        }
+        const trackConstraints = utilsUI.getChangedConstraints(
+            this.currentConstraints.video,
+            newRes,
+            ["aspectRatio"]
+        );
+        this.requestTrackChanges("video", newRes, trackConstraints);
     }
 
     resetResolutions() {
