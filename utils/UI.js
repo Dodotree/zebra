@@ -293,8 +293,7 @@ export const utilsUI = {
             .filter((key) => key !== "advanced" && deleteKeys.indexOf(key) === -1);
         const constraints = keys.reduce((acc, key) => {
             const a = oldConstraints[key] || {};
-            // "ideal" here is more for the sake of overriding old "ideal"
-            const b = key in merged ? { exact: merged[key], ideal: merged[key] } : {};
+            const b = key in merged ? { ideal: merged[key] } : {};
             acc[key] = Object.assign({}, a, b);
             return acc;
         }, {});
@@ -443,21 +442,6 @@ export const utilsUI = {
             return parseFloat(txt);
         }
         return txt;
-    },
-
-    getValueTypeFromInputType(type) {
-        switch (type) {
-        case "checkbox":
-            return "boolean";
-        case "range":
-        case "number":
-            return "number";
-        case "text":
-        case "select-one":
-        case "select-multiple":
-        default:
-            return "string";
-        }
     },
 
     stayFullScreen(canvas) {

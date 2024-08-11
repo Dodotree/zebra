@@ -17,8 +17,7 @@ export default class Environment extends EventEmitter {
          */
         this.pixelRatio = window.devicePixelRatio;
 
-        // eslint-disable-next-line no-restricted-globals
-        this.deviceWide = screen.width > screen.height;
+        this.deviceWide = window.screen.width > window.screen.height;
 
         /**
          * [internal] w > h.
@@ -54,7 +53,10 @@ export default class Environment extends EventEmitter {
     // media.addEventListener("change", updatePixelRatio.bind(this));
 
     getFullScreenBox() {
-        return [window.innerWidth * this.pixelRatio, window.innerHeight * this.pixelRatio];
+        return [
+            Math.min(window.screen.width, window.innerWidth) * this.pixelRatio,
+            Math.min(window.screen.height, window.innerHeight) * this.pixelRatio
+        ];
     }
 
     setOrientation(isWide) {
@@ -92,29 +94,23 @@ export default class Environment extends EventEmitter {
     watchOrientation() {
         let angle = 0;
 
-        // eslint-disable-next-line no-restricted-globals
-        if (screen && "orientation" in screen) {
+        if (window.screen && "orientation" in window.screen) {
             try {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
+                angle = window.screen.orientation.angle;
             } catch (e) {
                 this.logger.log(
                     `Screen orientation error:\n ${JSON.stringify(e, null, 2)}`
                 );
             }
             this.logger.log(
-                // eslint-disable-next-line no-restricted-globals
-                `Screen orientation: ${angle} degrees, ${screen.orientation.type}.`
+                `Screen orientation: ${angle} degrees, ${window.screen.orientation.type}.`
             );
-            // eslint-disable-next-line no-restricted-globals
-            screen.orientation.addEventListener("change", () => {
-                // eslint-disable-next-line no-restricted-globals
-                angle = screen.orientation.angle;
+            window.screen.orientation.addEventListener("change", () => {
+                angle = window.screen.orientation.angle;
                 const wide = this.getOrientation(angle);
                 this.setOrientation(wide);
                 this.logger.log(
-                    // eslint-disable-next-line no-restricted-globals
-                    `Screen orientation change: ${angle} degrees, ${screen.orientation.type}.`
+                    `Screen orientation change: ${angle} degrees, ${window.screen.orientation.type}.`
                 );
             });
         } else if ("onorientationchange" in window) {
