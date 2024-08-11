@@ -902,6 +902,8 @@ export class MediaElement extends HTMLElement {
         const resolutions = utilsUI.getResolutions(givenRs, camera, os);
         this.resolutionsList = resolutions;
 
+        this.logger.log("Available resolutions:\n" + JSON.stringify(resolutions, null, 2));
+
         resolutions.forEach((row) => {
             const res = `${row[0]}x${row[1]}`;
             resHolder.appendChild(
