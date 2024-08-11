@@ -312,18 +312,19 @@ export class MediaElement extends HTMLElement {
                 text: label,
             })
         );
+        this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+                attrs: { class: "destroy" },
+            })
+        ).onclick = this.destroy.bind(this);
         this.resolutionLabel = this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "output",
                 text: "set resolution",
             })
         );
-        this.videoPlace.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "✕",
-            })
-        ).onclick = this.destroy.bind(this);
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
