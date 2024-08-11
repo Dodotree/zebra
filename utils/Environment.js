@@ -56,7 +56,7 @@ export default class Environment extends EventEmitter {
         return [
             Math.min(window.screen.width, window.innerWidth) * this.pixelRatio,
             Math.min(window.screen.height, window.innerHeight) * this.pixelRatio
-        ];
+        ].toSorted((a, b) => a - b);
     }
 
     setOrientation(isWide) {

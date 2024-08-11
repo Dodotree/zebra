@@ -615,13 +615,11 @@ export class MediaElement extends HTMLElement {
         const settings = this.streamTracks.video.settings;
         const capabilities = this.streamTracks.video.capabilities;
 
-        const [w, h] = this.env.orientedResolution(settings.width, settings.height);
+        const [w, h] = [settings.width, settings.height].toSorted((a, b) => a - b);
         const listOfResolutions = [[w, h]];
         if (capabilities.width && capabilities.height) {
-            const [W, H] = this.env.orientedResolution(
-                capabilities.width.max,
-                capabilities.height.max
-            );
+            const [W, H] = [capabilities.width.max, capabilities.height.max]
+                .toSorted((a, b) => a - b);
             listOfResolutions.push([W, H]);
         }
         this.initResolutionsUI(
