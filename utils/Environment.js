@@ -53,6 +53,10 @@ export default class Environment extends EventEmitter {
     // const media = matchMedia(mqString);
     // media.addEventListener("change", updatePixelRatio.bind(this));
 
+    getFullScreenBox() {
+        return [window.innerWidth * this.pixelRatio, window.innerHeight * this.pixelRatio];
+    }
+
     setOrientation(isWide) {
         if (this.wide === isWide) return;
         this.wide = isWide;

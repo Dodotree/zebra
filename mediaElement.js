@@ -37,6 +37,8 @@ export class MediaElement extends HTMLElement {
          */
         this.streamdevice = "";
 
+        this.resolutionsList = [];
+
         /**
          * [internal] Constrains object used to fetch the stream.
          * @type {object}
@@ -394,7 +396,7 @@ export class MediaElement extends HTMLElement {
                     kind: "video",
                 },
             })
-        );
+        ).onclick = this.onFullscreenClick.bind(this);
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "button",
@@ -587,13 +589,40 @@ export class MediaElement extends HTMLElement {
         this.requestTrackChanges("video", changes, trackConstraints);
     }
 
+    onFullscreenClick() {
+        const [w, h] = this.env.getFullScreenBox();
+        const resolutions = structuredClone(this.resolutionsList);
+        resolutions.sort((a, b) => Math.abs((b[0] - w) * (b[1] - h))
+            - Math.abs((a[0] - w) * (a[1] - h)));
+        this.logger.log(`${[
+            window.innerWidth,
+            window.innerHeight,
+            w,
+            h
+        ]}`);
+        resolutions.forEach((res) => {
+            this.logger.log(`${[
+                res,
+                w - res[0] + "px",
+                h - res[1] + "px",
+                Math.round(100 * ((w - res[0]) / w)) + "%",
+                Math.round(100 * ((h - res[1]) / h)) + "%"
+            ]}`);
+        });
+    }
+
     resetResolutions() {
         const settings = this.streamTracks.video.settings;
         const capabilities = this.streamTracks.video.capabilities;
 
-        const listOfResolutions = [[settings.width, settings.height]];
+        const [w, h] = this.env.orientedResolution(settings.width, settings.height);
+        const listOfResolutions = [[w, h]];
         if (capabilities.width && capabilities.height) {
-            listOfResolutions.push([capabilities.width.max, capabilities.height.max]);
+            const [W, H] = this.env.orientedResolution(
+                capabilities.width.max,
+                capabilities.height.max
+            );
+            listOfResolutions.push([W, H]);
         }
         this.initResolutionsUI(
             listOfResolutions,
@@ -873,6 +902,7 @@ export class MediaElement extends HTMLElement {
         const resHolder = this.querySelector(".resolution-select");
         resHolder.innerHTML = "";
         const resolutions = utilsUI.getResolutions(givenRs, camera, os);
+        this.resolutionsList = resolutions;
 
         resolutions.forEach((row) => {
             const res = `${row[0]}x${row[1]}`;
