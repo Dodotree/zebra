@@ -64,8 +64,57 @@ export const utilsUI = {
         };
     },
 
+    parseValue(txt, item) {
+        if (txt === "true" || txt === "false") {
+            return txt === "true";
+        }
+        if (typeof item === "object" && "max" in item) {
+            return parseFloat(txt);
+        }
+        return txt;
+    },
+
+    guessValueType(value) {
+        if (value === !!value || value === "true" || value === "false") {
+            return "boolean";
+        } if (!Number.isNaN(parseFloat(value))
+            && parseFloat(value).toString() === value.toString()) {
+            // since parseFloat allows for string trailing characters
+            return "number";
+        } if (typeof value === "string") {
+            return "string";
+        }
+        // "any" stands for objects, null, undefined, NaN
+        return "any";
+    },
+
+    /* returns guessed types for each constraint:
+     string, number, boolean, stringArray, booleanArray
+     pan, tilt and zoom are "booleanNumber"
+     meaning they are initiated as boolean then set as number
+     I'm yet to see how pointsOfInterest appear in reality - so it's "any" for now */
+    getConstraintTypes(items) {
+        return (Object.keys(items))
+            .reduce((acc, k)=> {
+                if (["pan", "tilt", "zoom"].indexOf(k) > -1) {
+                    acc[k] = "booleanNumber";
+                } else if (Array.isArray(items[k]) && items[k].length > 0) {
+                    acc[k] = this.guessValueType(items[k][0]) + "Array";
+                } else if (typeof items[k] === "object" && items[k] !== null) {
+                    acc[k] = ("min" in items[k] || "max" in items[k]) ? "number" : "any";
+                } else {
+                    acc[k] = this.guessValueType(items[k]);
+                }
+                return acc;
+            }, {});
+    },
+
+    // they are generated because we want to keep them consistent with buckets
+    // and getConstraintTypes() function
+    constraintTypes: {},
+
     imageCaptureKeys() {
-        const buckets = this.buckets();
+        const buckets = this.buckets;
         return [
             ...Object.keys(buckets.Color),
             ...Object.keys(buckets.Exposure),
@@ -77,7 +126,7 @@ export const utilsUI = {
     },
 
     nonImageCaptureKeys() {
-        const buckets = this.buckets();
+        const buckets = this.buckets;
         return [
             ...Object.keys(buckets.IDs),
             ...Object.keys(buckets.Box),
@@ -85,97 +134,95 @@ export const utilsUI = {
         ];
     },
 
-    theoreticalConstraints() {
-        const buckets = this.buckets();
-        return (Object.keys(this.buckets()))
-            .reduce((acc, key)=> Object.assign(acc, buckets[key]), {});
+    getTheoreticalConstraints() {
+        return (Object.keys(this.buckets))
+            .reduce((acc, key)=> Object.assign(acc, structuredClone(this.buckets[key])), {});
     },
 
     /* "min" and "max" usually include "step" too (though not always true) */
     /* some features have to be enable at getUserMedia {pan: true} to become available */
     /* where possible values for pan tilt zoom are  (boolean or ConstrainDouble) */
-    buckets() {
-        return {
-            IDs: { deviceId: "", groupId: "" },
-            Box: {
-                /* left and right sides in user direction */
-                facingMode: ["environment", "user", "left", "right"],
-                /* downscaled (not up scaled) and/or cropped from a higher camera resolution */
-                resizeMode: ["none", "crop-and-scale"],
-                /* value is the width divided by the height and is rounded to ten decimal places */
-                aspectRatio: { min: 0, exact: 1.3333333332, max: 10000 },
-                width: { min: 0, ideal: 640, max: 10000 },
-                height: { min: 0, ideal: 480, max: 10000 },
-                /* can be affected by lighting conditions */
-                frameRate: { min: 0, ideal: 30, max: 110 }
+    buckets: {
+        IDs: { deviceId: "", groupId: "" },
+        Box: {
+            /* left and right sides in user direction */
+            facingMode: ["environment", "user", "left", "right"],
+            /* downscaled (not up scaled) and/or cropped from a higher camera resolution */
+            resizeMode: ["none", "crop-and-scale"],
+            /* value is the width divided by the height and is rounded to ten decimal places */
+            aspectRatio: { min: 0, exact: 1.3333333332, max: 10000 },
+            width: { min: 0, ideal: 640, max: 10000 },
+            height: { min: 0, ideal: 480, max: 10000 },
+            /* can be affected by lighting conditions */
+            frameRate: { min: 0, ideal: 30, max: 110 }
+        },
+        Audio: {
+            sampleRate: { min: 0, ideal: 48000, max: 96000 },
+            /* The linear sample size in bits. If device produces *linear* samples */
+            sampleSize: { min: 0, ideal: 16, max: 32 },
+            echoCancellation: [true, false],
+            autoGainControl: [true, false],
+            noiseSuppression: [true, false],
+            voiceIsolation: [true, false],
+            latency: { min: 0.1, ideal: 0.01, max: 0.1 },
+            channelCount: { min: 0, ideal: 2, max: 2 },
+            /* deprecated */
+            volume: { min: 0.0, ideal: 0.5, max: 1.0 }
+        },
+        Exposure: {
+            /* chances are that only "manual" and "continuous" are available */
+            exposureMode: ["none", "manual", "single-shot", "continuous"],
+            /* only works in manual mode */
+            exposureTime: {
+                min: 4.8828125, step: 4.8828125, ideal: 1250, max: 2500
             },
-            Audio: {
-                sampleRate: { min: 0, ideal: 48000, max: 96000 },
-                /* The linear sample size in bits. If device produces *linear* samples */
-                sampleSize: { min: 0, ideal: 16, max: 32 },
-                echoCancellation: [true, false],
-                autoGainControl: [true, false],
-                noiseSuppression: [true, false],
-                voiceIsolation: [true, false],
-                latency: { min: 0.1, ideal: 0.01, max: 0.1 },
-                channelCount: { min: 0, ideal: 2, max: 2 },
-                /* deprecated */
-                volume: { min: 0.0, ideal: 0.5, max: 1.0 }
+            /* only works in continuous or single-shot mode */
+            exposureCompensation: { min: 0, ideal: 0, max: 255 },
+            /* sensitivity of the camera to light */
+            iso: { min: 0, ideal: 100, max: 800 },
+        },
+        Flash: {
+            /* light stays on as long as the track is active  */
+            torch: [true, false],
+        },
+        Photo: {
+            imageHeight: { min: 0, ideal: 480, max: 10000 },
+            imageWidth: { min: 0, ideal: 640, max: 10000 },
+            fillLightMode: ["off", "auto", "flash"],
+            redEyeReduction: ["never", "always", "controllable"],
+        },
+        Focus: {
+            focusMode: ["none", "manual", "single-shot", "continuous"],
+            /* usually in meters */
+            focusDistance: { min: 0, ideal: 5, max: 600 },
+            focusRange: { min: 0, ideal: 0.5, max: 1 },
+            backgroundBlur: [true, false],
+            /* in use by Focus, Exposure and Auto White Balance, in normalized coords 0.0-1.0 */
+            pointsOfInterest: { x: 0.5, y: 0.5 },
+        },
+        Color: {
+            whiteBalanceMode: ["none", "manual", "single-shot", "continuous"],
+            /* enabled in manual white balance mode */
+            colorTemperature: {
+                min: 2000, step: 10, ideal: 3950, max: 7500
             },
-            Exposure: {
-                /* chances are that only "manual" and "continuous" are available */
-                exposureMode: ["none", "manual", "single-shot", "continuous"],
-                /* only works in manual mode */
-                exposureTime: {
-                    min: 4.8828125, step: 4.8828125, ideal: 1250, max: 2500
-                },
-                /* only works in continuous or single-shot mode */
-                exposureCompensation: { min: 0, ideal: 0, max: 255 },
-                /* sensitivity of the camera to light */
-                iso: { min: 0, ideal: 100, max: 800 },
+            brightness: { min: 0, ideal: 128, max: 255 },
+            contrast: { min: 0, ideal: 128, max: 255 },
+            saturation: { min: 0, ideal: 128, max: 255 },
+            sharpness: { min: 0, ideal: 128, max: 255 }
+        },
+        CropAndZoom: {
+            /* getUserMedia with  {pan: true, tilt: true, zoom: true} */
+            /* and then .applyConstraints({advanced: [{pan: event.target.value}]}); */
+            pan: {
+                min: -180000, step: 3600, ideal: 0, max: 180000
             },
-            Flash: {
-                /* light stays on as long as the track is active  */
-                torch: [true, false],
+            tilt: {
+                min: -180000, step: 3600, ideal: 0, max: 180000
             },
-            Photo: {
-                imageHeight: { min: 0, ideal: 480, max: 10000 },
-                imageWidth: { min: 0, ideal: 640, max: 10000 },
-                fillLightMode: ["off", "auto", "flash"],
-                redEyeReduction: ["never", "always", "controllable"],
-            },
-            Focus: {
-                focusMode: ["none", "manual", "single-shot", "continuous"],
-                /* usually in meters */
-                focusDistance: { min: 0, ideal: 5, max: 600 },
-                focusRange: { min: 0, ideal: 0.5, max: 1 },
-                backgroundBlur: [true, false],
-                /* in use by Focus, Exposure and Auto White Balance, in normalized coords 0.0-1.0 */
-                pointsOfInterest: { exact: { x: 0.5, y: 0.5 } },
-            },
-            Color: {
-                whiteBalanceMode: ["none", "manual", "single-shot", "continuous"],
-                /* enabled in manual white balance mode */
-                colorTemperature: {
-                    min: 2000, step: 10, ideal: 3950, max: 7500
-                },
-                brightness: { min: 0, ideal: 128, max: 255 },
-                contrast: { min: 0, ideal: 128, max: 255 },
-                saturation: { min: 0, ideal: 128, max: 255 },
-                sharpness: { min: 0, ideal: 128, max: 255 }
-            },
-            CropAndZoom: {
-                /* getUserMedia with  {pan: true, tilt: true, zoom: true} */
-                /* and then .applyConstraints({advanced: [{pan: event.target.value}]}); */
-                pan: {
-                    min: -180000, step: 3600, ideal: 0, max: 180000
-                },
-                tilt: {
-                    min: -180000, step: 3600, ideal: 0, max: 180000
-                },
-                zoom: { min: 100, ideal: 100, max: 400 }
-            },
-        };
+            zoom: { min: 100, ideal: 100, max: 400 }
+        },
+
     },
 
     // sequential application of constraints might be needed
@@ -254,32 +301,31 @@ export const utilsUI = {
             }, {});
     },
 
-    separateConstraints(initC, returnedC) {
-        const initConstraints = {};
-        const constraints = {};
-        ["video", "audio"].forEach((kind) => {
-            if (initC[kind] === !!initC[kind]) { // skip boolean values
-                initConstraints[kind] = initC[kind];
-                return;
-            }
-            initConstraints[kind] = {};
-            constraints[kind] = {};
-            const filteredInitC = {};
-            Object.keys(initC[kind]).forEach((key) => {
-                if (["deviceId", "groupId", "pan", "tilt", "zoom"].indexOf(key) > -1) {
-                    initConstraints[kind][key] = initC[kind][key];
+    separateConstraints(initK, returnedK) {
+        // in case it was like initK was true and returned {}
+        if (initK === !!initK
+            && typeof returnedK === "object" && Object.keys(returnedK).length === 0) {
+            return [initK, {}];
+        }
+        const streamK = {};
+        const trackK = {};
+        Object.keys(initK).forEach((key) => {
+            if (Object.keys(this.buckets.IDs).indexOf(key) > -1) {
+                streamK[key] = initK[key];
+            } else if (Object.keys(this.buckets.CropAndZoom).indexOf(key) > -1) {
+                if (key in returnedK && !returnedK[key].isNaN()) {
+                    streamK[key] = true;
+                    trackK[key] = returnedK[key];
                 } else {
-                    filteredInitC[key] = initC[kind][key];
+                    streamK[key] = initK[key];
                 }
-            });
-            console.log("filteredInitC", filteredInitC);
-            Object.keys(filteredInitC).forEach((key) => {
-                if (key in returnedC[kind]) {
-                    constraints[kind][key] = returnedC[kind][key];
-                }
-            });
+            } else if (key in returnedK) {
+                trackK[key] = (key !== "advanced" && typeof returnedK[key] !== "object"
+                    ? { ideal: returnedK[key] } : returnedK[key]);
+                // TODO: is it possible for initK min/max getting lost?
+            }
         });
-        return [initConstraints, constraints];
+        return [streamK, trackK];
     },
 
     getConstraints(keyValues) {
@@ -462,16 +508,6 @@ export const utilsUI = {
         return resolutions;
     },
 
-    parseValue(txt, item) {
-        if (txt === "true" || txt === "false") {
-            return txt === "true";
-        }
-        if (typeof item === "object" && "max" in item) {
-            return parseFloat(txt);
-        }
-        return txt;
-    },
-
     stayFullScreen(canvas) {
         const expandFullScreen = () => {
             canvas.width = window.innerWidth;
@@ -522,3 +558,5 @@ export const utilsUI = {
         anchor.remove();
     }
 };
+
+utilsUI.constraintTypes = utilsUI.getConstraintTypes(utilsUI.getTheoreticalConstraints());

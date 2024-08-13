@@ -80,7 +80,7 @@ export default class Environment extends EventEmitter {
 
     parseResolutionName(resolution) {
         const [width, height] = resolution.split("x").map(Number);
-        if (width.isNan || height.isNan) {
+        if (Number.isNaN(width) || Number.isNaN(height)) {
             this.logger.log("Error: resolution should be in format \"width x height\"");
             return [];
         }

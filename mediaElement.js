@@ -541,26 +541,37 @@ export class MediaElement extends HTMLElement {
             settings: track.getSettings(),
             capabilities: track.getCapabilities
                 ? track.getCapabilities()
-                : utilsUI.theoreticalConstraints(),
+                : utilsUI.getTheoreticalConstraints(),
         };
         this.logger.log(`Set track ${track.kind}:\n`);
         this.logger.log(JSON.stringify(this.streamTracks[track.kind], null, 2));
     }
 
-    setStream(device, constraints, stream, onRelease) {
+    setStream(device, constraints, stream, onReleaseCallback) {
         this.streamdevice = device;
         this.setAttribute("streamdevice", device);
 
-        const returnConstraints = {};
         this.logger.log(`Stream constraints:\n ${JSON.stringify(constraints, null, 2)}`);
-        this.onRelease = onRelease;
+        this.onRelease = onReleaseCallback;
 
         this.videoPlace = this.appendChild(utilsUI.get({ tag: "div" }));
         this.audioPlace = this.appendChild(utilsUI.get({ tag: "div" }));
 
+        const returnConstraints = { audio: false, video: false };
+
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
             returnConstraints[track.kind] = track.getConstraints();
+            console.log(
+                "separated",
+                track.kind,
+                constraints[track.kind],
+                returnConstraints[track.kind],
+                utilsUI.separateConstraints(
+                    constraints[track.kind],
+                    returnConstraints[track.kind]
+                )
+            );
 
             if (track.kind === "video") {
                 this.initVideoTrackUI(track.label || device);
@@ -577,8 +588,6 @@ export class MediaElement extends HTMLElement {
         this.env.on("orientation", this.setOrientation);
 
         this.currentConstraints = constraints;
-        console.log("Current constraints", this.currentConstraints, returnConstraints);
-        console.log("separated", utilsUI.separateConstraints(constraints, returnConstraints));
     }
 
     onResolutionDropdownChange(event) {
@@ -755,16 +764,19 @@ export class MediaElement extends HTMLElement {
         track
             .applyConstraints(stages[0])
             .then(() => {
+                console.log("stage 1", track.getConstraints());
                 if (stages.length > 1) {
                     return track.applyConstraints(stages[1]);
                 } return Promise.resolve();
             })
             .then(() => {
+                console.log("stage 2", track.getConstraints());
                 if (stages.length > 2) {
                     return track.applyConstraints(stages[2]);
                 } return Promise.resolve();
             })
             .then(() => {
+                console.log("stage 3", track.getConstraints());
                 this.postChangesCheck(
                     trackKind,
                     changes,

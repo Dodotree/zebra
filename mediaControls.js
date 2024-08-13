@@ -103,7 +103,7 @@ export class MediaControls extends HTMLElement {
         this.form = details.appendChild(document.createElement("form"));
         this.form.kind = kind;
 
-        const buckets = utilsUI.buckets();
+        const buckets = utilsUI.buckets;
         const usedSoFar = [];
 
         Object.keys(buckets).forEach((buck) => {
