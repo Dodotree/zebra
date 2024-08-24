@@ -199,7 +199,11 @@ export class MediaMenu extends HTMLElement {
         } else if (deviceName === "R200 Depth") {
             constraints.video.width = { ideal: 628, max: 640 };
         } else if (constraints.video && constraints.video.deviceId) {
-            // constraints.video.advanced = [{ width: 640, height: 480 }];
+            constraints.video.advanced = [
+                { width: 640, height: 480 },
+                { width: 640, height: 480 },
+                { width: 640, height: 360 },
+            ];
         }
 
         this.logger.log(`Selected ${deviceLabel}`);

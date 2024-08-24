@@ -64,16 +64,6 @@ export const utilsUI = {
         };
     },
 
-    parseValue(txt, item) {
-        if (txt === "true" || txt === "false") {
-            return txt === "true";
-        }
-        if (typeof item === "object" && "max" in item) {
-            return parseFloat(txt);
-        }
-        return txt;
-    },
-
     guessValueType(value) {
         if (value === !!value || value === "true" || value === "false") {
             return "boolean";
@@ -88,23 +78,26 @@ export const utilsUI = {
         return "any";
     },
 
+    guessConstraintType(k, item) {
+        if (["pan", "tilt", "zoom"].indexOf(k) > -1) {
+            return "numberBoolean";
+        } if (utilsUI.notEmptyArray(item)) {
+            return this.guessValueType(item[0]) + "Array";
+        } if (typeof item === "object" && item !== null) {
+            return ("min" in item || "max" in item) ? "number" : "any";
+        }
+        return this.guessValueType(item);
+    },
+
     /* returns guessed types for each constraint:
      string, number, boolean, stringArray, booleanArray
-     pan, tilt and zoom are "booleanNumber"
+     pan, tilt and zoom are "numberBoolean"
      meaning they are initiated as boolean then set as number
      I'm yet to see how pointsOfInterest appear in reality - so it's "any" for now */
     getConstraintTypes(items) {
         return (Object.keys(items))
             .reduce((acc, k)=> {
-                if (["pan", "tilt", "zoom"].indexOf(k) > -1) {
-                    acc[k] = "booleanNumber";
-                } else if (Array.isArray(items[k]) && items[k].length > 0) {
-                    acc[k] = this.guessValueType(items[k][0]) + "Array";
-                } else if (typeof items[k] === "object" && items[k] !== null) {
-                    acc[k] = ("min" in items[k] || "max" in items[k]) ? "number" : "any";
-                } else {
-                    acc[k] = this.guessValueType(items[k]);
-                }
+                acc[k] = this.guessConstraintType(k, items[k]);
                 return acc;
             }, {});
     },
@@ -134,7 +127,7 @@ export const utilsUI = {
         ];
     },
 
-    getTheoreticalConstraints() {
+    getTheoreticalCapabilities() {
         return (Object.keys(this.buckets))
             .reduce((acc, key)=> Object.assign(acc, structuredClone(this.buckets[key])), {});
     },
@@ -222,10 +215,9 @@ export const utilsUI = {
             },
             zoom: { min: 100, ideal: 100, max: 400 }
         },
-
     },
 
-    // sequential application of constraints might be needed
+    // Sequential application of constraints might be needed
     // Some might require setting "manual" mode first
     // Others should not mix due to Chrome error:
     // Mixing ImageCapture and non-ImageCapture constraints is not currently supported
@@ -248,10 +240,12 @@ export const utilsUI = {
                     }
                 });
             } else if (mediaConstraints.includes(key)) {
-                // IDs, Box, Audio
+                // if stream: IDs and pan, zoom, tilt "true" // track: Box, Audio
+                // Audio booleans especially likely to need whole stream request
                 stage1[key] = constraints[key];
             } else if (constraints[key] === "manual") {
                 // manual mode just in case it should be set before value
+                // all of them - ImageCapture constraints
                 stage2[key] = constraints[key];
             } else {
                 // Color, Exposure, Focus, CropAndZoom, Flash - ImageCapture constraints
@@ -273,15 +267,14 @@ export const utilsUI = {
         return Array.from(sharedKeys.values());
     },
 
-    constraintKeys(constraints) {
-        const keysRequired = Object.keys(constraints).reduce((acc, key) => {
-            acc[key] = true;
-            return acc;
-        }, {});
-        const keysSet = Object.keys(constraints.advanced || []).reduce((acc, o) => {
-            Object.assign(acc, o);
-            return acc;
-        }, keysRequired);
+    getConstraintKeys(constraints) {
+        const keysSet = (constraints.advanced || [])
+            .reduce((acc, o) => {
+                Object.assign(acc, o);
+                return acc;
+            }, {});
+        Object.assign(keysSet, constraints);
+        delete keysSet.advanced;
         return Object.keys(keysSet);
         // set.union() is not supported on mobile
         // const advanced = constraints.advanced || [];
@@ -292,17 +285,14 @@ export const utilsUI = {
         // return Array.from(keysSet.values()).filter((key) => key !== "advanced");
     },
 
-    getChanges(pairs, oldSettings) {
-        return Object.keys(pairs)
-            .filter((key) => !(key in oldSettings) || pairs[key] !== oldSettings[key])
-            .reduce((acc, key) => {
-                acc[key] = pairs[key];
-                return acc;
-            }, {});
-    },
-
-    separateConstraints(initK, returnedK) {
-        // in case it was like initK was true and returned {}
+    /* returns a pair of constraints for stream and track
+       and filters out advanced that don't correspond to settings
+       and removes duplicates
+       track constraints later will be used to find out
+       which control inputs should be "enabled"
+    */
+    separateConstraints(initK, returnedK, settings) {
+        // in case it was like initK was boolean True and returned {}
         if (initK === !!initK
             && typeof returnedK === "object" && Object.keys(returnedK).length === 0) {
             return [initK, {}];
@@ -325,40 +315,164 @@ export const utilsUI = {
                 // TODO: is it possible for initK min/max getting lost?
             }
         });
+        if ("advanced" in trackK) {
+            trackK.advanced = trackK.advanced
+                .filter((o) => Object.keys(o).every((k) => k in settings && o[k] === settings[k]));
+            trackK.advanced = this.duplicateRemoval(trackK.advanced);
+        }
         return [streamK, trackK];
     },
 
-    getConstraints(keyValues) {
-        const keys = Object.keys(keyValues);
-        const idConstraints = ["deviceId", "groupId"].reduce((acc, key) => {
-            if (keys.indexOf(key) > -1) {
-                acc[key] = { exact: keyValues[key] };
+    notEmpty(value) {
+        return value !== undefined && value !== null && value !== "";
+    },
+
+    // will return true for both object or array if not empty
+    notEmptyObject(o) {
+        return (typeof o === "object" && Object.keys(o).length > 0);
+    },
+
+    notEmptyArray(arr) {
+        return (Array.isArray(arr) && Object.keys(arr).length > 0);
+    },
+
+    // you can always just delete keys after cloning
+    filterOutObjectKeys(o, keys) {
+        if (keys.length === 0) {
+            return structuredClone(o);
+        }
+        return Object.keys(o).reduce((acc, key) => {
+            if (keys.indexOf(key) === -1) {
+                acc[key] = o[key];
             }
             return acc;
         }, {});
-        const advancedKeys = keys.filter((key) => ["deviceId", "groupId"].indexOf(key) === -1);
-        const constraints = advancedKeys.reduce((acc, key) => {
-            acc[key] = { ideal: keyValues[key] };
-            return acc;
-        }, idConstraints);
-        if (advancedKeys.length > 0) {
-            constraints.advanced = keys.map((key) => ({ [key]: keyValues[key] }));
+    },
+
+    getValueFromCapability(capability) {
+        if ("min" in capability) {
+            return capability.min;
+        } if ("ideal" in capability) {
+            return capability.ideal;
+        } if (Array.isArray(capability)) {
+            return capability[0];
         }
-        return constraints;
+        return Object.values(capability)[0];
+    },
+
+    // could be Array(2000).fill(0).
+    // x = Math.floor(0.5 + Math.sqrt(0.25 + 2*i)) - 1; y = i - x*(x+1)/2;
+    // for parallel execution without cycles
+    // just in case: for cubic root use t = n+1 substitution and Cardano root
+    duplicateRemoval(advanced) {
+        let arr = structuredClone(advanced);
+        let i = 0;
+        while (i < arr.length) {
+            // removes {} from advanced just in case
+            arr[i] = arr[i] && Object.keys(arr[i]).length !== 0 ? arr[i] : false;
+            const o1 = arr[i];
+            let ii = 0;
+            while (ii < i) {
+                arr[ii] = arr[ii] && Object.keys(arr[ii]).length !== 0 ? arr[ii] : false;
+                const o2 = arr[ii];
+                if (o1 && o2 && Object.keys(o1).length === Object.keys(o2).length
+                      && Object.keys(o1).every((k) => o1[k] === o2[k])) {
+                    arr[ii] = false;
+                }
+                // eslint-disable-next-line no-plusplus
+                ii++;
+            }
+            // eslint-disable-next-line no-plusplus
+            i++;
+        }
+        return arr.filter((o) => o);
+    },
+
+    // checks effect of track constraints (and capabilities) on settings
+    // if capabilities are not provided, it's a theoretical
+    // creates data nodes for controls with data types and values
+    // every node is disabled until found in constraints (and permitted in capabilities)
+    // permanently disabled are in settings but not in capabilities (real, not theoretical)
+    // theoretical value exist to show some default value in case the node gets enabled
+    // since some constraints have no value and are not in capabilities - deleted
+    getControlsData(constraints, settings, capabilities, log) {
+        const theoreticCaps = this.getTheoreticalCapabilities();
+        const theoretical = !capabilities;
+        const caps = theoretical ? theoreticCaps : capabilities;
+        const keys = Object.keys(Object.assign({}, settings, caps));
+
+        const keyValues = keys.reduce((acc, key) => {
+            const valueNotEmpty = (key in settings) && this.notEmpty(settings[key]);
+            // the weird thing that it returns current ids(strings) as track capabilities
+            const capsNotEmpty = (key in caps)
+                && (this.notEmptyObject(caps[key]) || typeof caps[key] === "string");
+            acc[key] = {
+                status: -1,
+                value: null,
+                theoreticalValue: null,
+                type: this.constraintTypes[key]
+                        || this.guessValueType(settings[key], caps[key]),
+                caps: capsNotEmpty ? structuredClone(caps[key]) : null,
+                disabled: true,
+                permanentlyDisabled: false,
+            };
+            if (valueNotEmpty && capsNotEmpty) {
+                acc[key].status = 2;
+                acc[key].value = settings[key];
+            } else if (valueNotEmpty && !capsNotEmpty) {
+                if (!(key in theoreticCaps)) {
+                    log(`Key ${key} is not in theoretic capabilities`);
+                }
+                acc[key].status = 1;
+                acc[key].value = settings[key];
+                acc[key].caps = (!theoretical && (key in theoreticCaps))
+                    ? structuredClone(theoreticCaps[key]) : null;
+                acc[key].permanentlyDisabled = !theoretical;
+            } else if (!valueNotEmpty && !capsNotEmpty) {
+                // for weird cases when empty options in caps: facingMode = []
+                // and no value in settings: facingMode key not in settings
+                console.log(`Key ${key} is not in settings or capabilities`);
+                delete acc[key];
+            } else { // stands for leftover: (!valueNotEmpty && capsNotEmpty)
+                acc[key].status = 0;
+                acc[key].theoreticalValue = this.getValueFromCapability(caps[key]);
+                console.log(`Key ${key} is not in settings but in caps`);
+            }
+            return acc;
+        }, {});
+
+        const deleteConstraintKeys = ["facingMode"];
+        this.getConstraintKeys(constraints).forEach((key) => {
+            if (!(key in keyValues) || keyValues[key].status === 0) {
+                deleteConstraintKeys.push(key);
+            } else if (keyValues[key].status === 2
+                   || (keyValues[key].status === 1 && !theoretical)) {
+                keyValues[key].disabled = false;
+            }
+        });
+
+        const clonedC = this.filterOutObjectKeys(constraints, deleteConstraintKeys);
+        if (deleteConstraintKeys.length > 0 && "advanced" in clonedC) {
+            clonedC.advanced.forEach((o, i) => {
+                clonedC.advanced[i] = this.filterOutObjectKeys(o, deleteConstraintKeys);
+            });
+            clonedC.advanced = this.duplicateRemoval(clonedC.advanced);
+        }
+
+        return { controlsData: keyValues, cleaned: clonedC };
     },
 
     // TODO: advanced should be overridden in reverse order
     // since the lower set in the advanced is the least priority
     // each set in advanced is either satisfied or failed together
-    // all values in the set treated as "exact"
+    // all values in the advanced sets treated as "exact"
     // if advanced fails it tries to go as close as possible to "ideal"
     // "max", "min", or "exact" are always treated as mandatory
     // meaning if it's not possible to satisfy Promise will be rejected
-    // in one hand you'll know it's not possible and act on it
+    // *mandatory* constraints might not be allowed at all for some keys
+    // throwing "Mandatory pan constraints are not supported" error
+    // with mandatory in one hand you'll know it's not possible, and act on it
     // (in the other hand it might get somewhat satisfied without "exact")
-    // so technically we should check by getConstraints() which one was satisfied
-    // on each step and save that to know for sure what worked
-    // BUT that is in theory, in practice advanced support is iffy
     getChangedConstraints(oldConstraints, changes, deleteKeys) {
         const merged = (oldConstraints.advanced || [])
             .reduce((acc, o)=> Object.assign(acc, o), {});
@@ -559,4 +673,4 @@ export const utilsUI = {
     }
 };
 
-utilsUI.constraintTypes = utilsUI.getConstraintTypes(utilsUI.getTheoreticalConstraints());
+utilsUI.constraintTypes = utilsUI.getConstraintTypes(utilsUI.getTheoreticalCapabilities());

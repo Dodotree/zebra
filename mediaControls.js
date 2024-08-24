@@ -65,20 +65,19 @@ export class MediaControls extends HTMLElement {
         this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
         this.onFormInput = this.onFormInput.bind(this);
 
-        this.trackInfo = null;
+        this.data = null;
         this.callback = null;
         this.debounceOnFormInput = null;
     }
 
-    init(kind, trackInfo, liveupdates, debouncetime, callback, destroyCallback) {
+    init(trackInfo) {
         this.reset();
-        this.callback = callback;
-        this.destroyCallback = destroyCallback;
-        this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, debouncetime);
-        this.trackInfo = trackInfo;
-        this.trackInfo.enabled = utilsUI.constraintKeys(trackInfo.constraints);
-        // will be changed by onFormInput
+        this.callback = trackInfo.updateCallback;
+        this.destroyCallback = trackInfo.destroyCallback;
+        this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, trackInfo.debouncetime);
+
         this.constraints = structuredClone(trackInfo.constraints);
+        this.data = structuredClone(trackInfo.data);
 
         const details = this.appendChild(
             utilsUI.get({
@@ -90,7 +89,7 @@ export class MediaControls extends HTMLElement {
         const summary = details.appendChild(
             utilsUI.get({
                 tag: "summary",
-                text: `${kind} ${trackInfo.label} controls`,
+                text: `${trackInfo.kind} ${trackInfo.label} controls`,
             })
         );
         summary.appendChild(
@@ -101,7 +100,7 @@ export class MediaControls extends HTMLElement {
         ).onclick = this.destroy.bind(this);
 
         this.form = details.appendChild(document.createElement("form"));
-        this.form.kind = kind;
+        this.form.kind = trackInfo.kind;
 
         const buckets = utilsUI.buckets;
         const usedSoFar = [];
@@ -115,16 +114,9 @@ export class MediaControls extends HTMLElement {
                 })
             );
             Object.keys(buckets[buck]).forEach((cKey) => {
-                if (cKey in trackInfo.capabilities) {
+                if (cKey in this.data) {
                     usedSoFar.push(cKey);
-                    bucketNode.appendChild(
-                        this.createInput(
-                            cKey,
-                            trackInfo.capabilities[cKey],
-                            trackInfo.settings[cKey],
-                            (trackInfo.enabled.indexOf(cKey) !== -1)
-                        )
-                    );
+                    bucketNode.appendChild(this.createInput(cKey, this.data[cKey]));
                 }
             });
 
@@ -135,19 +127,9 @@ export class MediaControls extends HTMLElement {
             }
         });
 
-        const leftoverKeys = Object.keys(trackInfo.capabilities).filter(
-            (key) => usedSoFar.indexOf(key) === -1
-        );
-
+        const leftoverKeys = Object.keys(this.data).filter((key) => usedSoFar.indexOf(key) === -1);
         leftoverKeys.forEach((cKey) => {
-            this.form.appendChild(
-                this.createInput(
-                    cKey,
-                    trackInfo.capabilities[cKey],
-                    trackInfo.settings[cKey],
-                    (trackInfo.enabled.indexOf(cKey) !== -1)
-                )
-            );
+            this.form.appendChild(this.createInput(cKey, this.data[cKey]));
         });
 
         const pendingNode = this.form.appendChild(document.createElement("fieldset"));
@@ -243,8 +225,8 @@ export class MediaControls extends HTMLElement {
                 },
             })
         ).oninput = this.onDebounceTimeChange.bind(this);
-        this.liveupdates = liveupdates;
-        this.debouncetime = debouncetime;
+        this.liveupdates = trackInfo.liveupdates;
+        this.debouncetime = trackInfo.debouncetime;
     }
 
     editConstraints() {
@@ -255,14 +237,23 @@ export class MediaControls extends HTMLElement {
         utilsUI.downloadJSON(this.constraints, "constraints");
     }
 
-    getFormKeyValues(capabilities) {
+    getFormKeyValues() {
         const pairs = Object.fromEntries(new FormData(this.form).entries());
         return Object.keys(pairs)
             .filter((key) => {
                 return pairs[key] !== null && pairs[key] !== undefined;
             })
             .reduce((acc, key) => {
-                acc[key] = utilsUI.parseValue(pairs[key], capabilities[key]);
+                // since all form values returned as strings, we need to convert them
+                if (this.data[key].type.indexOf("boolean") !== -1) {
+                    acc[key] = (pairs[key] === "true");
+                } else if (this.data[key].type.indexOf("number") !== -1) {
+                    // numberBoolean for tilt pan zoom for track should be number
+                    acc[key] = parseFloat(pairs[key]);
+                } else {
+                    // string, stringArray or any (will be left as string)
+                    acc[key] = pairs[key];
+                }
                 return acc;
             }, {});
     }
@@ -278,13 +269,32 @@ export class MediaControls extends HTMLElement {
     onFormInput() {
         if (this.locked) return;
 
-        const keyValues = this.getFormKeyValues(this.trackInfo.capabilities);
+        const keyValues = this.getFormKeyValues();
 
-        this.changes = utilsUI.getChanges(keyValues, this.trackInfo.settings);
+        this.changes = Object.keys(keyValues)
+            .filter((key) => !(key in this.data) || keyValues[key] !== this.data[key].value)
+            .reduce((acc, key) => {
+                acc[key] = keyValues[key];
+                return acc;
+            }, {});
+
         this.form.changes.value = JSON.stringify(this.changes, null, 2);
 
-        this.constraints = utilsUI.getConstraints(keyValues);
-        this.form.constraints.value = JSON.stringify(this.constraints, null, 2);
+        // generate track constraints from enabled inputs, avoid using "mandatory"
+        // (e.g. "exact", "min") as it's not supported by all browsers
+        // TODO: width and height in one item in advanced
+        // and if it didn't change, don't change the way it's in constraints
+        const keys = Object.keys(keyValues);
+        const constraints = keys.reduce((acc, key) => {
+            acc[key] = { ideal: keyValues[key] };
+            return acc;
+        }, {});
+        if (keys.length > 0) {
+            constraints.advanced = keys.map((key) => ({ [key]: keyValues[key] }));
+        }
+
+        this.constraints = constraints;
+        this.form.constraints.value = JSON.stringify(constraints, null, 2);
 
         if (this.liveupdates) {
             this.onSubmit();
@@ -339,14 +349,12 @@ export class MediaControls extends HTMLElement {
         }
     }
 
-    updateControls(constraints, changes, unchanged, settings) {
+    updateControls(constraints, changes, unchanged) {
         this.locked = true;
 
-        this.trackInfo.settings = settings;
-        this.trackInfo.constraints = constraints;
-        this.form.constraints.value = JSON.stringify(this.constraints, null, 2);
+        this.constraints = constraints;
+        this.form.constraints.value = JSON.stringify(constraints, null, 2);
 
-        this.trackInfo.enabled = utilsUI.constraintKeys(constraints);
         Object.keys(changes).forEach((key) => {
             this.setControlValue(
                 key,
@@ -377,7 +385,7 @@ export class MediaControls extends HTMLElement {
         }
     }
 
-    createInput(cKey, cOptions, cValue, enabled) {
+    createInput(cKey, node) {
         const pElement = document.createElement("p");
         const checkbox = pElement.appendChild(
             utilsUI.get({
@@ -389,7 +397,8 @@ export class MediaControls extends HTMLElement {
             })
         );
         checkbox.onclick = this.toggleDisabled.bind(this);
-        checkbox.checked = enabled;
+        checkbox.checked = !node.disabled;
+        checkbox.disabled = node.permanentlyDisabled;
 
         // function fix(num) { return parseFloat(num.toFixed(4)); }
         // text: `${cKey} ${fix(cOptions.min)} - ${fix(cOptions.max)}, step: ${"step" in cOptions ? fix(cOptions.step) : 1}`,
@@ -402,7 +411,7 @@ export class MediaControls extends HTMLElement {
         );
 
         // string or String wrapper
-        if (typeof cOptions === "string" || cOptions instanceof String) {
+        if (node.type === "string") {
             // those most likely are not meant to be changed
             const input = pElement.appendChild(
                 utilsUI.get({
@@ -410,12 +419,12 @@ export class MediaControls extends HTMLElement {
                     attrs: {
                         type: "text",
                         name: cKey,
-                        value: cValue,
+                        value: node.value,
                     },
                 })
             );
-            input.disabled = !enabled;
-        } else if (Array.isArray(cOptions) && cOptions.length > 0) {
+            input.disabled = node.disabled;
+        } else if (node.type.indexOf("Array") !== -1) {
             // Select is better than checkbox for boolean values
             const sel = pElement.appendChild(
                 utilsUI.get({
@@ -426,8 +435,8 @@ export class MediaControls extends HTMLElement {
                     },
                 })
             );
-            sel.disabled = !enabled;
-            cOptions.forEach((option) => {
+            sel.disabled = node.disabled;
+            node.caps.forEach((option) => {
                 sel.appendChild(
                     utilsUI.get({
                         tag: "option",
@@ -436,42 +445,41 @@ export class MediaControls extends HTMLElement {
                     })
                 );
             });
-            if (cValue) {
-                sel.value = cValue.toString();
+            if (node.value !== null) {
+                sel.value = node.value.toString();
             }
-        } else if (Object.keys(cOptions).includes("min") && Object.keys(cOptions).includes("max")) {
+        } else if (node.type.indexOf("number") !== -1) {
+            const attrs = {
+                name: cKey,
+                min: node.caps.min,
+                max: node.caps.max,
+                step: "step" in node.caps ? node.caps.step : 1,
+                value: node.value, // do not change default value (could be long)
+                // PS be aware that range will set 1.777777 as 2.0013888
+                class: "control-input",
+            };
             const range = pElement.appendChild(
                 utilsUI.get({
                     tag: "input",
                     attrs: {
                         type: "range",
-                        name: cKey,
-                        min: cOptions.min,
-                        max: cOptions.max,
-                        step: "step" in cOptions ? cOptions.step : 1,
-                        value: cValue, // do not change default value (could be long)
-                        class: "control-input",
+                        ...attrs,
                         oninput: `this.form.${cKey}[2].value = this.value`,
                     },
                 })
             );
-            range.disabled = !enabled;
+            range.disabled = node.disabled;
             const input = pElement.appendChild(
                 utilsUI.get({
                     tag: "input",
                     attrs: {
                         type: "number",
-                        name: cKey,
-                        min: cOptions.min,
-                        max: cOptions.max,
-                        step: "step" in cOptions ? cOptions.step : 1,
-                        value: cValue,
-                        class: "control-input",
+                        ...attrs,
                         oninput: `this.form.${cKey}[1].value = this.value`,
                     },
                 })
             );
-            input.disabled = !enabled;
+            input.disabled = node.disabled;
         }
         return pElement;
     }
