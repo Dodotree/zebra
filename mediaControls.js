@@ -61,6 +61,7 @@ export class MediaControls extends HTMLElement {
         this.locked = false;
         this.changes = {};
         this.constraints = {};
+        this.newConstraints = {};
 
         this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
         this.onFormInput = this.onFormInput.bind(this);
@@ -78,6 +79,7 @@ export class MediaControls extends HTMLElement {
         this.debounceOnFormInput = utilsUI.debounce(this.onFormInput, trackInfo.debouncetime);
 
         this.constraints = structuredClone(trackInfo.constraints);
+        this.newConstraints = structuredClone(trackInfo.constraints);
         this.data = structuredClone(trackInfo.data);
 
         const details = this.appendChild(
@@ -235,10 +237,11 @@ export class MediaControls extends HTMLElement {
     }
 
     saveConstraints() {
-        utilsUI.downloadJSON(this.constraints, "constraints");
+        utilsUI.downloadJSON(this.newConstraints, "constraints");
     }
 
     getFormKeyValues() {
+        // TODO: get value from input, not range slider for numbers
         const pairs = Object.fromEntries(new FormData(this.form).entries());
         return Object.keys(pairs)
             .filter((key) => {
@@ -263,7 +266,7 @@ export class MediaControls extends HTMLElement {
         if (e) {
             e.preventDefault();
         }
-        this.callback(this.form.kind, this.changes, this.constraints);
+        this.callback(this.form.kind, this.changes, this.newConstraints);
         return false;
     }
 
@@ -278,24 +281,52 @@ export class MediaControls extends HTMLElement {
                 acc[key] = keyValues[key];
                 return acc;
             }, {});
-
         this.form.changes.value = JSON.stringify(this.changes, null, 2);
 
         // generate track constraints from enabled inputs, avoid using "mandatory"
         // (e.g. "exact", "min") as it's not supported by all browsers
-        // TODO: width and height in one item in advanced
-        // and if it didn't change, don't change the way it's in constraints
-        const keys = Object.keys(keyValues);
-        const constraints = keys.reduce((acc, key) => {
-            acc[key] = { ideal: keyValues[key] };
-            return acc;
-        }, {});
-        if (keys.length > 0) {
-            constraints.advanced = keys.map((key) => ({ [key]: keyValues[key] }));
-        }
 
-        this.constraints = constraints;
-        this.form.constraints.value = JSON.stringify(constraints, null, 2);
+        // if the key was in advanced but not in plain, new values also will be only in advanced
+        // since advanced is treated as "exact" and gets rejected if not supported
+        // you might need to add "ideal" plain constraints for those keys
+        const newConstraints = {};
+        const usedKeys = [];
+        if (Object.keys(this.constraints.advanced).length > 0) {
+            newConstraints.advanced = this.constraints.advanced.reduce((acc, item) => {
+                if (Object.keys(item).every((key) => key in keyValues)) {
+                    const line = Object.keys(item).reduce((a, key) => {
+                        a[key] = keyValues[key];
+                        usedKeys.push(key);
+                        return a;
+                    }, {});
+                    acc.push(line);
+                }
+                return acc;
+            }, []);
+        }
+        Object.keys(keyValues).forEach(key => {
+            if (usedKeys.indexOf(key) === -1) {
+                newConstraints.advanced.push({ [key]: keyValues[key] });
+            }
+        });
+        if (newConstraints.advanced.length === 0) { delete newConstraints.advanced; }
+        Object.keys(this.constraints).forEach(key => {
+            if (key !== "advanced" && key in keyValues) {
+                Object.assign(
+                    newConstraints,
+                    structuredClone(this.constraints[key]),
+                    { ideal: keyValues[key] }
+                );
+                usedKeys.push(key);
+            }
+        });
+        Object.keys(keyValues).forEach(key => {
+            if (usedKeys.indexOf(key) === -1) {
+                newConstraints[key] = { ideal: keyValues[key] };
+            }
+        });
+        this.form.constraints.value = JSON.stringify(newConstraints, null, 2);
+        this.newConstraints = newConstraints;
 
         if (this.liveupdates) {
             this.onSubmit();
@@ -353,7 +384,8 @@ export class MediaControls extends HTMLElement {
         this.locked = true;
 
         this.data = structuredClone(data);
-        this.constraints = constraints;
+        this.constraints = structuredClone(constraints);
+        this.newConstraints = structuredClone(constraints);
         this.form.constraints.value = JSON.stringify(constraints, null, 2);
 
         changedKeys.forEach((key) => {
