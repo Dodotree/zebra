@@ -65,6 +65,7 @@ export class MediaControls extends HTMLElement {
         this.toggleAttribute = utilsUI.toggleAttribute.bind(this);
         this.onFormInput = this.onFormInput.bind(this);
 
+        // Warning: .disabled is used only for initial state, not tracked later
         this.data = null;
         this.callback = null;
         this.debounceOnFormInput = null;
@@ -331,48 +332,41 @@ export class MediaControls extends HTMLElement {
         this.callback = null;
     }
 
-    setControlValue(key, value, enabled) {
+    setControlValue(key) {
         // [0] must be checkbox, [1] range/select/input, [2] input
         if (!this.form[key] || !this.form[key][1]) return;
-        this.form[key][0].checked = enabled;
         // set value on input, not on range
         // range sets 1.777777 as 2.0013888 probably due to range pixel step
         if (this.form[key][2]) {
             const input = (this.form[key][1].type === "number") ? this.form[key][2] : this.form[key][1];
-            input.value = value;
+            input.value = this.data[key].value;
             input.dispatchEvent(new Event("input"));
             return;
         }
-        this.form[key][1].value = value;
+        this.form[key][1].value = this.data[key].value;
         if (this.form[key][1].tagName === "input") {
             this.form[key].dispatchEvent(new Event("input"));
         }
     }
 
-    updateControls(constraints, changes, unchanged) {
+    updateControls(data, changedKeys, unchangedKeys, constraints) {
         this.locked = true;
 
+        this.data = structuredClone(data);
         this.constraints = constraints;
         this.form.constraints.value = JSON.stringify(constraints, null, 2);
 
-        Object.keys(changes).forEach((key) => {
-            this.setControlValue(
-                key,
-                changes[key],
-                this.trackInfo.enabled.indexOf(key) !== -1
-            );
+        changedKeys.forEach((key) => {
+            this.setControlValue(key);
         });
-        Object.keys(unchanged).forEach((key) => {
-            this.setControlValue(
-                key,
-                unchanged[key].unchanged,
-                this.trackInfo.enabled.indexOf(key) !== -1
-            );
+        Object.keys(unchangedKeys).forEach((key) => {
+            this.setControlValue(key);
         });
 
         this.changes = {};
         // as message, nothing else
-        this.form.changes.value = JSON.stringify(unchanged, null, 2);
+        this.form.changes.value = "Changed Keys:\n" + JSON.stringify(changedKeys, null, 2)
+         + "\nUnchanged Keys:\n" + JSON.stringify(unchangedKeys, null, 2);
 
         this.locked = false;
     }

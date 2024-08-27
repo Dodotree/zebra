@@ -52,7 +52,7 @@ button {
     border: 1px solid #aca3eb
         /* #9084e5 */
     ;
-    background-color: #d0cbf4;
+    background-color: #ebe1cc /*#d0cbf4*/;
     cursor: pointer;
     user-select: none;
 }
@@ -84,7 +84,8 @@ media-element {
         "audio"
         "controls";
     padding: 1rem;
-    background-color: #e2dff7;
+    background-color: #e2dff7; /*#cfdbdb;*/
+    background-color: #e6e6e3;
     vertical-align: top;
 }
 media-element div:first-child {
@@ -194,7 +195,8 @@ media-element #toggle-audio {
 media-controls {
     display: block;
     padding: 0.62rem;
-    background: #f5f4fc;
+    background-color: #f4f0ed;
+    /* background: #f5f4fc; */
     /* #f4f4f4;  #afb9c8; */
     border: 1px solid #ccc;
     border-radius: 5px;

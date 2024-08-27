@@ -499,11 +499,6 @@ export const utilsUI = {
         return constraints;
     },
 
-    // separate function for the sake of keeping one standard
-    getUnchangedItem(actual, intended) {
-        return { unchanged: actual, intended };
-    },
-
     // nothing (intentionally) changed, returns false immediately if anything changed
     // returns unchanged only if not one of the intended changes was applied
     nothingChanged(newSettings, oldSettings, intendedChanges) {
@@ -528,7 +523,7 @@ export const utilsUI = {
             }
         }
         const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-            acc[key] = this.getUnchangedItem(newSettings[key], intendedChanges[key]);
+            acc[key] = { unchanged:newSettings[key], intended: intendedChanges[key] };
             return acc;
         }, {});
         return unchanged;

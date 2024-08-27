@@ -619,17 +619,13 @@ export class MediaElement extends HTMLElement {
         this.env.on("orientation", this.setOrientation);
     }
 
-    rollbackStream(message) {
+    rollbackStream() {
         navigator.mediaDevices
             .getUserMedia(this.trackConstraints)
             .then((stream) => {
                 stream.getTracks().forEach((track) => {
                     this.setTrack(track);
-                    this.updateTrackControls(
-                        track.kind,
-                        this.streamTracks[track.kind].settings,
-                        message
-                    );
+                    this.updateTrackControls(track.kind, [], []);
                     if (track.kind === "video") {
                         this.selectCurrentResolution();
                     }
@@ -691,7 +687,7 @@ export class MediaElement extends HTMLElement {
                 this.logger.log("Request stream changes error for constrains:\n"
                     + JSON.stringify(constraints, null, 2));
                 this.logger.error(error);
-                this.rollbackStream({ error });
+                this.rollbackStream();
             });
     }
 
@@ -754,8 +750,6 @@ export class MediaElement extends HTMLElement {
                 // since "overconstrained" error means that the track stays the same
                 // we should reset the controls to the actual values (and resolution dropdown)
                 // if (e instanceof DOMException && e.name === "OverconstrainedError") {
-                //     this.updateTrackControls(trackKind, oldSettings, {error: e});
-                //     this.selectCurrentResolution();
                 // }
                 // OR we can try our luck with the stream (which is unlikely and hides the error)
                 this.requestStreamChanges(trackKind, changes, requestConstraints);
@@ -777,7 +771,7 @@ export class MediaElement extends HTMLElement {
                     return;
                 }
                 // roll back input values (instead of what we attempted to set)
-                this.updateTrackControls(kind, {}, unchanged);
+                this.updateTrackControls(kind, [], Object.keys(unchanged));
                 if (kind === "video") {
                     this.selectCurrentResolution();
                 }
@@ -799,14 +793,14 @@ export class MediaElement extends HTMLElement {
         );
     }
 
-    updateTrackControls(trackKind, actualChanges, unchanged) {
+    updateTrackControls(trackKind, changedKeys, unchangedKeys) {
         if (!this.controls[trackKind]) return;
         try {
             this.controls[trackKind].updateControls(
-                this.trackConstraints[trackKind],
-                actualChanges,
-                unchanged,
-                this.streamTracks[trackKind].settings
+                this.controlsData[trackKind],
+                changedKeys,
+                unchangedKeys,
+                this.trackConstraints[trackKind]
             );
         } catch (e) {
             this.logger.error(e);
@@ -814,8 +808,8 @@ export class MediaElement extends HTMLElement {
     }
 
     updateChangedInputs(trackKind, intendedChanges, newSettings, oldSettings) {
-        const changes = {};
-        const unchanged = {};
+        const changeKeys = [];
+        const unchangedKeys = [];
         let controlsReset = false;
         utilsUI.uniqueKeys(oldSettings, newSettings).forEach((sKey) => {
             if (
@@ -829,7 +823,8 @@ export class MediaElement extends HTMLElement {
                 this.logger.log(`Warning: Key ${sKey} is missing in one of the settings`);
             }
             if (oldSettings[sKey] !== newSettings[sKey]) {
-                changes[sKey] = newSettings[sKey];
+                changeKeys.push(sKey);
+                this.controlsData[trackKind][sKey].value = newSettings[sKey];
                 if (sKey in intendedChanges && intendedChanges[sKey] === newSettings[sKey]) {
                     this.logger.log(`[${sKey}] changed to ${newSettings[sKey]}`);
                 } else if (sKey in intendedChanges && intendedChanges[sKey] !== newSettings[sKey]) {
@@ -843,14 +838,9 @@ export class MediaElement extends HTMLElement {
                 }
             } else if (sKey in intendedChanges) {
                 this.logger.log(`[${sKey}] is unchanged`);
-                unchanged[sKey] = utilsUI.getUnchangedItem(
-                    newSettings[sKey],
-                    intendedChanges[sKey]
-                );
+                unchangedKeys.push(sKey);
             }
         });
-
-        this.logger.log(`Actual changes ${JSON.stringify(changes, null, 2)}`);
 
         if (controlsReset && trackKind === "video") {
             this.streamTracks.video.capabilities = this.streamTracks.video.track.getCapabilities
@@ -861,7 +851,7 @@ export class MediaElement extends HTMLElement {
             return;
         }
 
-        this.updateTrackControls(trackKind, changes, unchanged);
+        this.updateTrackControls(trackKind, changeKeys, unchangedKeys);
     }
 
     resetControls(kind) {
