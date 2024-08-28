@@ -349,9 +349,9 @@ export class MediaControls extends HTMLElement {
         // if the key was in advanced but not in plain, new values also will be only in advanced
         // since advanced is treated as "exact" and gets rejected if not supported
         // you might need to add "ideal" plain constraints for those keys
-        const newConstraints = {};
+        const newConstraints = { advanced: [] };
         const usedKeys = [];
-        if (Object.keys(this.constraints.advanced).length > 0) {
+        if (this.constraints.advanced && Object.keys(this.constraints.advanced).length > 0) {
             newConstraints.advanced = this.constraints.advanced.reduce((acc, item) => {
                 if (Object.keys(item).every((key) => key in keyValues)) {
                     const line = Object.keys(item).reduce((a, key) => {
