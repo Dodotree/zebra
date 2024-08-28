@@ -462,43 +462,6 @@ export const utilsUI = {
         return { controlsData: keyValues, cleaned: clonedC };
     },
 
-    // TODO: advanced should be overridden in reverse order
-    // since the lower set in the advanced is the least priority
-    // each set in advanced is either satisfied or failed together
-    // all values in the advanced sets treated as "exact"
-    // if advanced fails it tries to go as close as possible to "ideal"
-    // "max", "min", or "exact" are always treated as mandatory
-    // meaning if it's not possible to satisfy Promise will be rejected
-    // *mandatory* constraints might not be allowed at all for some keys
-    // throwing "Mandatory pan constraints are not supported" error
-    // with mandatory in one hand you'll know it's not possible, and act on it
-    // (in the other hand it might get somewhat satisfied without "exact")
-    getChangedConstraints(oldConstraints, changes, deleteKeys) {
-        const merged = (oldConstraints.advanced || [])
-            .reduce((acc, o)=> Object.assign(acc, o), {});
-        Object.assign(merged, changes);
-        const keys = this.uniqueKeys(merged, oldConstraints)
-            .filter((key) => key !== "advanced" && deleteKeys.indexOf(key) === -1);
-        const constraints = keys.reduce((acc, key) => {
-            const a = oldConstraints[key] || {};
-            const b = key in merged ? { ideal: merged[key] } : {};
-            acc[key] = Object.assign({}, a, b);
-            return acc;
-        }, {});
-        const advancedKeys = keys.filter((key) => ["deviceId", "groupId"].indexOf(key) === -1);
-        if (advancedKeys.length > 0) {
-            constraints.advanced = advancedKeys.reduce((acc, key) => {
-                if ("exact" in constraints[key]) {
-                    acc.push({ [key]: constraints[key].exact });
-                } else if ("ideal" in constraints[key]) {
-                    acc.push({ [key]: constraints[key].ideal });
-                }
-                return acc;
-            }, []);
-        }
-        return constraints;
-    },
-
     // nothing (intentionally) changed, returns false immediately if anything changed
     // returns unchanged only if not one of the intended changes was applied
     nothingChanged(newSettings, oldSettings, intendedChanges) {

@@ -721,19 +721,16 @@ export class MediaElement extends HTMLElement {
         track
             .applyConstraints(stages[0])
             .then(() => {
-                console.log("stage 1", track.getConstraints());
                 if (stages.length > 1) {
                     return track.applyConstraints(stages[1]);
                 } return Promise.resolve();
             })
             .then(() => {
-                console.log("stage 2", track.getConstraints());
                 if (stages.length > 2) {
                     return track.applyConstraints(stages[2]);
                 } return Promise.resolve();
             })
             .then(() => {
-                console.log("stage 3", track.getConstraints());
                 this.postChangesCheck(
                     trackKind,
                     changes,
@@ -883,16 +880,33 @@ export class MediaElement extends HTMLElement {
         this.changeResolution({ width: optimal[0], height: optimal[1] });
     }
 
+    // advanced: the lower set in the advanced is the least priority
+    // each set in advanced is either satisfied or failed together
+    // all values in the advanced sets treated as "exact"
+    // if advanced fails it tries to go as close as possible to "ideal"
+    // "max", "min", or "exact" are always treated as mandatory
+    // meaning if it's not possible to satisfy Promise will be rejected
+    // *mandatory* constraints might not be allowed at all for some keys
+    // throwing "Mandatory pan constraints are not supported" error
+    // with mandatory in one hand you'll know it's not possible, and act on it
+    // (in the other hand it might get somewhat satisfied without "exact")
     changeResolution(newRes) {
-        if (this.trackResolution.name === `${newRes[0]}x${newRes[1]}`) {
+        if (this.trackResolution.name === `${newRes.width}x${newRes.height}`) {
             this.logger.log("Warning: resolution is already set to " + this.trackResolution.name);
             return;
         }
-        const videoConstraints = utilsUI.getChangedConstraints(
-            this.trackConstraints.video,
-            newRes,
-            ["aspectRatio"]
-        );
+        const videoConstraints = structuredClone(this.trackConstraints.video);
+        videoConstraints.advanced = videoConstraints.advanced || [];
+        videoConstraints.advanced.unshift(newRes);
+        videoConstraints.width = "width" in videoConstraints
+            ? Object.assign(videoConstraints.width, { ideal: newRes.width })
+            : { ideal: newRes.width };
+        videoConstraints.height = "height" in videoConstraints
+            ? Object.assign(videoConstraints.height, { ideal: newRes.height })
+            : { ideal: newRes.height };
+        if ("aspectRatio" in videoConstraints) {
+            delete videoConstraints.aspectRatio;
+        }
         this.requestTrackChanges("video", newRes, videoConstraints);
     }
 

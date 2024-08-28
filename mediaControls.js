@@ -17,7 +17,6 @@ export class MediaControls extends HTMLElement {
         if (name === "liveupdates") {
             const isLive = newValue === "true";
             this.toggleAttribute("disabled", isLive, this.form.submit);
-            this.toggleAttribute("disabled", isLive, this.form.editconstraints);
         }
         if (name === "debouncetime" && typeof this.debounceOnFormInput === "function") {
             this.debounceOnFormInput("debounceTerminatedNow");
@@ -92,13 +91,19 @@ export class MediaControls extends HTMLElement {
         const summary = details.appendChild(
             utilsUI.get({
                 tag: "summary",
-                text: `${trackInfo.kind} ${trackInfo.label} controls`,
             })
         );
-        summary.appendChild(
+        const h5 = summary.appendChild(
+            utilsUI.get({
+                tag: "h5",
+                text: `${trackInfo.kind} track controls for "${trackInfo.label}"`,
+            })
+        );
+        h5.appendChild(
             utilsUI.get({
                 tag: "button",
                 text: "✕",
+                attrs: { class: "destroy" },
             })
         ).onclick = this.destroy.bind(this);
 
@@ -233,7 +238,8 @@ export class MediaControls extends HTMLElement {
     }
 
     editConstraints() {
-        this.form.constraints.setAttribute("contenteditable", true);
+        this.liveupdates = false;
+        this.toggleAttribute("contenteditable", true, this.form.constraints);
     }
 
     saveConstraints() {
@@ -266,12 +272,21 @@ export class MediaControls extends HTMLElement {
         if (e) {
             e.preventDefault();
         }
+        if (this.form.constraints.hasAttribute("contenteditable")) {
+            try {
+                const constraints = JSON.parse(this.form.constraints.value);
+                this.callback(this.form.kind, this.changes, constraints);
+                return false;
+            } catch (error) {
+                this.logger.error(error);
+            }
+        }
         this.callback(this.form.kind, this.changes, this.newConstraints);
         return false;
     }
 
     onFormInput() {
-        if (this.locked) return;
+        if (this.locked || !this.liveupdates) return;
 
         const keyValues = this.getFormKeyValues();
 
@@ -387,6 +402,7 @@ export class MediaControls extends HTMLElement {
         this.constraints = structuredClone(constraints);
         this.newConstraints = structuredClone(constraints);
         this.form.constraints.value = JSON.stringify(constraints, null, 2);
+        this.toggleAttribute("contenteditable", false, this.form.constraints);
 
         changedKeys.forEach((key) => {
             this.setControlValue(key);

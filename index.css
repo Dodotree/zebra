@@ -13,9 +13,13 @@ textarea {
     height: 240px;
 }
 
+output{
+    outline: none;
+}
+
 select {
     padding: 0.57rem;
-    background: #f5f4fc;
+    background: #f4f0ed /*#f5f4fc */;
     appearance: none;
     font-size: 1rem;
     color: black;
@@ -83,10 +87,11 @@ media-element {
         "video"
         "audio"
         "controls";
+    grid-row-gap: 0.61rem;
     padding: 1rem;
-    background-color: #e2dff7; /*#cfdbdb;*/
-    background-color: #e6e6e3;
+    background-color: #e6e6e3; /* #e2dff7 #cfdbdb;*/
     vertical-align: top;
+    border: 1px solid #aca3eb;
 }
 media-element div:first-child {
     grid-area: video;
@@ -135,7 +140,7 @@ media-element div:first-child canvas {
     grid-column: 1/10;
 }
 
-media-element div:first-child button.destroy {
+media-element button.destroy {
     background: transparent;
     border: none;
     padding: 0;
@@ -148,6 +153,8 @@ media-element div:first-child button.destroy {
 media-element div:first-child button.destroy:hover {
     color: black;
 }
+
+
 media-element div:nth-child(2) {
     grid-area: audio;
     display: grid;
@@ -208,6 +215,11 @@ details select {
 
 summary {
     padding: 1rem;
+}
+summary h5 {
+    display: inline-grid;
+    width: calc(100% - 1rem);
+    grid-template-columns: 1fr 1rem;
 }
 
 media-controls form {
