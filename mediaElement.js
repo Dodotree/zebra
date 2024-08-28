@@ -566,13 +566,15 @@ export class MediaElement extends HTMLElement {
         this.logger.log(JSON.stringify(this.streamTracks[track.kind], null, 2));
     }
 
-    setConstraints(kind, constraints, returnedConstraints) {
-        const [streamC, trackC] = utilsUI.separateConstraints(
+    setConstraints(kind, updateStreamC, constraints, returnedConstraints) {
+        const [streamC, trackC] = utilsUI.separateAndCleanConstraints(
             constraints,
             returnedConstraints,
             this.streamTracks[kind].settings
         );
-        this.streamConstraints[kind] = streamC;
+        if (updateStreamC) {
+            this.streamConstraints[kind] = streamC;
+        }
         this.trackConstraints[kind] = trackC;
     }
 
@@ -585,7 +587,6 @@ export class MediaElement extends HTMLElement {
         );
         this.controlsData[kind] = data.controlsData;
         this.trackConstraints[kind] = data.cleaned;
-        console.log(data);
     }
 
     setStream(device, constraints, stream, onReleaseCallback) {
@@ -600,7 +601,7 @@ export class MediaElement extends HTMLElement {
 
         stream.getTracks().forEach((track) => {
             this.setTrack(track);
-            this.setConstraints(track.kind, constraints[track.kind], track.getConstraints());
+            this.setConstraints(track.kind, true, constraints[track.kind], track.getConstraints());
             this.setControlsData(track.kind);
             if (track.kind === "video") {
                 this.initVideoTrackUI(track.label || device);
@@ -620,6 +621,7 @@ export class MediaElement extends HTMLElement {
     }
 
     rollbackStream() {
+        // TODO track *and stream* constraints
         navigator.mediaDevices
             .getUserMedia(this.trackConstraints)
             .then((stream) => {
@@ -647,11 +649,12 @@ export class MediaElement extends HTMLElement {
         this.stopDeviceTracks();
         const oldSettings = structuredClone(this.streamTracks[trackKind].settings);
         const constraints = Object.keys(this.streamConstraints).reduce((acc, kind) => {
-            acc[kind] = Object.assign(
-                {},
-                this.streamConstraints[kind],
-                kind === trackKind ? requestConstraints : this.trackConstraints[kind]
-            );
+            acc[kind] = !this.streamConstraints[kind] ? false
+                : Object.assign(
+                    {},
+                    this.streamConstraints[kind],
+                    kind === trackKind ? requestConstraints : this.trackConstraints[kind]
+                );
             return acc;
         }, {});
         this.logger.log(
@@ -677,7 +680,8 @@ export class MediaElement extends HTMLElement {
                             changes,
                             this.streamTracks[track.kind].settings, // since setTrack() updated it
                             oldSettings,
-                            requestConstraints,
+                            constraints[trackKind],
+                            track.getConstraints(),
                             2
                         );
                     }
@@ -693,8 +697,13 @@ export class MediaElement extends HTMLElement {
 
     requestTrackChanges(trackKind, changes, requestConstraints) {
         const track = this.streamTracks[trackKind].track;
+        if (!track) {
+            this.logger.log(`Warning: No ${trackKind} track found to apply changes`);
+            return;
+        }
+
         const oldSettings = structuredClone(this.streamTracks[trackKind].settings);
-        if (utilsUI.nothingChanged(changes, oldSettings, changes)) {
+        if (utilsUI.findUnchanged(changes, oldSettings, changes)) {
             this.logger.log(`Warning: Matches current ${trackKind} settings. Nothing to change`);
             this.logger.log(`Intended changes ${JSON.stringify(changes, null, 2)}`);
             this.logger.log(`Old settings ${JSON.stringify(oldSettings, null, 2)}`);
@@ -716,27 +725,32 @@ export class MediaElement extends HTMLElement {
         this.logger.log(`from constraints ${JSON.stringify(this.trackConstraints[trackKind], null, 2)}`);
         this.logger.log(`New track constraints ${JSON.stringify(requestConstraints, null, 2)}`);
         this.logger.log(`Applying constraints in stages:\n ${JSON.stringify(stages, null, 2)}`);
-        this.logger.log(`Checking ${track.kind} track settings:\n ${JSON.stringify(track.getSettings(), null, 2)}`);
+        this.logger.log(`Checking ${trackKind} track settings:\n ${JSON.stringify(track.getSettings(), null, 2)}`);
 
+        const returnedConstraints = {};
         track
             .applyConstraints(stages[0])
             .then(() => {
+                Object.assign(returnedConstraints, track.getConstraints());
                 if (stages.length > 1) {
                     return track.applyConstraints(stages[1]);
                 } return Promise.resolve();
             })
             .then(() => {
+                Object.assign(returnedConstraints, track.getConstraints());
                 if (stages.length > 2) {
                     return track.applyConstraints(stages[2]);
                 } return Promise.resolve();
             })
             .then(() => {
+                Object.assign(returnedConstraints, track.getConstraints());
                 this.postChangesCheck(
                     trackKind,
                     changes,
                     track.getSettings(),
                     oldSettings,
                     requestConstraints,
+                    returnedConstraints,
                     1
                 );
             })
@@ -748,37 +762,48 @@ export class MediaElement extends HTMLElement {
                 // we should reset the controls to the actual values (and resolution dropdown)
                 // if (e instanceof DOMException && e.name === "OverconstrainedError") {
                 // }
-                // OR we can try our luck with the stream (which is unlikely and hides the error)
-                this.requestStreamChanges(trackKind, changes, requestConstraints);
+                this.onFailedTrackChanges(
+                    trackKind,
+                    changes,
+                    Object.keys(changes),
+                    requestConstraints,
+                    1
+                );
             });
     }
 
-    postChangesCheck(kind, changes, newSettings, oldSettings, requestConstraints, attempt) {
+    onFailedTrackChanges(kind, changes, unchangedKeys, requestConstraints, attempt) {
+        if (attempt === 1) {
+            this.requestStreamChanges(kind, changes, requestConstraints);
+            return;
+        }
+        // roll back input values (instead of what we attempted to set)
+        this.updateTrackControls(kind, [], unchangedKeys);
+        if (kind === "video") {
+            this.selectCurrentResolution();
+        }
+    }
+
+    postChangesCheck(kind, changes, newSettings, oldSettings, requestC, returnedC, attempt) {
         this.logger.log("Post request check:");
         if (Object.keys(changes).length !== 0) {
-            const unchanged = utilsUI.nothingChanged(
+            const unchanged = utilsUI.findUnchanged(
                 this.streamTracks[kind].settings,
                 oldSettings,
                 changes
             );
             if (unchanged) {
-                this.reportUnchanged(kind, requestConstraints, unchanged, changes, attempt);
-                if (attempt === 1) {
-                    this.requestStreamChanges(kind, changes, requestConstraints);
-                    return;
-                }
-                // roll back input values (instead of what we attempted to set)
-                this.updateTrackControls(kind, [], Object.keys(unchanged));
-                if (kind === "video") {
-                    this.selectCurrentResolution();
-                }
+                this.reportUnchanged(kind, requestC, unchanged, changes, attempt);
+                this.onFailedTrackChanges(kind, changes, Object.keys(unchanged), requestC, attempt);
                 return;
             }
         }
         // Successful
         // settings updated for 1st attempt since 2nd used setTrack() already
-        this.streamTracks[kind].settings = newSettings;
-        this.trackConstraints[kind] = requestConstraints;
+        if (attempt === 1) {
+            this.streamTracks[kind].settings = newSettings;
+        }
+        this.setConstraints(kind, (attempt === 2), requestC, returnedC);
         this.updateChangedInputs(kind, changes, newSettings, oldSettings);
     }
 
@@ -810,8 +835,7 @@ export class MediaElement extends HTMLElement {
         let controlsReset = false;
         utilsUI.uniqueKeys(oldSettings, newSettings).forEach((sKey) => {
             if (
-                newSettings[sKey] === undefined
-                        || oldSettings[sKey] === undefined
+                newSettings[sKey] === undefined || oldSettings[sKey] === undefined
             ) {
                 controlsReset = true;
                 // TODO: different set of settings, total reset needed for controls

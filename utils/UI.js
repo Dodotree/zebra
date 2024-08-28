@@ -291,7 +291,7 @@ export const utilsUI = {
        track constraints later will be used to find out
        which control inputs should be "enabled"
     */
-    separateConstraints(initK, returnedK, settings) {
+    separateAndCleanConstraints(initK, returnedK, settings) {
         // in case it was like initK was boolean True and returned {}
         if (initK === !!initK
             && typeof returnedK === "object" && Object.keys(returnedK).length === 0) {
@@ -310,12 +310,23 @@ export const utilsUI = {
                     streamK[key] = initK[key];
                 }
             } else if (key in returnedK) {
-                trackK[key] = (key !== "advanced" && typeof returnedK[key] !== "object"
-                    ? { ideal: returnedK[key] } : returnedK[key]);
-                // TODO: is it possible for initK min/max getting lost?
+                if (key === "advanced") {
+                    trackK[key] = returnedK[key];
+                } else if (typeof returnedK[key] !== "object") {
+                    // TODO: is it possible for initK min/max getting lost?
+                    trackK[key] = { ideal: returnedK[key] };
+                } else {
+                    // TODO hypothetically "exact" might not match settings
+                    trackK[key] = returnedK[key];
+                }
+            } else if (key in settings && this.notEmpty(settings[key])) {
+                // for example imageCapture constraints will not be returned
+                // and can have different value due to step rounding
+                trackK[key] = { ideal: settings[key] };
             }
         });
         if ("advanced" in trackK) {
+            // since "advanced" treated as "exact" - remove not equal to settings
             trackK.advanced = trackK.advanced
                 .filter((o) => Object.keys(o).every((k) => k in settings && o[k] === settings[k]));
             trackK.advanced = this.duplicateRemoval(trackK.advanced);
@@ -441,7 +452,7 @@ export const utilsUI = {
             return acc;
         }, {});
 
-        const deleteConstraintKeys = ["facingMode"];
+        const deleteConstraintKeys = [];
         this.getConstraintKeys(constraints).forEach((key) => {
             if (!(key in keyValues) || keyValues[key].status === 0) {
                 deleteConstraintKeys.push(key);
@@ -464,16 +475,16 @@ export const utilsUI = {
 
     // nothing (intentionally) changed, returns false immediately if anything changed
     // returns unchanged only if not one of the intended changes was applied
-    nothingChanged(newSettings, oldSettings, intendedChanges) {
+    findUnchanged(newSettings, oldSettings, intendedChanges) {
         // The tricky part here is that flipped W/H are not considered as a change
         // at least not on mobile where it's up to to the device to decide
         if ("width" in intendedChanges && "height" in intendedChanges) {
-            if (intendedChanges.length === 2
+            if (Object.keys(intendedChanges).length === 2
                 && (
-                    (intendedChanges.width === oldSettings.height
-                    && intendedChanges.height === oldSettings.width)
-                        || (intendedChanges.width === oldSettings.width
-                            && intendedChanges.height === oldSettings.height)
+                    (newSettings.width === oldSettings.height
+                        && newSettings.height === oldSettings.width)
+                    || (newSettings.width === oldSettings.width
+                        && newSettings.height === oldSettings.height)
                 )
             ) {
                 return false;
@@ -486,7 +497,7 @@ export const utilsUI = {
             }
         }
         const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-            acc[key] = { unchanged:newSettings[key], intended: intendedChanges[key] };
+            acc[key] = { unchanged: newSettings[key], intended: intendedChanges[key] };
             return acc;
         }, {});
         return unchanged;

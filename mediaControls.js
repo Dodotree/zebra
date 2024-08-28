@@ -246,36 +246,81 @@ export class MediaControls extends HTMLElement {
         utilsUI.downloadJSON(this.newConstraints, "constraints");
     }
 
+    parseValue(key, value) {
+        if (this.data[key].type.indexOf("boolean") !== -1) {
+            return (value === "true");
+        } if (this.data[key].type.indexOf("number") !== -1) {
+            // numberBoolean for tilt pan zoom for track should be number
+            return parseFloat(value);
+        }
+        // string, stringArray or any (will be left as string)
+        return value;
+    }
+
     getFormKeyValues() {
         // TODO: get value from input, not range slider for numbers
         const pairs = Object.fromEntries(new FormData(this.form).entries());
         return Object.keys(pairs)
             .filter((key) => {
-                return pairs[key] !== null && pairs[key] !== undefined;
+                return utilsUI.notEmpty(pairs[key]);
             })
             .reduce((acc, key) => {
                 // since all form values returned as strings, we need to convert them
-                if (this.data[key].type.indexOf("boolean") !== -1) {
-                    acc[key] = (pairs[key] === "true");
-                } else if (this.data[key].type.indexOf("number") !== -1) {
-                    // numberBoolean for tilt pan zoom for track should be number
-                    acc[key] = parseFloat(pairs[key]);
-                } else {
-                    // string, stringArray or any (will be left as string)
-                    acc[key] = pairs[key];
-                }
+                acc[key] = this.parseValue(key, pairs[key]);
                 return acc;
             }, {});
+    }
+
+    // returns an approximation of intended changes
+    // since "advanced" can contain many variants
+    getConstraintsChanges(constrains) {
+        // lowest index in advanced has higher priority -> reversed for overwrite
+        const changes = (constrains.advanced.toReversed() || []).reduce((acc, item) => {
+            Object.keys(item).forEach((key) => {
+                if (key in this.data) {
+                    const value = this.parseValue(key, item[key].toString());
+                    if (value !== this.data[key].value) {
+                        acc[key] = value;
+                    }
+                }
+            });
+            return acc;
+        }, {});
+
+        return Object.keys(constrains)
+            .filter((key) => {
+                return utilsUI.notEmpty(constrains[key]) && key in this.data;
+            })
+            .reduce((acc, key) => {
+                let value;
+                let isExact = false;
+                if (typeof constrains[key] === "object") {
+                    if (constrains[key].exact) {
+                        value = constrains[key].exact;
+                        isExact = true;
+                    } else if (constrains[key].ideal) {
+                        value = constrains[key].ideal;
+                    }
+                } else {
+                    value = constrains[key];
+                }
+                value = this.parseValue(key, value.toString());
+                if (value !== this.data[key].value && (isExact || !(key in changes))) {
+                    acc[key] = value;
+                }
+                return acc;
+            }, changes);
     }
 
     onSubmit(e) {
         if (e) {
             e.preventDefault();
         }
+        console.log("onSubmit", this.form.constraints.hasAttribute("contenteditable"));
         if (this.form.constraints.hasAttribute("contenteditable")) {
             try {
                 const constraints = JSON.parse(this.form.constraints.value);
-                this.callback(this.form.kind, this.changes, constraints);
+                this.callback(this.form.kind, this.getConstraintsChanges(constraints), constraints);
                 return false;
             } catch (error) {
                 this.logger.error(error);
@@ -327,11 +372,8 @@ export class MediaControls extends HTMLElement {
         if (newConstraints.advanced.length === 0) { delete newConstraints.advanced; }
         Object.keys(this.constraints).forEach(key => {
             if (key !== "advanced" && key in keyValues) {
-                Object.assign(
-                    newConstraints,
-                    structuredClone(this.constraints[key]),
-                    { ideal: keyValues[key] }
-                );
+                newConstraints[key] = structuredClone(this.constraints[key]);
+                newConstraints[key].ideal = keyValues[key];
                 usedKeys.push(key);
             }
         });

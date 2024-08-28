@@ -201,8 +201,6 @@ export class MediaMenu extends HTMLElement {
         } else if (constraints.video && constraints.video.deviceId) {
             constraints.video.advanced = [
                 { width: 640, height: 480 },
-                { width: 640, height: 480 },
-                { width: 640, height: 360 },
             ];
         }
 
