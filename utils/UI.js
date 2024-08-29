@@ -303,7 +303,7 @@ export const utilsUI = {
             if (Object.keys(this.buckets.IDs).indexOf(key) > -1) {
                 streamK[key] = initK[key];
             } else if (Object.keys(this.buckets.CropAndZoom).indexOf(key) > -1) {
-                if (key in returnedK && !returnedK[key].isNaN()) {
+                if (key in returnedK && !Number.isNaN(returnedK[key])) {
                     streamK[key] = true;
                     trackK[key] = returnedK[key];
                 } else {
