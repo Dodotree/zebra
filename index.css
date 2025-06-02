@@ -94,6 +94,8 @@ media-element {
     background-color: #e6e6e3; /* #e2dff7 #cfdbdb;*/
     vertical-align: top;
     border: 1px solid #aca3eb;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 media-element div:first-child {
     grid-area: video;
@@ -258,6 +260,30 @@ media-controls output[contenteditable] {
         padding: 5px;
         column-count: 1;
     }
+
+  media-element div:first-child {
+    grid-template-columns: repeat(auto-fit, minmax(2.5rem, auto));
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  media-element div:first-child select {
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+  }
+
+  media-controls {
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+    overflow-x: hidden;
+  }
+
+  media-controls output {
+    max-width: 100%;
+    overflow-x: auto;
+    word-break: break-word;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1800px) {
