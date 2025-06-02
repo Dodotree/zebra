@@ -703,11 +703,11 @@ export class MediaElement extends HTMLElement {
         }
 
         const oldSettings = structuredClone(this.streamTracks[trackKind].settings);
-        if (utilsUI.findUnchanged(changes, oldSettings, changes)) {
+        if (utilsUI.findUnchanged(oldSettings, changes, changes)) {
             this.logger.log(`Warning: Matches current ${trackKind} settings. Nothing to change`);
-            this.logger.log(`Intended changes ${JSON.stringify(changes, null, 2)}`);
-            this.logger.log(`Old settings ${JSON.stringify(oldSettings, null, 2)}`);
-            this.logger.log(`Current settings ${JSON.stringify(track.getSettings(), null, 2)}`);
+            // this.logger.log(`Intended changes ${JSON.stringify(changes, null, 2)}`);
+            // this.logger.log(`Old settings ${JSON.stringify(oldSettings, null, 2)}`);
+            // this.logger.log(`Current settings ${JSON.stringify(track.getSettings(), null, 2)}`);
             return;
         }
         const stages = utilsUI.getConstraintStages(requestConstraints);
@@ -722,10 +722,10 @@ export class MediaElement extends HTMLElement {
         // as well as switch to "manual" might require separate call
         this.logger.log(`Requested track changes for ${trackKind} track:\n`
             + JSON.stringify(changes, null, 2));
-        this.logger.log(`from constraints ${JSON.stringify(this.trackConstraints[trackKind], null, 2)}`);
-        this.logger.log(`New track constraints ${JSON.stringify(requestConstraints, null, 2)}`);
-        this.logger.log(`Applying constraints in stages:\n ${JSON.stringify(stages, null, 2)}`);
-        this.logger.log(`Checking ${trackKind} track settings:\n ${JSON.stringify(track.getSettings(), null, 2)}`);
+        // this.logger.log(`from constraints ${JSON.stringify(this.trackConstraints[trackKind], null, 2)}`);
+        // this.logger.log(`New track constraints ${JSON.stringify(requestConstraints, null, 2)}`);
+        // this.logger.log(`Applying constraints in stages:\n ${JSON.stringify(stages, null, 2)}`);
+        // this.logger.log(`Checking ${trackKind} track settings:\n ${JSON.stringify(track.getSettings(), null, 2)}`);
 
         const returnedConstraints = {};
         track
@@ -785,20 +785,23 @@ export class MediaElement extends HTMLElement {
     }
 
     postChangesCheck(kind, changes, newSettings, oldSettings, requestC, returnedC, attempt) {
+        if (Object.keys(changes).length === 0) return;
+
         this.logger.log("Post request check:");
-        if (Object.keys(changes).length !== 0) {
-            const unchanged = utilsUI.findUnchanged(
-                this.streamTracks[kind].settings,
-                oldSettings,
-                changes
-            );
-            if (unchanged) {
-                this.reportUnchanged(kind, requestC, unchanged, changes, attempt);
-                this.onFailedTrackChanges(kind, changes, Object.keys(unchanged), requestC, attempt);
-                return;
-            }
+        const unchanged = utilsUI.findUnchanged(
+            oldSettings,
+            this.streamTracks[kind].settings,
+            changes
+        );
+        if (unchanged) {
+            this.reportUnchanged(kind, requestC, unchanged, changes, attempt);
+            this.onFailedTrackChanges(kind, changes, Object.keys(unchanged), requestC, attempt);
+            return;
         }
+
         // Successful
+        this.logger.log(`Successful change on ${attempt} attempt: Track ${kind} settings updated:`
+            + `\n ${JSON.stringify(newSettings, null, 2)}`);
         // settings updated for 1st attempt since 2nd used setTrack() already
         if (attempt === 1) {
             this.streamTracks[kind].settings = newSettings;

@@ -17,7 +17,6 @@ export default class Textures {
         }
     ) {
         this.textures[slot] = options;
-        this.gl.activeTexture(this.gl.TEXTURE0 + slot);
         this.glTextures[slot] = this.gl.createTexture();
         this.video = options.source;
 

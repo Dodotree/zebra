@@ -192,7 +192,6 @@ export default class VideoGL {
         // Framebuffer for reading back the texture.
         this.framebuffer = this.gl.createFramebuffer();
         this.readBuffer = null;
-        this.readFormat = null;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
         this.gl.framebufferTexture2D(
             this.gl.FRAMEBUFFER,

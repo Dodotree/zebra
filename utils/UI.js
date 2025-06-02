@@ -132,9 +132,10 @@ export const utilsUI = {
             .reduce((acc, key)=> Object.assign(acc, structuredClone(this.buckets[key])), {});
     },
 
-    /* "min" and "max" usually include "step" too (though not always true) */
-    /* some features have to be enable at getUserMedia {pan: true} to become available */
+    /* applyConstraints so far worked only with MediaCapture not ImageCapture */
+    /* some features have to be enabled at getUserMedia {pan: true} to become available */
     /* where possible values for pan tilt zoom are  (boolean or ConstrainDouble) */
+    /* "min" and "max" usually include "step" too (though not always true) */
     buckets: {
         IDs: { deviceId: "", groupId: "" },
         Box: {
@@ -147,7 +148,8 @@ export const utilsUI = {
             width: { min: 0, ideal: 640, max: 10000 },
             height: { min: 0, ideal: 480, max: 10000 },
             /* can be affected by lighting conditions */
-            frameRate: { min: 0, ideal: 30, max: 110 }
+            frameRate: { min: 0, ideal: 30, max: 110 },
+            backgroundBlur: [true, false]
         },
         Audio: {
             sampleRate: { min: 0, ideal: 48000, max: 96000 },
@@ -189,7 +191,6 @@ export const utilsUI = {
             /* usually in meters */
             focusDistance: { min: 0, ideal: 5, max: 600 },
             focusRange: { min: 0, ideal: 0.5, max: 1 },
-            backgroundBlur: [true, false],
             /* in use by Focus, Exposure and Auto White Balance, in normalized coords 0.0-1.0 */
             pointsOfInterest: { x: 0.5, y: 0.5 },
         },
@@ -286,8 +287,7 @@ export const utilsUI = {
     },
 
     /* returns a pair of constraints for stream and track
-       and filters out advanced that don't correspond to settings
-       and removes duplicates
+       and filters out advanced that don't correspond to settings and removes duplicates
        track constraints later will be used to find out
        which control inputs should be "enabled"
     */
@@ -475,29 +475,27 @@ export const utilsUI = {
 
     // nothing (intentionally) changed, returns false immediately if anything changed
     // returns unchanged only if not one of the intended changes was applied
-    findUnchanged(newSettings, oldSettings, intendedChanges) {
+    findUnchanged(b, a, mustB) {
         // The tricky part here is that flipped W/H are not considered as a change
         // at least not on mobile where it's up to to the device to decide
-        if ("width" in intendedChanges && "height" in intendedChanges) {
-            if (Object.keys(intendedChanges).length === 2
+        if ("width" in mustB && "height" in mustB) {
+            if (Object.keys(mustB).length === 2
                 && (
-                    (newSettings.width === oldSettings.height
-                        && newSettings.height === oldSettings.width)
-                    || (newSettings.width === oldSettings.width
-                        && newSettings.height === oldSettings.height)
+                    (b.width === a.height && b.height === a.width)
+                    || (b.width === a.width && b.height === a.height)
                 )
             ) {
                 return false;
             }
         }
         // eslint-disable-next-line no-restricted-syntax
-        for (const key in intendedChanges) {
-            if (newSettings[key] !== oldSettings[key]) {
+        for (const key in mustB) {
+            if (b[key] !== a[key]) {
                 return false;
             }
         }
-        const unchanged = Object.keys(intendedChanges).reduce((acc, key) => {
-            acc[key] = { unchanged: newSettings[key], intended: intendedChanges[key] };
+        const unchanged = Object.keys(mustB).reduce((acc, key) => {
+            acc[key] = { unchanged: b[key], intended: mustB[key] };
             return acc;
         }, {});
         return unchanged;
