@@ -2,7 +2,15 @@
 
 Zebra is a powerful browser-based tool for exploring and manipulating camera capabilities across different devices and browsers. It provides a visual interface for testing WebGL2 video processing, camera controls, and capturing media in real-time.
 
-![Zebra WebCam Tool](https://dodotree.github.io/zebra/)
+# Zebra - WebCam Exploration Tool
+
+Zebra is a powerful browser-based tool for exploring and manipulating camera capabilities across different devices and browsers. It provides a visual interface for testing WebGL2 video processing, camera controls, and capturing media in real-time.
+
+![Zebra WebCam Tool](https://via.placeholder.com/800x400?text=Zebra+WebCam+Tool)
+
+## 🔗 Live Demo
+
+Try it out: [https://dodotree.github.io/zebra/](https://dodotree.github.io/zebra/)
 
 ## 📋 Features
 
