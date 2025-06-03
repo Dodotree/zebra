@@ -30,7 +30,7 @@ Try it out: [https://dodotree.github.io/zebra/](https://dodotree.github.io/zebra
 2. Open index.html in a compatible browser
 3. Grant permission to access cameras/microphones
 4. Select a camera or mic from the dropdown
-5. Push the "camera or mic" or "camera and mic" button.
+5. Push the "camera or mic" or "camera and mic" button. If camera stream is not available, make sure it's not already taken by another tab or a different app in your system.
 6. Push the "frames" button if you want full screen, or the "cogs" button to see available camera options.
 7. Explore available controls and settings
 
