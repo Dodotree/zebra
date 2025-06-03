@@ -310,7 +310,7 @@ export class ProcessingWEBGL {
 
         // plain 2D canvas for debugging framebuffer
         const debugCanvas = document.createElement("canvas");
-        canvas.setAttribute("id", "outCanvas" + id);
+        debugCanvas.setAttribute("id", "outCanvas" + id);
         debugCanvas.setAttribute(
             "style",
             `width: ${width / pixelRatio}px; height: ${height / pixelRatio}px;`
