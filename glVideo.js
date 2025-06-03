@@ -321,16 +321,6 @@ export default class VideoGL {
         }
         delete this;
     }
-
-    // Normalize colors from 0-255 to 0-1
-    // normalizeColor(color) {
-    //     return color.map((c) => c / 255);
-    // }
-
-    // // De-normalize colors from 0-1 to 0-255
-    // denormalizeColor(color) {
-    //     return color.map((c) => c * 255);
-    // }
 }
 
 /**
