@@ -5,11 +5,6 @@ import EventEmitter from "./EventEmitter.js";
 export default class Clock extends EventEmitter {
     constructor() {
         super();
-        // substitute code below gives "illegal invocation" error
-        // this.requestAnimationFrame = (
-        // window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-        // window.webkitRequestAnimationFrame || window.msRequestAnimationFrame);
-        // this.cancelAnimationFrame=(window.cancelAnimationFrame ||window.mozCancelAnimationFrame);
 
         this.isRunning = true;
 

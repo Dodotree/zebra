@@ -56,21 +56,21 @@ export default class Program {
             // gl.enableVertexAttribArray(attributes[uniformName]); // from webgl prev version
         });
 
-        this.uniforms = uniforms;
-        this.logUniforms();
+        this.logUniforms(uniforms);
     }
 
     getUniform(uniformLocation) {
         return this.gl.getUniform(this.program, uniformLocation);
     }
 
-    logUniforms() {
+    // log uniform addresses
+    logUniforms(uniforms) {
         // const numUniforms = this.gl.getProgramParameter(this.program, this.gl.ACTIVE_UNIFORMS);
         // for (let i = 0; i < numUniforms; ++i) {
         //     const info = this.gl.getActiveUniform(this.program, i);
         //     let uniformsLocation = this.gl.getUniformLocation(this.program, info.name);
         // }
-        this.uniforms.forEach((uniform) => {
+        uniforms.forEach((uniform) => {
             // eslint-disable-next-line no-console
             console.log("uniforms given", uniform, this[uniform]);
         });
@@ -102,5 +102,12 @@ export default class Program {
         }
 
         return shader;
+    }
+
+    destroy() {
+        if (this.program) {
+            this.gl.deleteProgram(this.program);
+            this.program = null;
+        }
     }
 }

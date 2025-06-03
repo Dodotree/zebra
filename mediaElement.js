@@ -1,5 +1,5 @@
 import Clock from "./utils/Clock.js";
-import VideoGL from "./glVideo.js";
+import { ProcessingWEBGL } from "./WebGL.js";
 import { MediaControls } from "./mediaControls.js";
 import { utilsUI } from "./utils/UI.js";
 
@@ -973,9 +973,25 @@ export class MediaElement extends HTMLElement {
         // TODO: verify influence of cut/resize constraint on this
         const [w, h] = [this.video.videoWidth, this.video.videoHeight];
         this.setVideoSize(w, h);
+
         // canvas context should have right dimensions
         // it's easier to replace canvas than try to update context of existing one
-        this.initGL(w, h);
+        this.destroyCanvases();
+        try {
+            this.canvasGL = new ProcessingWEBGL(
+                this.streamId,
+                32, // depth,
+                w, // width,
+                h, // height,
+                this.env.pixelRatio, // pixelRatio = 1,
+                this.video, // source = null,
+                true, // watch = false,
+                this.logger // logger
+            );
+        } catch (e) {
+            this.logger.error(e);
+        }
+
         this.trackResolution = {
             w, h, str: `${w}x${h}`, name: w > h ? `${w}x${h}` : `${h}x${w}`
         };
@@ -1054,50 +1070,6 @@ export class MediaElement extends HTMLElement {
         try {
             this.canvasGL.destroy();
             this.canvasGL = null;
-        } catch (e) {
-            this.logger.error(e);
-        }
-    }
-
-    initGL(w, h) {
-        this.destroyCanvases();
-        const webGLCanvasID = "webGLCanvas" + this.streamId;
-        const outCanvasID = "outCanvas" + this.streamId;
-        this.videoPlace.insertBefore(
-            utilsUI.get({
-                tag: "canvas",
-                attrs: {
-                    id: webGLCanvasID,
-                    class: "webGLCanvas",
-                    width: w,
-                    height: h,
-                    style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
-                },
-            }),
-            this.video
-        );
-        this.videoPlace.insertBefore(
-            utilsUI.get({
-                tag: "canvas",
-                attrs: {
-                    id: outCanvasID,
-                    class: "outCanvas",
-                    width: w,
-                    height: h,
-                    style: `width: ${w / this.env.pixelRatio}px; height: ${h / this.env.pixelRatio}px;`,
-                },
-            }),
-            this.video
-        );
-        try {
-            this.canvasGL = new VideoGL(
-                this.video,
-                this.streamdevice.includes("Depth"),
-                webGLCanvasID,
-                outCanvasID,
-                w,
-                h
-            );
         } catch (e) {
             this.logger.error(e);
         }

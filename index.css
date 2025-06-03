@@ -12,6 +12,7 @@ textarea {
     height: 240px;
     box-sizing: border-box;
     max-width: 100%;
+    width: 100%;
     overflow-x: auto;
 }
 
@@ -270,12 +271,12 @@ media-controls output[contenteditable] {
 
   media-element div:first-child select {
     width: 100%;
-    max-width: calc(100vw);
+    max-width: 100vw;
   }
 
   media-controls {
     width: 100%;
-    max-width: calc(100vw);
+    max-width: 100vw;
     overflow-x: hidden;
   }
 

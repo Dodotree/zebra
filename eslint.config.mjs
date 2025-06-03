@@ -51,6 +51,7 @@ export default [
                     functions: "never",
                 },
             ],
+            "no-plusplus": "off"
         },
     },
 ];
