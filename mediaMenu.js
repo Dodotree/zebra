@@ -75,7 +75,16 @@ export class MediaMenu extends HTMLElement {
         }).catch(err => {
             this.logger.log("Initiating default stream error:\n");
             this.logger.error(err);
-            // this.getDeviceList();
+            this.select.appendChild(
+                utilsUI.get({
+                    tag: "option",
+                    text: "No devices found",
+                    attrs: {
+                        value: "",
+                        disabled: true,
+                    },
+                })
+            );
         });
     }
 
@@ -179,6 +188,10 @@ export class MediaMenu extends HTMLElement {
 
     onAddStream(withOtherTrack) {
         const selected = this.select.options[this.select.selectedIndex];
+        if (!selected || !selected.value) {
+            this.logger.log("No device selected");
+            return;
+        }
         const deviceLabel = selected.text;
         const deviceId = selected.value;
         const constraints = selected.getAttribute("kind") === "audioinput"
