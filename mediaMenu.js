@@ -66,16 +66,16 @@ export class MediaMenu extends HTMLElement {
         navigator.mediaDevices.getUserMedia({
             audio: true, // it's better to take all names to avoid confusion
             video: true,
-        }).then((stream) => {
+        }).then(stream => {
             this.getDeviceList();
             // now we can release the test stream
             stream.getTracks().forEach((track) => {
                 track.stop();
             });
-        }).catch((err) => {
+        }).catch(err => {
             this.logger.log("Initiating default stream error:\n");
             this.logger.error(err);
-            this.getDeviceList();
+            // this.getDeviceList();
         });
     }
 
