@@ -270,12 +270,12 @@ media-controls output[contenteditable] {
 
   media-element div:first-child select {
     width: 100%;
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100vw);
   }
 
   media-controls {
     width: 100%;
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100vw);
     overflow-x: hidden;
   }
 
