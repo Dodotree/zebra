@@ -79,7 +79,7 @@
         }
     </script>
 
-        <!-- Fragment shader program -->
+    <!-- Fragment shader program -->
     <script id="dilation-fs" type="x-shader/x-fragment">
         #version 300 es
         // precision mediump float;
@@ -143,6 +143,61 @@
                 bytes[j] = float(byteValue) / 255.0;
             }
             outColor = bytes;
+        }
+    </script>
+
+    <!-- Fragment shader program -->
+    <script id="tiles-fs" type="x-shader/x-fragment">
+        #version 300 es
+        // precision mediump float;
+        precision highp float;
+        uniform sampler2D src_texture;
+        uniform sampler2D p_texture;
+        out vec4 outColor;
+
+        int iwidth = 8; // orig 10, width of the pixel block, packed into 8 bits
+        int iheight = 16; // orig 15, height of the 4 pixel blocks
+        int mincount = 34; // orig 40
+
+        uint countBits8(uint byte) {
+            uint val = (byte & 0x55u) + ((byte >> 1u) & 0x55u);
+            val = (val & 0x33u) + ((val >> 2u) & 0x33u);
+            val = (val + (val >> 4u)) & 0x0Fu;
+            return val;
+        }
+
+
+        void main() {
+
+            int count = 0;
+            float sum = 0.0;
+            uint[16] data = uint[16](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+                                     0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+            ivec2 xy = ivec2(gl_FragCoord.xy);
+
+            for(int j = 0; j < 4; j++) {
+                vec4 bytes = texelFetch(p_texture, xy + ivec2(0, j), 0) * 255.0; // .rgba
+                for(int cj = 0; cj < 4; cj++) {
+                    data[4*j + cj] = uint(bytes[cj]);
+                    count += 8 - int(countBits8( data[4*j + cj] )); // count zeroes (background bits)
+                }
+            }
+            // Do not fetch 128 texels from original texture if not enough background bits
+            if( count < mincount ) {
+                outColor = vec4(0.0, 0.0, 0.0, 0.0);
+                return;
+            }
+            for (int j = 0; j < iheight; j++) {
+                for(int i = 0; i < iwidth; i++) {
+                    if( bool((data[j] >> uint(i)) & 1u) ) {
+                        // If the bit is set, fetch the original texture
+                        sum += texelFetch(src_texture, ivec2(8 * xy[0] + i, 16 * xy[1] + j), 0).g;
+                    }
+                }
+            }
+            float gray = sum / float(count);
+            // Gray here is more like black, it has non zero value only on narrow edges
+            outColor = vec4(gray, 0.0, 0.0, 1.0);
         }
     </script>
 

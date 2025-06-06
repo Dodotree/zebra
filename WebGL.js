@@ -78,7 +78,7 @@ export class ProcessingWEBGL {
                 },
                 vaoIndices: texIndices,
                 uniforms: {
-                    up_texture: 3
+                    up_texture: 6
                 }
             },
             { // 4 - dilation
@@ -90,6 +90,18 @@ export class ProcessingWEBGL {
                 vaoIndices: texIndices,
                 uniforms: {
                     p_texture: 1
+                }
+            },
+            { // 5 - tiles to mask pixels
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "tiles-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    src_texture: 0,
+                    p_texture: 5
                 }
             }
         ],
@@ -218,6 +230,8 @@ export class ProcessingWEBGL {
         this.h = height;
         this.packW = packW;
         this.packH = packH;
+        this.maskW = maskW;
+        this.maskH = maskH;
         this.logger = logger;
         this.fbConfigs = framebuffers;
 
@@ -229,6 +243,7 @@ export class ProcessingWEBGL {
         // Create canvas and get WebGL2 context
         const canvas = document.createElement("canvas");
         canvas.setAttribute("id", "webGLCanvas" + id);
+        canvas.setAttribute("class", "webGLCanvas");
         canvas.setAttribute(
             "style",
             `width: ${width / pixelRatio}px; height: ${height / pixelRatio}px;`
@@ -293,6 +308,7 @@ export class ProcessingWEBGL {
         // plain 2D canvas for debugging framebuffer
         const debugCanvas = document.createElement("canvas");
         debugCanvas.setAttribute("id", "outCanvas" + id);
+        debugCanvas.setAttribute("class", "outCanvas");
         debugCanvas.setAttribute(
             "style",
             `width: ${width / pixelRatio}px; height: ${height / pixelRatio}px;`
@@ -542,13 +558,15 @@ export class ProcessingWEBGL {
 
         this.textures[5].activate();
 
-        // this.drawToFB({ // draws to tex 1
-        //     fbId: "processing2",
-        //     progSlot: 5,
-        //     w: this.packW,
-        //     h: this.packH,
-        //     debug: false
-        // });
+        this.drawToFB({ // draws to tex 6
+            fbId: "fgMask",
+            progSlot: 5,
+            w: this.maskW,
+            h: this.maskH,
+            debug: false
+        });
+
+        this.textures[6].activate();
 
         // this.drawToFB({ // draws to tex 5
         //     fbId: "processing",
@@ -603,6 +621,7 @@ export class ProcessingWEBGL {
         this.progs[3].useProgram(); // copies unpacked texture to canvas
         this.gl.viewport(0, 0, this.w, this.h);
         this.draw({ progSlot: 3 });
+
         this.isProcessing = false;
     }
 

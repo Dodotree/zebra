@@ -18,6 +18,7 @@
         "linebreak",
         "liveupdates",
         "mediump",
+        "mincount",
         "mipmaps",
         "oncompleted",
         "ondisconnect",
