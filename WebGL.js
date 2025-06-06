@@ -14,7 +14,8 @@ export class ProcessingWEBGL {
         logger = console,
         packW = Math.ceil(width / 8),
         packH = Math.ceil(height / 4),
-
+        maskW = Math.ceil(width / 8),
+        maskH = Math.ceil(height / 16),
         /**
       *       V0              V1
               (0, 0)         (1, 0)
@@ -53,7 +54,7 @@ export class ProcessingWEBGL {
                 },
                 vaoIndices: texIndices,
                 uniforms: {
-                    p_texture: 1
+                    p_texture: 5
                 }
             },
             { // 2 - comparison
@@ -80,48 +81,15 @@ export class ProcessingWEBGL {
                     up_texture: 3
                 }
             },
-            { // 4 - processing - 0
+            { // 4 - dilation
                 vertexShaderId: "shader-vs",
-                fragmentShaderId: "processing-fs-0",
+                fragmentShaderId: "dilation-fs",
                 attrs: {
                     a_position: texPosition
                 },
                 vaoIndices: texIndices,
                 uniforms: {
                     p_texture: 1
-                }
-            },
-            { // 5 - processing - 90
-                vertexShaderId: "shader-vs",
-                fragmentShaderId: "processing-fs-90",
-                attrs: {
-                    a_position: texPosition
-                },
-                vaoIndices: texIndices,
-                uniforms: {
-                    p_texture: 5
-                }
-            },
-            { // 6 - processing - 180
-                vertexShaderId: "shader-vs",
-                fragmentShaderId: "processing-fs-180",
-                attrs: {
-                    a_position: texPosition
-                },
-                vaoIndices: texIndices,
-                uniforms: {
-                    p_texture: 1
-                }
-            },
-            { // 7 - processing - 270
-                vertexShaderId: "shader-vs",
-                fragmentShaderId: "processing-fs-270",
-                attrs: {
-                    a_position: texPosition
-                },
-                vaoIndices: texIndices,
-                uniforms: {
-                    p_texture: 5
                 }
             }
         ],
@@ -197,12 +165,26 @@ export class ProcessingWEBGL {
                     TEXTURE_MIN_FILTER: "NEAREST",
                 }
             },
-            { // 5 - packed processed texture
+            { // 5 - dilation
                 source: null,
                 flip: false,
                 mipmap: false,
                 width: packW,
                 height: packH,
+                depth,
+                params: {
+                    TEXTURE_WRAP_T: "REPEAT",
+                    TEXTURE_WRAP_S: "REPEAT",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 6 - fg mask, 8x16 tile to pixel
+                source: null,
+                flip: false,
+                mipmap: false,
+                width: maskW,
+                height: maskH,
                 depth,
                 params: {
                     TEXTURE_WRAP_T: "REPEAT",
@@ -223,11 +205,11 @@ export class ProcessingWEBGL {
             occlusion: [
                 { attachmentSlot: 0, textureSlot: 4 }
             ],
-            processing: [
+            dilation: [
                 { attachmentSlot: 0, textureSlot: 5 }
             ],
-            processing2: [
-                { attachmentSlot: 0, textureSlot: 1 }
+            fgMask: [
+                { attachmentSlot: 0, textureSlot: 6 }
             ]
         }
     ) {
@@ -533,7 +515,7 @@ export class ProcessingWEBGL {
    * and thus allow to process the query. If you don't need the query to know where to stop,
    * or if you can approximate it to ~ 5-6 frames, just use a single loop and avoid the query. */
     mainProcess() {
-        console.log(`Processing iteration ${this.count}`);
+        // console.log(`Processing iteration ${this.count}`);
 
         // // It's most likely will be from about 2-6 frames before.
         // if (this.queryInProgress
@@ -550,15 +532,15 @@ export class ProcessingWEBGL {
 
         this.textures[1].activate();
 
-        // this.drawToFB({ // draws to tex 5
-        //     fbId: "processing",
-        //     progSlot: 4,
-        //     w: this.packW,
-        //     h: this.packH,
-        //     debug: false
-        // });
+        this.drawToFB({ // draws to tex 5
+            fbId: "dilation",
+            progSlot: 4,
+            w: this.packW,
+            h: this.packH,
+            debug: false
+        });
 
-        // this.textures[5].activate();
+        this.textures[5].activate();
 
         // this.drawToFB({ // draws to tex 1
         //     fbId: "processing2",
@@ -602,7 +584,7 @@ export class ProcessingWEBGL {
         if (this.count < this.maxCount) {
             requestAnimationFrame(this.mainProcess);
         } else {
-            console.log("Max count reached, unpacking...");
+            // console.log("Max count reached, unpacking...");
             this.unpack();
         }
     }

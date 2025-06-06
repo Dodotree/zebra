@@ -22,14 +22,16 @@ output{
 
 select {
     padding: 0.57rem;
-    background: #f4f0ed /*#f5f4fc */;
+    background: #ebe1cc /* #f4f0ed #f5f4fc */;
     appearance: none;
     font-size: 1rem;
     color: black;
     border-radius: 0.2rem;
-    border: 1px solid #aca3eb
-        /* #9084e5 */
-    ;
+    border: 1px solid #aca3eb /* #9084e5 */;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23aca3eb' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
 }
 
 option {

@@ -65,11 +65,11 @@
             int y = int(gl_FragCoord.y - 0.5) * 4;
             ivec2 xy = ivec2(x, y);
             for (int j = 0; j < iheight; j++) {
-                uint byteValue = uint(0);
+                uint byteValue = 0u;
                 for(int i = 0; i < iwidth; i++) {
                     float normCol = texelFetch(u_texture, xy + ivec2(i,j), 0).r;
                     if (normCol > 0.24) {
-                        byteValue =  byteValue | (uint(1) << uint(i));
+                        byteValue =  byteValue | (1u << uint(i));
                     }
                 }
                 bytes[j] = float(byteValue) / 255.0; // normalize to [0, 1] range
@@ -79,8 +79,8 @@
         }
     </script>
 
-    <!-- Fragment shader program -->
-    <script id="processing-fs-0" type="x-shader/x-fragment">
+        <!-- Fragment shader program -->
+    <script id="dilation-fs" type="x-shader/x-fragment">
         #version 300 es
         // precision mediump float;
         precision highp float;
@@ -90,404 +90,58 @@
         int iwidth = 8; // width of the pixel block, packed into 8 bits
         int iheight = 4; // height of the pixel block, packed into RGBA channels
 
-        bool[60] getDataBock(sampler2D tex, int w, int h) {
-            bool[60] data; // 32 bits and 28 bits of surrounding 1 pixel neighbors
-            ivec2 xy = ivec2(gl_FragCoord.xy - 0.5);
-            vec4 cell = texelFetch(tex, xy, 0) * 255.0;
-            vec4 cellL = texelFetch(tex, xy + ivec2(-1,0), 0) * 255.0;
-            vec4 cellR = texelFetch(tex, xy + ivec2(1,0), 0) * 255.0;
-            uint byteT = uint(texelFetch(tex, xy + ivec2(0,-1), 0)[h-1] * 255.0);
-            uint byteB = uint(texelFetch(tex, xy + ivec2(0,1), 0)[0] * 255.0);
-            for (int j = 0; j < h; j++) {
-                uint byte = uint(cell[j]);
-                for(int i = 0; i < w; i++) {
-                    data[10*j+i+11] = bool(byte & (uint(1) << uint(i)));
-                }
-                data[10*j+10] = bool(uint(cellL[j]) & (uint(1) << uint(w-1)) );
-                data[10*j+19] = bool(uint(cellR[j]) & (uint(1) << uint(0)) );
-            }
-            for(int i = 0; i < w; i++) {
-                data[i+1] = bool(byteT & (uint(1) << uint(i)));
-                data[i+51] = bool(byteB & (uint(1) << uint(i)));
-            }
-            for(int j = 0; j < 2; j++) {
-                for(int i = 0; i < 2; i++) {
-                    uint byteCorner = uint(texelFetch(tex, xy + ivec2(2*i-1, 2*j-1), 0)[3*(1-j)] * 255.0);
-                    data[50*j+9*i] = bool(byteCorner & (uint(1) << uint((w-1)*(1-i))));
+        vec4 bytes = vec4(0.0, 0.0, 0.0, 0.0);
+
+
+        uint[12] getDataBock(sampler2D tex) {
+            // In GLSL, arrays are automatically initialized to zero if no initializer is provided,
+            // though this behavior can vary by GLSL version and implementation.
+            // For most reliable results, explicitly initialize each element.
+            uint[12] data = uint[12](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+            ivec2 xy = ivec2(gl_FragCoord.xy);
+
+            for (int j = -1; j < 2; j++) {
+                for(int i = -1; i < 2; i++) {
+                    vec4 bytes = texelFetch(tex, xy + ivec2(i, j), 0) * 255.0; // .rgba
+                    for(int cj = 0; cj < 4; cj++) {
+                        data[4*j + 4 + cj] = data[4*j + 4 + cj] | (uint(bytes[cj]) << uint(8 * i + 8));
+                    }
                 }
             }
             return data;
         }
 
-        bool getProcessedBit(bool[9] box) {
-
-            // rotation 0°
-            // sel_4_1     sel_4_2     sel_4_3
-            // 0,0,1       0,0,1       0,2,0
-            // 2,0,1       2,0,1       2,0,1
-            // 0,0,1       0,2,0       0,0,1
-
-            // sel_4_1  0° rotation:
-            bool val0 = box[2];     // Hit at above_right (1, -1)
-            val0 =  val0 && (!box[3]);     // Miss at left (-1, 0)
-            val0 = val0 && box[5];     // Hit at right (1, 0)
-            val0 = val0 && box[8];     // Hit at below_right (1, 1)
-
-            // sel_4_2  0° rotation:
-            bool val1 = box[2];     // Hit at above_right (1, -1)
-            val1 =  val1 && (!box[3]);     // Miss at left (-1, 0)
-            val1 = val1 && box[5];     // Hit at right (1, 0)
-            val1 =  val1 && (!box[7]);     // Miss at below (0, 1)
-
-            // sel_4_3  0° rotation:
-            bool val2 =  (!box[1]);     // Miss at above (0, -1)
-            val2 =  val2 && (!box[3]);     // Miss at left (-1, 0)
-            val2 = val2 && box[5];     // Hit at right (1, 0)
-            val2 = val2 && box[8];     // Hit at below_right (1, 1)
-
-            bool val = val0 || val1 || val2;
-            val = box[4] && (!val); // box[4] - center pixel
-
-            return !val;
+        uint[14] getTransposedBock(uint[12] data) {
+            uint[14] cols = uint[14](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
+            for (int row = 0; row < 12; row++) {
+                // Extract the middle 12 bits (bits 6-17) from the 24-bit row
+                uint middleBits = (data[row] >> 5u) & 0x3FFFu;
+                for (int col = 0; col < 14; col++) {
+                    uint bitValue = (middleBits >> uint(13 - col)) & 1u;
+                    cols[13-col] = (cols[13-col] & ~(1u << uint(row))) | (bitValue << uint(row));
+                }
+            }
+            return cols;
         }
-
 
         void main() {
 
-            bool[60] data = getDataBock(p_texture, iwidth, iheight);
+            uint data[12] = getDataBock(p_texture);
+            uint cols[14] = getTransposedBock(data);
 
-            // process main 32 bits and pack the result back into the pixel
-            vec4 bytes = vec4(0.0, 0.0, 0.0, 0.0);
             for (int j = 0; j < iheight; j++) {
-                uint byteValue = uint(0);
+                uint byteValue = 0u;
                 for(int i = 0; i < iwidth; i++) {
-                    int cXY = 10*j + i; // corner XY index for (-1,-1) to (1,1) box
-
-                    // inversions due to Leptonica algorithm treating white as ink
-                    // so it thickens black and thins white (for thinning)
-                    bool[9] box = bool[9](
-                        !data[cXY], !data[cXY+1], !data[cXY+2],
-                        !data[cXY+10], !data[cXY+11], !data[cXY+12],
-                        !data[cXY+20], !data[cXY+21], !data[cXY+22]
-                    );
-                    if (getProcessedBit(box)) {
-                        byteValue =  byteValue | (uint(1) << uint(i));
+                    uint crossRow = (data[j + 4] >> uint(i+5)) & 0x7Fu;
+                    uint crossCol = (cols[i + 3] >> uint(j+1)) & 0x7Fu;
+                    // if( bool(data[j + 4] & (1u << uint(i+8))) )  {
+                    if( bool(crossRow + crossCol) ) {
+                        // If any of the bits in the cross is set, set the bit in the byte
+                        byteValue =  byteValue | (1u << uint(i));
                     }
                 }
-                bytes[j] = float(byteValue) / 255.0; // normalize to [0, 1] range
+                bytes[j] = float(byteValue) / 255.0;
             }
-
-            outColor = bytes;
-        }
-    </script>
-
-
-    <!-- Fragment shader program -->
-    <script id="processing-fs-90" type="x-shader/x-fragment">
-        #version 300 es
-        // precision mediump float;
-        precision highp float;
-        uniform sampler2D p_texture;
-        out vec4 outColor;
-
-        int iwidth = 8; // width of the pixel block, packed into 8 bits
-        int iheight = 4; // height of the pixel block, packed into RGBA channels
-
-        bool[60] getDataBock(sampler2D tex, int w, int h) {
-            bool[60] data; // 32 bits and 28 bits of surrounding 1 pixel neighbors
-            ivec2 xy = ivec2(gl_FragCoord.xy - 0.5);
-            vec4 cell = texelFetch(tex, xy, 0) * 255.0;
-            vec4 cellL = texelFetch(tex, xy + ivec2(-1,0), 0) * 255.0;
-            vec4 cellR = texelFetch(tex, xy + ivec2(1,0), 0) * 255.0;
-            uint byteT = uint(texelFetch(tex, xy + ivec2(0,-1), 0)[h-1] * 255.0);
-            uint byteB = uint(texelFetch(tex, xy + ivec2(0,1), 0)[0] * 255.0);
-            for (int j = 0; j < h; j++) {
-                uint byte = uint(cell[j]);
-                for(int i = 0; i < w; i++) {
-                    data[10*j+i+11] = bool(byte & (uint(1) << uint(i)));
-                }
-                data[10*j+10] = bool(uint(cellL[j]) & (uint(1) << uint(w-1)) );
-                data[10*j+19] = bool(uint(cellR[j]) & (uint(1) << uint(0)) );
-            }
-            for(int i = 0; i < w; i++) {
-                data[i+1] = bool(byteT & (uint(1) << uint(i)));
-                data[i+51] = bool(byteB & (uint(1) << uint(i)));
-            }
-            for(int j = 0; j < 2; j++) {
-                for(int i = 0; i < 2; i++) {
-                    uint byteCorner = uint(texelFetch(tex, xy + ivec2(2*i-1, 2*j-1), 0)[3*(1-j)] * 255.0);
-                    data[50*j+9*i] = bool(byteCorner & (uint(1) << uint((w-1)*(1-i))));
-                }
-            }
-            return data;
-        }
-
-        bool getProcessedBit(bool[9] box) {
-
-            // rotation 90°
-            // sel_4_1     sel_4_2     sel_4_3
-            // 0,2,0       0,2,0       0,2,0
-            // 0,0,0       2,0,0       0,0,2
-            // 1,1,1       0,1,1       1,1,0
-
-            // sel_4_1  90° rotation:
-            bool val0 = (!box[1]);     // Miss at above (0, -1)
-            val0 = val0 && box[6];     // Hit at below_left (-1, 1)
-            val0 = val0 && box[7];     // Hit at below (0, 1)
-            val0 = val0 && box[8];     // Hit at below_right (1, 1)
-
-            // sel_4_2  90° rotation:
-            bool val1 = (!box[1]);     // Miss at above (0, -1)
-            val1 = val1 && (!box[3]);     // Miss at left (-1, 0)
-            val1 = val1 && box[7];     // Hit at below (0, 1)
-            val1 = val1 && box[8];     // Hit at below_right (1, 1)
-
-            // sel_4_3  90° rotation:
-            bool val2 = (!box[1]);     // Miss at above (0, -1)
-            val2 = val2 && (!box[5]);     // Miss at right (1, 0)
-            val2 = val2 && box[6];     // Hit at below_left (-1, 1)
-            val2 = val2 && box[7];     // Hit at below (0, 1)
-
-            bool val = val0 || val1 || val2;
-            val = box[4] && (!val); // box[4] - center pixel
-
-            return !val;
-        }
-
-
-        void main() {
-
-            bool[60] data = getDataBock(p_texture, iwidth, iheight);
-
-            // process main 32 bits and pack the result back into the pixel
-            vec4 bytes = vec4(0.0, 0.0, 0.0, 0.0);
-            for (int j = 0; j < iheight; j++) {
-                uint byteValue = uint(0);
-                for(int i = 0; i < iwidth; i++) {
-                    int cXY = 10*j + i; // corner XY index for (-1,-1) to (1,1) box
-
-                    // inversions due to Leptonica algorithm treating white as ink
-                    // so it thickens black and thins white (for thinning)
-                    bool[9] box = bool[9](
-                        !data[cXY], !data[cXY+1], !data[cXY+2],
-                        !data[cXY+10], !data[cXY+11], !data[cXY+12],
-                        !data[cXY+20], !data[cXY+21], !data[cXY+22]
-                    );
-                    if (getProcessedBit(box)) {
-                        byteValue =  byteValue | (uint(1) << uint(i));
-                    }
-                }
-                bytes[j] = float(byteValue) / 255.0; // normalize to [0, 1] range
-            }
-
-            outColor = bytes;
-        }
-    </script>
-
-
-    <!-- Fragment shader program -->
-    <script id="processing-fs-180" type="x-shader/x-fragment">
-        #version 300 es
-        // precision mediump float;
-        precision highp float;
-        uniform sampler2D p_texture;
-        out vec4 outColor;
-
-        int iwidth = 8; // width of the pixel block, packed into 8 bits
-        int iheight = 4; // height of the pixel block, packed into RGBA channels
-
-        bool[60] getDataBock(sampler2D tex, int w, int h) {
-            bool[60] data; // 32 bits and 28 bits of surrounding 1 pixel neighbors
-            ivec2 xy = ivec2(gl_FragCoord.xy - 0.5);
-            vec4 cell = texelFetch(tex, xy, 0) * 255.0;
-            vec4 cellL = texelFetch(tex, xy + ivec2(-1,0), 0) * 255.0;
-            vec4 cellR = texelFetch(tex, xy + ivec2(1,0), 0) * 255.0;
-            uint byteT = uint(texelFetch(tex, xy + ivec2(0,-1), 0)[h-1] * 255.0);
-            uint byteB = uint(texelFetch(tex, xy + ivec2(0,1), 0)[0] * 255.0);
-            for (int j = 0; j < h; j++) {
-                uint byte = uint(cell[j]);
-                for(int i = 0; i < w; i++) {
-                    data[10*j+i+11] = bool(byte & (uint(1) << uint(i)));
-                }
-                data[10*j+10] = bool(uint(cellL[j]) & (uint(1) << uint(w-1)) );
-                data[10*j+19] = bool(uint(cellR[j]) & (uint(1) << uint(0)) );
-            }
-            for(int i = 0; i < w; i++) {
-                data[i+1] = bool(byteT & (uint(1) << uint(i)));
-                data[i+51] = bool(byteB & (uint(1) << uint(i)));
-            }
-            for(int j = 0; j < 2; j++) {
-                for(int i = 0; i < 2; i++) {
-                    uint byteCorner = uint(texelFetch(tex, xy + ivec2(2*i-1, 2*j-1), 0)[3*(1-j)] * 255.0);
-                    data[50*j+9*i] = bool(byteCorner & (uint(1) << uint((w-1)*(1-i))));
-                }
-            }
-            return data;
-        }
-
-        bool getProcessedBit(bool[9] box) {
-
-            // rotation 180°
-            // sel_4_1     sel_4_2     sel_4_3
-            // 1,0,0       0,2,0       1,0,0
-            // 1,0,2       1,0,2       1,0,2
-            // 1,0,0       1,0,0       0,2,0
-
-            // sel_4_1  180° rotation:
-            bool val0 = box[0];     // Hit at above_left (-1, -1)
-            val0 = val0 && box[3];     // Hit at left (-1, 0)
-            val0 = val0 && (!box[5]);     // Miss at right (1, 0)
-            val0 = val0 && box[6];     // Hit at below_left (-1, 1)
-
-            // sel_4_2  180° rotation:
-            bool val1 = (!box[1]);     // Miss at above (0, -1)
-            val1 = val1 && box[3];     // Hit at left (-1, 0)
-            val1 = val1 && (!box[5]);     // Miss at right (1, 0)
-            val1 = val1 && box[6];     // Hit at below_left (-1, 1)
-
-            // sel_4_3  180° rotation:
-            bool val2 = box[0];     // Hit at above_left (-1, -1)
-            val2 = val2 && box[3];     // Hit at left (-1, 0)
-            val2 = val2 && (!box[5]);     // Miss at right (1, 0)
-            val2 = val2 && (!box[7]);     // Miss at below (0, 1)
-
-            bool val = val0 || val1 || val2;
-            val = box[4] && (!val); // box[4] - center pixel
-
-            return !val;
-        }
-
-
-        void main() {
-
-            bool[60] data = getDataBock(p_texture, iwidth, iheight);
-
-            // process main 32 bits and pack the result back into the pixel
-            vec4 bytes = vec4(0.0, 0.0, 0.0, 0.0);
-            for (int j = 0; j < iheight; j++) {
-                uint byteValue = uint(0);
-                for(int i = 0; i < iwidth; i++) {
-                    int cXY = 10*j + i; // corner XY index for (-1,-1) to (1,1) box
-
-                    // inversions due to Leptonica algorithm treating white as ink
-                    // so it thickens black and thins white (for thinning)
-                    bool[9] box = bool[9](
-                        !data[cXY], !data[cXY+1], !data[cXY+2],
-                        !data[cXY+10], !data[cXY+11], !data[cXY+12],
-                        !data[cXY+20], !data[cXY+21], !data[cXY+22]
-                    );
-                    if (getProcessedBit(box)) {
-                        byteValue =  byteValue | (uint(1) << uint(i));
-                    }
-                }
-                bytes[j] = float(byteValue) / 255.0; // normalize to [0, 1] range
-            }
-
-            outColor = bytes;
-        }
-    </script>
-
-
-    <!-- Fragment shader program -->
-    <script id="processing-fs-270" type="x-shader/x-fragment">
-        #version 300 es
-        // precision mediump float;
-        precision highp float;
-        uniform sampler2D p_texture;
-        out vec4 outColor;
-
-        int iwidth = 8; // width of the pixel block, packed into 8 bits
-        int iheight = 4; // height of the pixel block, packed into RGBA channels
-
-        bool[60] getDataBock(sampler2D tex, int w, int h) {
-            bool[60] data; // 32 bits and 28 bits of surrounding 1 pixel neighbors
-            ivec2 xy = ivec2(gl_FragCoord.xy - 0.5);
-            vec4 cell = texelFetch(tex, xy, 0) * 255.0;
-            vec4 cellL = texelFetch(tex, xy + ivec2(-1,0), 0) * 255.0;
-            vec4 cellR = texelFetch(tex, xy + ivec2(1,0), 0) * 255.0;
-            uint byteT = uint(texelFetch(tex, xy + ivec2(0,-1), 0)[h-1] * 255.0);
-            uint byteB = uint(texelFetch(tex, xy + ivec2(0,1), 0)[0] * 255.0);
-            for (int j = 0; j < h; j++) {
-                uint byte = uint(cell[j]);
-                for(int i = 0; i < w; i++) {
-                    data[10*j+i+11] = bool(byte & (uint(1) << uint(i)));
-                }
-                data[10*j+10] = bool(uint(cellL[j]) & (uint(1) << uint(w-1)) );
-                data[10*j+19] = bool(uint(cellR[j]) & (uint(1) << uint(0)) );
-            }
-            for(int i = 0; i < w; i++) {
-                data[i+1] = bool(byteT & (uint(1) << uint(i)));
-                data[i+51] = bool(byteB & (uint(1) << uint(i)));
-            }
-            for(int j = 0; j < 2; j++) {
-                for(int i = 0; i < 2; i++) {
-                    uint byteCorner = uint(texelFetch(tex, xy + ivec2(2*i-1, 2*j-1), 0)[3*(1-j)] * 255.0);
-                    data[50*j+9*i] = bool(byteCorner & (uint(1) << uint((w-1)*(1-i))));
-                }
-            }
-            return data;
-        }
-
-        bool getProcessedBit(bool[9] box) {
-
-            // rotation 270°
-            // sel_4_1     sel_4_2     sel_4_3
-            // 1,1,1       1,1,0       0,1,1
-            // 0,0,0       0,0,2       2,0,0
-            // 0,2,0       0,2,0       0,2,0
-
-            // sel_4_1  270° rotation:
-            bool val0 = box[0];     // Hit at above_left (-1, -1)
-            val0 = val0 && box[1];     // Hit at above (0, -1)
-            val0 = val0 && box[2];     // Hit at above_right (1, -1)
-            val0 = val0 && (!box[7]);     // Miss at below (0, 1)
-
-            // sel_4_2  270° rotation:
-            bool val1 = box[0];     // Hit at above_left (-1, -1)
-            val1 = val1 && box[1];     // Hit at above (0, -1)
-            val1 = val1 && (!box[5]);     // Miss at right (1, 0)
-            val1 = val1 && (!box[7]);     // Miss at below (0, 1)
-
-            // sel_4_3  270° rotation:
-            bool val2 = box[1];     // Hit at above (0, -1)
-            val2 = val2 && box[2];     // Hit at above_right (1, -1)
-            val2 = val2 && (!box[3]);     // Miss at left (-1, 0)
-            val2 = val2 && (!box[7]);     // Miss at below (0, 1)
-
-
-            bool val = val0 || val1 || val2;
-            val = box[4] && (!val); // box[4] - center pixel
-
-            return !val;
-        }
-
-
-        void main() {
-
-            bool[60] data = getDataBock(p_texture, iwidth, iheight);
-
-            // process main 32 bits and pack the result back into the pixel
-            vec4 bytes = vec4(0.0, 0.0, 0.0, 0.0);
-            for (int j = 0; j < iheight; j++) {
-                uint byteValue = uint(0);
-                for(int i = 0; i < iwidth; i++) {
-                    int cXY = 10*j + i; // corner XY index for (-1,-1) to (1,1) box
-
-                    // inversions due to Leptonica internal binary treating 1 as ink
-                    // Leptonica converts < 60 to 1(ink) and >= 60 to 0(background)
-                    // so it thickens black and thins white (for thinning)
-                    bool[9] box = bool[9](
-                        !data[cXY], !data[cXY+1], !data[cXY+2],
-                        !data[cXY+10], !data[cXY+11], !data[cXY+12],
-                        !data[cXY+20], !data[cXY+21], !data[cXY+22]
-                    );
-                    if (getProcessedBit(box)) {
-                        byteValue =  byteValue | (uint(1) << uint(i));
-                    }
-                }
-                bytes[j] = float(byteValue) / 255.0; // normalize to [0, 1] range
-            }
-
             outColor = bytes;
         }
     </script>
@@ -514,7 +168,7 @@
             int y = (xyOrig.y - dy) / iheight;
 
             uint byte = uint( texelFetch(p_texture, ivec2(x,y), 0)[dy] * 255.0 );
-            uint bit = byte & (uint(1) << uint(dx));
+            uint bit = byte & (1u << uint(dx));
             float val = float(bool(bit));
             outColor = vec4(val, val, val, 1.0);
         }
