@@ -16,24 +16,6 @@
         <main>
 
 
-            <!-- Fragment shader program for depth -->
-            <!-- Only difference is in multiplication -->
-            <script id="depth-fs" type="x-shader/x-fragment">
-                precision mediump float;
-                uniform sampler2D s;
-                varying vec2 t;
-
-                void main(void)
-                {
-                    vec4 tex=texture2D(s,t) * vec4(10.0, 10.0, 10.0, 1.0);
-                    gl_FragColor=tex.rgba;
-                }
-            </script>
-
-
-
-
-
     <!-- Vertex shader program -->
     <script id="shader-vs" type="x-shader/x-vertex">
         #version 300 es
@@ -60,15 +42,14 @@
         void main() {
 
             // gl_FragCoord gives exact pixel coordinates in window space, not interpolated
-            // in the middle of the pixel (0.5, 0.5) for pixel (0, 0)
-            int x = int(gl_FragCoord.x - 0.5) * 8;
-            int y = int(gl_FragCoord.y - 0.5) * 4;
+            int x = int(gl_FragCoord.x) * 8;
+            int y = int(gl_FragCoord.y) * 4;
             ivec2 xy = ivec2(x, y);
             for (int j = 0; j < iheight; j++) {
                 uint byteValue = 0u;
                 for(int i = 0; i < iwidth; i++) {
                     float normCol = texelFetch(u_texture, xy + ivec2(i,j), 0).r;
-                    if (normCol > 0.24) {
+                    if (normCol < 0.24) {
                         byteValue =  byteValue | (1u << uint(i));
                     }
                 }
@@ -147,17 +128,15 @@
     </script>
 
     <!-- Fragment shader program -->
-    <script id="tiles-fs" type="x-shader/x-fragment">
+    <script id="mask-fs" type="x-shader/x-fragment">
         #version 300 es
         // precision mediump float;
         precision highp float;
-        uniform sampler2D src_texture;
         uniform sampler2D p_texture;
         out vec4 outColor;
 
-        int iwidth = 8; // orig 10, width of the pixel block, packed into 8 bits
-        int iheight = 16; // orig 15, height of the 4 pixel blocks
-        int mincount = 34; // orig 40
+        int iwidth = 8;   // tile 8x16 for convenience instead of 10x15
+        int iheight = 16;
 
         uint countBits8(uint byte) {
             uint val = (byte & 0x55u) + ((byte >> 1u) & 0x55u);
@@ -166,41 +145,120 @@
             return val;
         }
 
-
-        void main() {
-
-            int count = 0;
+		void main() {
+		    int count = 0;
             float sum = 0.0;
             uint[16] data = uint[16](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
                                      0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
             ivec2 xy = ivec2(gl_FragCoord.xy);
 
             for(int j = 0; j < 4; j++) {
-                vec4 bytes = texelFetch(p_texture, xy + ivec2(0, j), 0) * 255.0; // .rgba
+                vec4 bytes = texelFetch(p_texture, ivec2(xy.x, xy.y * 4) + ivec2(0, j), 0); // .rgba
                 for(int cj = 0; cj < 4; cj++) {
-                    data[4*j + cj] = uint(bytes[cj]);
-                    count += 8 - int(countBits8( data[4*j + cj] )); // count zeroes (background bits)
+                    data[4*j + cj] = uint(bytes[cj]  * 255.0);
+                    count += 8 - int(countBits8( data[4*j + cj] )); // count 0 for background
                 }
             }
-            // Do not fetch 128 texels from original texture if not enough background bits
-            if( count < mincount ) {
+            outColor = vec4(float(count) / 255.0, 0.0, 0.0, 1.0);
+        }
+
+    </script>
+
+
+    <!-- Fragment shader program -->
+    <script id="gray-masked-fs" type="x-shader/x-fragment">
+        #version 300 es
+        // precision mediump float;
+        precision highp float;
+        uniform sampler2D m_texture;
+        uniform sampler2D src_texture;
+        out vec4 outColor;
+
+        int iwidth = 8;   // tile 8x16 for convenience instead of 10x15
+        int iheight = 16;
+        float mincount = 34.0; // float for convenience
+
+        vec4 encodeFloat(float v) {
+            uint u = floatBitsToUint(v);
+            vec4 bytes;
+            bytes.r = float(u & 0xFFu) / 255.0;
+            bytes.g = float((u >> 8u) & 0xFFu) / 255.0;
+            bytes.b = float((u >> 16u) & 0xFFu) / 255.0;
+            bytes.a = float((u >> 24u) & 0xFFu) / 255.0;
+            return bytes;
+        }
+
+        void main() {
+
+            ivec2 xyOrig = ivec2(gl_FragCoord.xy);
+            int x = xyOrig.x / iwidth;
+            int y = xyOrig.y / iheight;
+            float count = 255.0 * texelFetch(m_texture, ivec2(x,y), 0).r;
+            if( count < mincount) {
                 outColor = vec4(0.0, 0.0, 0.0, 0.0);
                 return;
             }
-            for (int j = 0; j < iheight; j++) {
-                for(int i = 0; i < iwidth; i++) {
-                    if( bool((data[j] >> uint(i)) & 1u) ) {
-                        // If the bit is set, fetch the original texture
-                        sum += texelFetch(src_texture, ivec2(8 * xy[0] + i, 16 * xy[1] + j), 0).g;
-                    }
-                }
+
+            vec4 accColor = vec4(0.0, 0.0, 0.0, 0.0);
+            for(int j = 0; j < iheight; j++) {
+                accColor += texelFetch(src_texture, ivec2(xyOrig.x, xyOrig.y + j), 0);
             }
-            float gray = sum / float(count);
-            // Gray here is more like black, it has non zero value only on narrow edges
-            outColor = vec4(gray, 0.0, 0.0, 1.0);
+
+            float gray = dot(accColor.rgb / count, vec3(0.299, 0.587, 0.114));
+            // with division by 128 there could be precision issues, so we will use 4 bytes
+            outColor = encodeFloat(gray);
+
+            // vec3 redTint = vec3(1.0, 0.3, 0.3);
+            // outColor = vec4( mix(vec3(gray), redTint * gray, mask), 1.0);
         }
     </script>
 
+
+    <!-- Fragment shader program -->
+    <script id="gray-down-fs" type="x-shader/x-fragment">
+        #version 300 es
+        precision highp float;
+
+        uniform sampler2D g_texture;
+        out vec4 outColor;
+
+        int iwidth = 8;
+        int iheight = 16;
+
+
+        vec4 encodeFloat(float v) {
+            uint u = floatBitsToUint(v);
+            vec4 bytes;
+            bytes.r = float(u & 0xFFu) / 255.0;
+            bytes.g = float((u >> 8u) & 0xFFu) / 255.0;
+            bytes.b = float((u >> 16u) & 0xFFu) / 255.0;
+            bytes.a = float((u >> 24u) & 0xFFu) / 255.0;
+            return bytes;
+        }
+
+        float decodeFloat(vec4 rgba) {
+            uint r = uint(rgba.r * 255.0);
+            uint g = uint(rgba.g * 255.0);
+            uint b = uint(rgba.b * 255.0);
+            uint a = uint(rgba.a * 255.0);
+            // Combine the components
+            uint u = r | (g << 8u) | (b << 16u) | (a << 24u);
+            return uintBitsToFloat(u);
+        }
+
+        void main() {
+            int x = iwidth * int(gl_FragCoord.x);
+            int y = iheight * int(gl_FragCoord.y);
+            float averagedGray = 0.0;
+
+            for(int i=0; i < iwidth; i++) {
+                vec4 encodedGray = texelFetch(g_texture, ivec2(x + i, y), 0);
+                averagedGray += decodeFloat(encodedGray);
+            }
+            // outColor = encodeFloat(averagedGray);
+            outColor = vec4(averagedGray, averagedGray, averagedGray, 1.0);
+        }
+    </script>
 
 
     <!-- Fragment shader program -->
@@ -229,6 +287,7 @@
         }
     </script>
 
+
     <!-- Fragment shader program -->
     <script id="comparison-fs" type="x-shader/x-fragment">
         #version 300 es
@@ -253,6 +312,7 @@
             outColor = abs(color1 - color2);
         }
     </script>
+
 
     <!-- Fragment shader program -->
     <script id="copy-fs" type="x-shader/x-fragment">

@@ -390,10 +390,8 @@ export const utilsUI = {
                       && Object.keys(o1).every((k) => o1[k] === o2[k])) {
                     arr[ii] = false;
                 }
-                // eslint-disable-next-line no-plusplus
                 ii++;
             }
-            // eslint-disable-next-line no-plusplus
             i++;
         }
         return arr.filter((o) => o);
@@ -442,12 +440,12 @@ export const utilsUI = {
             } else if (!valueNotEmpty && !capsNotEmpty) {
                 // for weird cases when empty options in caps: facingMode = []
                 // and no value in settings: facingMode key not in settings
-                console.log(`Key ${key} is not in settings or capabilities`);
+                log(`Key ${key} is not in settings or capabilities`);
                 delete acc[key];
             } else { // stands for leftover: (!valueNotEmpty && capsNotEmpty)
                 acc[key].status = 0;
                 acc[key].theoreticalValue = this.getValueFromCapability(caps[key]);
-                console.log(`Key ${key} is not in settings but in caps`);
+                log(`Key ${key} is not in settings but in caps`);
             }
             return acc;
         }, {});

@@ -14,8 +14,8 @@ export class ProcessingWEBGL {
         logger = console,
         packW = Math.ceil(width / 8),
         packH = Math.ceil(height / 4),
-        maskW = Math.ceil(width / 8),
-        maskH = Math.ceil(height / 16),
+        downW = Math.ceil(width / 8),
+        downH = Math.ceil(height / 16),
         /**
       *       V0              V1
               (0, 0)         (1, 0)
@@ -54,7 +54,7 @@ export class ProcessingWEBGL {
                 },
                 vaoIndices: texIndices,
                 uniforms: {
-                    p_texture: 5
+                    p_texture: 1
                 }
             },
             { // 2 - comparison
@@ -89,120 +89,41 @@ export class ProcessingWEBGL {
                 },
                 vaoIndices: texIndices,
                 uniforms: {
-                    p_texture: 1
+                    p_texture: 1 // framebuffer writes to 5
                 }
             },
             { // 5 - tiles to mask pixels
                 vertexShaderId: "shader-vs",
-                fragmentShaderId: "tiles-fs",
+                fragmentShaderId: "mask-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    p_texture: 5 // framebuffer writes to 6
+                }
+            },
+            { // 6 - full size masked grayscale
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "gray-masked-fs",
                 attrs: {
                     a_position: texPosition
                 },
                 vaoIndices: texIndices,
                 uniforms: {
                     src_texture: 0,
-                    p_texture: 5
-                }
-            }
-        ],
-        textureOptions = [
-            { // 0 - original image/video
-                source,
-                isVideo: true,
-                flip: true,
-                mipmap: false,
-                width,
-                height,
-                depth,
-                params: {
-                    TEXTURE_WRAP_T: "CLAMP_TO_EDGE",
-                    TEXTURE_WRAP_S: "CLAMP_TO_EDGE",
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
+                    m_texture: 6 // takes 0 and 6, writes to 3
                 }
             },
-            { // 1 - packed texture
-                source: null,
-                flip: false,
-                mipmap: false,
-                width: packW,
-                height: packH,
-                depth,
-                params: {
-                    TEXTURE_WRAP_T: "REPEAT",
-                    TEXTURE_WRAP_S: "REPEAT",
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                }
-            },
-            // Without proper filtering parameters,
-            // textures can be considered "incomplete" for framebuffer use
-            // The framebuffer might still report as complete, but the rendering won't work
-            // This is especially common when the default min filter expects mipmaps
-            // that don't exist
-            { // 2 - debugging framebuffer attachment
-                source: null,
-                flip: false,
-                mipmap: false,
-                width: packW,
-                height: packH,
-                depth,
-                isFloat: true, // use RGBA32F for coordinates
-                params: {
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                }
-            },
-            { // 3 - unpacked texture
-                source: null,
-                flip: true,
-                mipmap: false,
-                width,
-                height,
-                depth,
-                params: {
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                }
-            },
-            { // 4 - occlusion framebuffer attachment for texture comparison
-                source: null,
-                flip: false,
-                mipmap: false,
-                width,
-                height,
-                depth,
-                params: {
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                }
-            },
-            { // 5 - dilation
-                source: null,
-                flip: false,
-                mipmap: false,
-                width: packW,
-                height: packH,
-                depth,
-                params: {
-                    TEXTURE_WRAP_T: "REPEAT",
-                    TEXTURE_WRAP_S: "REPEAT",
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
-                }
-            },
-            { // 6 - fg mask, 8x16 tile to pixel
-                source: null,
-                flip: false,
-                mipmap: false,
-                width: maskW,
-                height: maskH,
-                depth,
-                params: {
-                    TEXTURE_WRAP_T: "REPEAT",
-                    TEXTURE_WRAP_S: "REPEAT",
-                    TEXTURE_MAG_FILTER: "NEAREST",
-                    TEXTURE_MIN_FILTER: "NEAREST",
+            { // 7 - downsampled masked grayscale
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "gray-down-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    g_texture: 3 // takes 3, writes to 6
                 }
             }
         ],
@@ -222,16 +143,115 @@ export class ProcessingWEBGL {
             ],
             fgMask: [
                 { attachmentSlot: 0, textureSlot: 6 }
-            ]
-        }
+            ],
+            masked: [
+                { attachmentSlot: 0, textureSlot: 3 }, // mask full size grayscale, vertical convo
+            ],
+            downsampled: [
+                { attachmentSlot: 0, textureSlot: 6 } // horizontal convo, downsampled
+            ],
+        },
+        textureOptions = [
+            { // 0 - original image/video
+                source,
+                isVideo: true,
+                flip: true,
+                mipmap: false,
+                width,
+                height,
+                depth,
+                params: {
+                    TEXTURE_WRAP_T: "CLAMP_TO_EDGE",
+                    TEXTURE_WRAP_S: "CLAMP_TO_EDGE",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 1 - packed texture
+                width: packW,
+                height: packH,
+                depth,
+                params: {
+                    TEXTURE_WRAP_T: "REPEAT",
+                    TEXTURE_WRAP_S: "REPEAT",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            // Without proper filtering parameters,
+            // textures can be considered "incomplete" for framebuffer use
+            // The framebuffer might still report as complete, but the rendering won't work
+            // This is especially common when the default min filter expects mipmaps
+            // that don't exist
+            { // 2 - debugging framebuffer attachment
+                width: packW,
+                height: packH,
+                depth,
+                isFloat: true, // use RGBA32F for coordinates
+                params: {
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 3 - full size, unpacked texture
+                flip: true,
+                width,
+                height,
+                depth,
+                params: {
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 4 - occlusion framebuffer attachment for texture comparison
+                width,
+                height,
+                depth,
+                params: {
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 5 - dilation
+                width: packW,
+                height: packH,
+                depth,
+                params: {
+                    TEXTURE_WRAP_T: "REPEAT",
+                    TEXTURE_WRAP_S: "REPEAT",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 6 - fg mask
+                width: downW,
+                height: downH,
+                depth,
+                params: {
+                    TEXTURE_WRAP_T: "REPEAT",
+                    TEXTURE_WRAP_S: "REPEAT",
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 7 - unused so far
+                width,
+                height,
+                depth,
+                params: {
+                    TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            }
+        ]
     ) {
         this.id = id; // only for destroy()
         this.w = width;
         this.h = height;
         this.packW = packW;
         this.packH = packH;
-        this.maskW = maskW;
-        this.maskH = maskH;
+        this.downW = downW;
+        this.downH = downH;
         this.logger = logger;
         this.fbConfigs = framebuffers;
 
@@ -471,12 +491,14 @@ export class ProcessingWEBGL {
         progSlot: 0,
         w: this.packW,
         h: this.packH,
-        debug: false
+        debug: false,
+        activateTex: 1
     }) {
+        this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
         this.progs[conf.progSlot].useProgram();
-        // Adjust viewport for packed size
         this.gl.viewport(0, 0, conf.w, conf.h);
-        // Bind the framebuffer to render into texture 1
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffers[conf.fbId]);
 
         if (conf.debug) {
@@ -489,9 +511,36 @@ export class ProcessingWEBGL {
         this.gl.drawBuffers(attachments);
         this.draw(conf);
         if (conf.debug) {
-            this.framebufferReads();
+            this.framebufferReads(conf.w, conf.h);
         }
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+
+        this.textures[conf.activateTex].activate();
+    }
+
+    drawToStencil(conf = {
+        progSlot: 5,
+        w: this.downW,
+        h: this.downH,
+        debug: false
+    }) {
+        // Enable stencil test
+        this.gl.enable(this.gl.STENCIL_TEST);
+
+        // Always pass stencil test, reference value 1
+        this.gl.stencilFunc(this.gl.ALWAYS, 1, 0xFF);
+        this.gl.stencilOp(
+            this.gl.KEEP,
+            this.gl.KEEP,
+            this.gl.REPLACE // Replace stencil value on pass
+        );
+        this.gl.stencilMask(0xFF); // Enable writing to stencil buffer
+
+        this.gl.colorMask(false, false, false, false); // Disable color writing
+        this.progs[conf.progSlot].useProgram();
+        this.gl.viewport(0, 0, conf.w, conf.h);
+        this.draw(conf);
+        this.gl.colorMask(true, true, true, true); // Re-enable color writing
     }
 
     processAndDraw(pixelData = null) {
@@ -509,7 +558,7 @@ export class ProcessingWEBGL {
             progSlot: 0,
             w: this.packW,
             h: this.packH,
-            debug: false
+            activateTex: 1,
         });
 
         this.maxCount = 1;
@@ -546,43 +595,49 @@ export class ProcessingWEBGL {
         //     }
         // }
 
-        this.textures[1].activate();
-
-        this.drawToFB({ // draws to tex 5
+        this.drawToFB({
             fbId: "dilation",
             progSlot: 4,
             w: this.packW,
             h: this.packH,
-            debug: false
+            activateTex: 5,
         });
-
-        this.textures[5].activate();
 
         this.drawToFB({ // draws to tex 6
             fbId: "fgMask",
             progSlot: 5,
-            w: this.maskW,
-            h: this.maskH,
-            debug: false
+            w: this.downW,
+            h: this.downH,
+            activateTex: 6,
         });
 
-        this.textures[6].activate();
+        this.drawToFB({
+            fbId: "masked",
+            progSlot: 6,
+            w: this.w,
+            h: this.h,
+            activateTex: 3,
+        });
 
-        // this.drawToFB({ // draws to tex 5
-        //     fbId: "processing",
-        //     progSlot: 6,
-        //     w: this.packW,
-        //     h: this.packH,
+        this.drawToFB({ // draws to tex 6
+            fbId: "downsampled",
+            progSlot: 7,
+            w: this.downW,
+            h: this.downH,
+            activateTex: 6,
+        });
+        // this.drawToStencil({
+        //     progSlot: 5,
+        //     w: this.width,
+        //     h: this.height,
         //     debug: false
         // });
+        // this.gl.stencilFunc(this.gl.NOTEQUAL, 0, 0xFF);
+        // this.gl.stencilOp(this.gl.KEEP, this.gl.KEEP, this.gl.KEEP); // Don't modify
 
-        // this.drawToFB({ // draws to tex 1
-        //     fbId: "processing2",
-        //     progSlot: 7,
-        //     w: this.packW,
-        //     h: this.packH,
-        //     debug: false
-        // });
+        // this.textures[1].activate();
+
+        // this.gl.disable(this.gl.STENCIL_TEST);
 
         // if (!this.queryInProgress) {
         //     this.gl.beginQuery(this.gl.ANY_SAMPLES_PASSED_CONSERVATIVE, this.query);
@@ -608,15 +663,14 @@ export class ProcessingWEBGL {
     }
 
     unpack() {
-        this.drawToFB({ // draws to tex 3
-            fbId: "unpacking",
-            progSlot: 1,
-            w: this.w,
-            h: this.h,
-            debug: false
-        });
-
-        this.textures[3].activate();
+        // this.drawToFB({ // draws to tex 3
+        //     fbId: "unpacking",
+        //     progSlot: 1,
+        //     w: this.w,
+        //     h: this.h,
+        //     debug: false
+        // });
+        // this.textures[3].activate();
 
         this.progs[3].useProgram(); // copies unpacked texture to canvas
         this.gl.viewport(0, 0, this.w, this.h);
@@ -625,25 +679,26 @@ export class ProcessingWEBGL {
         this.isProcessing = false;
     }
 
-    framebufferReads() {
-        const readBuffer = new Uint8Array(this.packW * this.packH * 4);
+    framebufferReads(w, h) {
+        console.log(`Width: ${w}, Height: ${h}`);
+        const readBuffer = new Uint8Array(w * h * 4);
         this.gl.readBuffer(this.gl.COLOR_ATTACHMENT0);
         this.gl.readPixels(
             0,
             0,
-            this.packW,
-            this.packH,
+            w,
+            h,
             this.gl.RGBA,
             this.gl.UNSIGNED_BYTE,
             readBuffer
         );
-        const coordBuffer = new Float32Array(this.packW * this.packH * 4);
+        const coordBuffer = new Float32Array(w * h * 4);
         this.gl.readBuffer(this.gl.COLOR_ATTACHMENT1);
         this.gl.readPixels(
             0,
             0,
-            this.packW,
-            this.packH,
+            this.w,
+            this.h,
             this.gl.RGBA,
             this.gl.FLOAT,
             coordBuffer
@@ -652,13 +707,15 @@ export class ProcessingWEBGL {
         console.log("readBuffer", readBuffer);
         console.log("coordBuffer", coordBuffer);
         for (let i = 0; i < readBuffer.length; i += 4) {
-            console.log(
-                (coordBuffer[i] - 0.5).toString().padStart(3) + ", "
-          + (coordBuffer[i + 1] - 0.5).toString().padStart(3) + " | "
-          + readBuffer[i].toString().padStart(3) + ", "
-          + readBuffer[i + 1].toString().padStart(3) + ", "
-          + readBuffer[i + 2].toString().padStart(3)
-            );
+            if (coordBuffer[i] !== 0 || coordBuffer[i + 1] !== 0) {
+                console.log(
+                    (coordBuffer[i]).toString().padStart(3) + ", "
+                    + (coordBuffer[i + 1]).toString().padStart(3) + " | "
+                    + readBuffer[i].toString().padStart(3) + ", "
+                    + readBuffer[i + 1].toString().padStart(3) + ", "
+                    + readBuffer[i + 2].toString().padStart(3)
+                );
+            }
         }
     }
 

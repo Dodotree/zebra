@@ -316,7 +316,6 @@ export class MediaControls extends HTMLElement {
         if (e) {
             e.preventDefault();
         }
-        console.log("onSubmit", this.form.constraints.hasAttribute("contenteditable"));
         if (this.form.constraints.hasAttribute("contenteditable")) {
             try {
                 const constraints = JSON.parse(this.form.constraints.value);
