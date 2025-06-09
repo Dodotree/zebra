@@ -5,6 +5,7 @@ Zebra is a browser-based tool for exploring and manipulating camera capabilities
 Right now I'm working on shaders. It's an adaptation of Leptonica's normal binarization, first working draft.
 
 <img src="https://github.com/Dodotree/zebra/blob/main/doc_imgs/IMG_0250.png" alt="Zebra WebCam Tool" width="25%" />
+<img src="https://github.com/Dodotree/zebra/blob/main/doc_imgs/BinarizationWebGL.JPG" alt="Zebra WebCam Tool" width="25%" />
 
 ## 🔗 Live Demo
 
