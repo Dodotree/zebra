@@ -2,6 +2,11 @@ body {
     font-family: Verdana, Geneva, sans-serif;
     background-image: url(./utils/cells.jpg);
     background-size: 160px;
+
+}
+
+main {
+    min-height: calc(100vh - 200px); /* 100vh minus footer height */
 }
 
 h1 {

@@ -153,9 +153,9 @@ export class MediaMenu extends HTMLElement {
     addStream(stream, deviceId, deviceName, constraints) {
         this.deviceIDstreams[deviceId].push(stream);
         const mediaUI = new MediaElement(this.env, deviceId, stream.id);
-        document.body.insertBefore(
+        document.querySelector("main").insertBefore(
             mediaUI,
-            document.querySelector("footer")
+            document.querySelector("screen-logger") || document.body.firstChild
         );
         mediaUI.setStream(deviceName, constraints, stream, this.onReleaseDevice);
     }

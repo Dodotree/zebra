@@ -125,6 +125,40 @@ export class ProcessingWEBGL {
                 uniforms: {
                     g_texture: 3 // takes 3, writes to 6
                 }
+            },
+            { // 8 simple upscale
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "upscale-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    d_texture: 8 // does not write
+                }
+            },
+            { // box blur y convolution
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "box-blur-y-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    by_texture: 6 // takes 6, writes to 7
+                }
+            },
+            { // box blur x convolution + prep. for upsampling
+                vertexShaderId: "shader-vs",
+                fragmentShaderId: "box-blur-x-fs",
+                attrs: {
+                    a_position: texPosition
+                },
+                vaoIndices: texIndices,
+                uniforms: {
+                    src_texture: 0,
+                    bx_texture: 7 // takes 7, writes to 8
+                }
             }
         ],
         framebuffers = {
@@ -150,6 +184,12 @@ export class ProcessingWEBGL {
             downsampled: [
                 { attachmentSlot: 0, textureSlot: 6 } // horizontal convo, downsampled
             ],
+            boxblurY: [
+                { attachmentSlot: 0, textureSlot: 7 } // vertical pass
+            ],
+            boxblurX: [
+                { attachmentSlot: 0, textureSlot: 8 } // horizontal pass + upsampling prep.
+            ]
         },
         textureOptions = [
             { // 0 - original image/video
@@ -223,7 +263,7 @@ export class ProcessingWEBGL {
                     TEXTURE_MIN_FILTER: "NEAREST",
                 }
             },
-            { // 6 - fg mask
+            { // 6 - fg mask,  box blur Y
                 width: downW,
                 height: downH,
                 depth,
@@ -234,12 +274,23 @@ export class ProcessingWEBGL {
                     TEXTURE_MIN_FILTER: "NEAREST",
                 }
             },
-            { // 7 - unused so far
-                width,
-                height,
+            { // 7 - fg mask,  box blur Y
+                width: downW,
+                height: downH,
                 depth,
                 params: {
+                    TEXTURE_WRAP_T: "REPEAT",
+                    TEXTURE_WRAP_S: "REPEAT",
                     TEXTURE_MAG_FILTER: "NEAREST",
+                    TEXTURE_MIN_FILTER: "NEAREST",
+                }
+            },
+            { // 8 - linear for upsampling
+                width: downW,
+                height: downH,
+                depth,
+                params: {
+                    TEXTURE_MAG_FILTER: "LINEAR",
                     TEXTURE_MIN_FILTER: "NEAREST",
                 }
             }
@@ -619,13 +670,30 @@ export class ProcessingWEBGL {
             activateTex: 3,
         });
 
-        this.drawToFB({ // draws to tex 6
+        this.drawToFB({ // takes 3, draws to 7
             fbId: "downsampled",
             progSlot: 7,
             w: this.downW,
             h: this.downH,
             activateTex: 6,
         });
+
+        this.drawToFB({ // takes 7, draws to 6
+            fbId: "boxblurY",
+            progSlot: 9,
+            w: this.downW,
+            h: this.downH,
+            activateTex: 7,
+        });
+
+        this.drawToFB({ // draws to tex 6
+            fbId: "boxblurX",
+            progSlot: 10,
+            w: this.downW,
+            h: this.downH,
+            activateTex: 8,
+        });
+
         // this.drawToStencil({
         //     progSlot: 5,
         //     w: this.width,
@@ -672,9 +740,9 @@ export class ProcessingWEBGL {
         // });
         // this.textures[3].activate();
 
-        this.progs[3].useProgram(); // copies unpacked texture to canvas
+        this.progs[8].useProgram(); // copies unpacked texture to canvas
         this.gl.viewport(0, 0, this.w, this.h);
-        this.draw({ progSlot: 3 });
+        this.draw({ progSlot: 8 });
 
         this.isProcessing = false;
     }
