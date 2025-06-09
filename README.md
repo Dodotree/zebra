@@ -7,7 +7,7 @@ Right now I'm working on shaders. It's an adaptation of Leptonica's normal binar
 <table>
   <tr>
     <td><img src="https://github.com/Dodotree/zebra/blob/main/doc_imgs/IMG_0250.png" alt="Zebra WebCam Tool" width="45%" /></td>
-    <td><img src="https://github.com/Dodotree/zebra/blob/main/doc_imgs/BinarizationWebGL.JPG" alt="Zebra WebCam Tool" width="85%" /></td>
+    <td><img src="https://github.com/Dodotree/zebra/blob/main/doc_imgs/BinarizationWebGL.JPG" alt="Zebra WebCam Tool" width="90%" /></td>
   </tr>
 </table>
 
