@@ -136,7 +136,7 @@ export class MediaMenu extends HTMLElement {
                         })
                     );
 
-                    this.logger.log(`Steam ${index} deviceId=${mediaDevice.deviceId}`);
+                    this.logger.log(`Stream ${index} deviceId=${mediaDevice.deviceId}`);
                     if (mediaDevice.getCapabilities) {
                         this.logger.log(
                             `Capabilities:\n${JSON.stringify(mediaDevice.getCapabilities(), null, 2)}`
