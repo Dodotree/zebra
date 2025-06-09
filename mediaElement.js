@@ -485,6 +485,19 @@ export class MediaElement extends HTMLElement {
     }
 
     initAudioTrackUI(stream, label) {
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "h5",
+                text: label,
+            })
+        );
+        this.audioPlace.appendChild(
+            utilsUI.get({
+                tag: "button",
+                text: "✕",
+                attrs: { class: "destroy" },
+            })
+        ).onclick = this.destroy.bind(this); // TODO: remove audio track!!!
         this.audio = this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "meter",
@@ -513,18 +526,7 @@ export class MediaElement extends HTMLElement {
                 },
             })
         ).onclick = this.openControls;
-        this.audioPlace.appendChild(
-            utilsUI.get({
-                tag: "button",
-                text: "✕",
-            })
-        ); // TODO: remove audio track
-        this.audioPlace.appendChild(
-            utilsUI.get({
-                tag: "h5",
-                text: label,
-            })
-        );
+
         try {
             // TODO: separate as audio visualizer component
             this.clock = new Clock();

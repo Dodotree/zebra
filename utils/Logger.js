@@ -12,7 +12,9 @@ export class Logger extends HTMLElement {
      * document-connected element.
      */
     connectedCallback() {
-        this.logPanel = this.appendChild(document.createElement("textarea"));
+        const section = this.appendChild(document.createElement("section"));
+        section.classList.add("logger");
+        this.logPanel = section.appendChild(document.createElement("textarea"));
     }
 
     log(message) {
