@@ -454,19 +454,28 @@
 
 
 
-            <script type="module">
-                const main = document.querySelector("main");
-                main.appendChild(
-                    document.createElement("screen-logger"),
-                );
-                document.body.insertBefore(
-                    document.createElement("media-menu"),
-                    main
-                );
-            </script>
+    <script type="module">
+        const main = document.querySelector("main");
+        main.appendChild(
+            document.createElement("screen-logger"),
+        );
+        document.body.insertBefore(
+            document.createElement("media-menu"),
+            main
+        );
+    </script>
 
-            <script type="module" src="./utils/Logger.js"></script>
-            <script type="module" src="./mediaMenu.js"></script>
+    <script type="module" src="./utils/Logger.js"></script>
+    <script type="module" src="./mediaMenu.js"></script>
+
+
+<aside class="warning" role="alert">
+  ⚠️ <strong>Under Construction:</strong> WebgGL shaders are still being developed and tested.
+  If you just want to work with the video click on the "video" checkbox above WebGL window.
+  Some features may not work as expected, and performance may vary across different devices.
+  Please report any issues you encounter.
+</aside>
+
         </main>
 
         <footer>

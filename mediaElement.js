@@ -344,6 +344,12 @@ export class MediaElement extends HTMLElement {
                 text: "set resolution",
             })
         );
+        this.fpsMeter = this.videoPlace.appendChild(
+            utilsUI.get({
+                tag: "output",
+                text: "60 fps in last 1000 frames",
+            })
+        );
         this.videoPlace.appendChild(
             utilsUI.get({
                 tag: "input",
@@ -512,7 +518,7 @@ export class MediaElement extends HTMLElement {
         this.audioPlace.appendChild(
             utilsUI.get({
                 tag: "button",
-                text: "🔇", // "🔈🕩🕨",
+                // text: "🔇", // "🔈🕩🕨",
                 attrs: { id: "toggle-audio" },
             })
         ); // TODO: mute audio
@@ -988,8 +994,10 @@ export class MediaElement extends HTMLElement {
                 this.env.pixelRatio, // pixelRatio = 1,
                 this.video, // source = null,
                 true, // watch = false,
+                this.fpsMeter, // fpsMeter = null,
                 this.logger // logger
             );
+            console.log("CanvasGL created >>>>>", this.fpsMeter);
         } catch (e) {
             this.logger.error(e);
         }

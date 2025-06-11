@@ -11,6 +11,7 @@ export class ProcessingWEBGL {
         pixelRatio = 1,
         source = null,
         watch = false,
+        fpsMeter = null,
         logger = console,
         packW = Math.ceil(width / 8),
         packH = Math.ceil(height / 4),
@@ -303,6 +304,7 @@ export class ProcessingWEBGL {
         this.packH = packH;
         this.downW = downW;
         this.downH = downH;
+        this.fpsMeter = fpsMeter;
         this.logger = logger;
         this.fbConfigs = framebuffers;
 
@@ -397,7 +399,7 @@ export class ProcessingWEBGL {
 
         if (watch && source) {
             try {
-                this.clock = new Clock();
+                this.clock = new Clock(this.fpsMeter);
             } catch (e) {
                 this.logger.error(e);
             }
