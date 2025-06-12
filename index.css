@@ -17,9 +17,9 @@ h1 {
 
 section.logger{
     margin: 2rem 0 2rem 0;
-    padding-top: 1rem;
+    /*padding-top: 1rem;
     padding-bottom: 1rem;
-    background-color: rgba(130, 198, 220, 0.3);
+    background-color: rgba(130, 198, 220, 0.3);*/
 }
 
 textarea {
@@ -44,8 +44,8 @@ select {
     font-size: 1rem;
     color: black;
     border-radius: 0.2rem;
-    border: 2px solid #aca3eb /* #9084e5 */;
-    background-image: url("data:image/svg+xml;utf8,<svg fill='%23aca3eb' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    border: 2px solid #81788e; /* #aca3eb /* #9084e5 */;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%2381788e' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
     padding-right: 2rem;
@@ -75,9 +75,7 @@ button {
     text-decoration: none;
     border-radius: 0.2rem;
     outline: none;
-    border: 2px solid #aca3eb
-        /* #9084e5 */
-    ;
+    border: 2px solid #81788e; /* #aca3eb/* #9084e5 */
     /* background-color: #ebe1cc /*#d0cbf4*/;
     background-color: rgba(237, 199, 137, 0.3);
     cursor: pointer;
@@ -115,7 +113,7 @@ media-menu button {
 
 media-element {
     display: inline-grid;
-    grid-template-columns: min-content;
+    grid-template-columns: auto;
     grid-template-areas:
         "video"
         "audio"
@@ -124,7 +122,7 @@ media-element {
     padding: 1rem;
     /* background-color: #e6e6e3;  #e2dff7 #cfdbdb;*/
     background-color: rgba(214, 211, 213, 0.3); /* #d6d3d5 with 30% opacity */    vertical-align: top;
-    border: 2px solid #aca3eb;
+    border: 2px solid #81788e; /*#aca3eb;*/
     border-radius: 0.2rem;
     max-width: 100vw;
     box-sizing: border-box;
@@ -188,7 +186,7 @@ media-element button.destroy {
     place-self: start end;
     margin-top: -0.51rem;
     margin-right: -1rem;
-    color: #aca3eb;
+    color: #81788e; /*#aca3eb;*/
 }
 media-element div:first-child button.destroy:hover {
     color: black;
@@ -429,8 +427,8 @@ video.keep-on-screen {
 }
 
 footer {
-    background: rgba(127, 105, 150, 0.3);
-    border: solid 2px #81788e;
+    /*background: rgba(127, 105, 150, 0.3);*/
+    border-top: solid 2px #81788e;
     color: #81788e;
     font-weight: bold;
     text-align: center;
