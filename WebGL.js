@@ -482,10 +482,8 @@ export class ProcessingWEBGL {
 
     initFramebuffer(fbName) {
         let attachments = this.fbConfigs[fbName];
-        console.log("initFramebuffer", fbName, attachments);
 
         this.framebuffers[fbName] = this.gl.createFramebuffer();
-        console.log("Created framebuffer", this.framebuffers[fbName]);
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffers[fbName]);
 
         attachments.forEach(attachment => {
@@ -519,7 +517,7 @@ export class ProcessingWEBGL {
                 `Framebuffer ${fbName} incomplete: ${status}. Error: ${statusMap[status] || "Unknown error"}`
             );
         } else {
-            console.log(`Framebuffer ${fbName} is complete!`);
+            // console.log(`Framebuffer ${fbName} is complete!`);
         }
     }
 
@@ -750,7 +748,6 @@ export class ProcessingWEBGL {
     }
 
     framebufferReads(w, h) {
-        console.log(`Width: ${w}, Height: ${h}`);
         const readBuffer = new Uint8Array(w * h * 4);
         this.gl.readBuffer(this.gl.COLOR_ATTACHMENT0);
         this.gl.readPixels(
@@ -774,8 +771,6 @@ export class ProcessingWEBGL {
             coordBuffer
         );
 
-        console.log("readBuffer", readBuffer);
-        console.log("coordBuffer", coordBuffer);
         for (let i = 0; i < readBuffer.length; i += 4) {
             if (coordBuffer[i] !== 0 || coordBuffer[i + 1] !== 0) {
                 console.log(
@@ -794,8 +789,8 @@ export class ProcessingWEBGL {
 
         try {
             if (this.clock) {
-                this.clock.stop();
                 this.clock.remove(this.processAndDraw);
+                this.clock.destroy();
                 this.clock = null;
             }
         } catch (e) {

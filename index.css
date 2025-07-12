@@ -2,7 +2,7 @@ body {
     font-family: Verdana, Geneva, sans-serif;
     background-image: url(./utils/cells.jpg);
     background-size: 160px;
-
+    padding: 3.2rem 4.5rem;
 }
 
 main {
@@ -363,7 +363,55 @@ media-controls output[contenteditable] {
     background-color: #fff;
 }
 
+/* Hyperlink styling */
+a {
+    color: #4a6572; /* Darker version of #becdd4 for good contrast */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: #2d3e47; /* Even darker on hover */
+    text-decoration: underline;
+}
+
+a:visited {
+    color: #6b5b95; /* Purple-gray that complements the color scheme */
+}
+
+a:visited:hover {
+    color: #564a7a; /* Darker purple on hover */
+    text-decoration: underline;
+}
+
+a:focus {
+    outline: 2px solid #81788e; /* Uses existing border color */
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Special styling for links in specific contexts */
+main a {
+    color: #3a5a6b; /* Slightly different shade for main content */
+    font-weight: 500;
+}
+
+main a:hover {
+    color: #1f3640;
+    background-color: rgba(190, 205, 212, 0.2); /* Very light background on hover */
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* Keep existing footer link styling but enhance it */
+footer a {
+    color: #fff;
+}
+
 @media (max-width: 768px) {
+    body{
+        padding: 3rem 0;
+    }
     media-element {
         padding: 0;
         padding-top: 6px;
@@ -432,8 +480,4 @@ footer {
     color: #81788e;
     font-weight: bold;
     text-align: center;
-}
-
-footer a {
-    color: #fff;
 }

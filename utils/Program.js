@@ -109,5 +109,6 @@ export default class Program {
             this.gl.deleteProgram(this.program);
             this.program = null;
         }
+        delete this;
     }
 }

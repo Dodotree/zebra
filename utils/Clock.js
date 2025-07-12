@@ -7,6 +7,7 @@ export default class Clock extends EventEmitter {
         super();
 
         this.isRunning = true;
+        this.isDestroyed = false;
 
         if (fpsMeter) {
             this.fpsMeter = fpsMeter;
@@ -20,18 +21,17 @@ export default class Clock extends EventEmitter {
         this.tick = fpsMeter ? this.measuredTick.bind(this) : this.justTick.bind(this);
         this.tick();
 
-        window.onblur = () => {
-            this.stop();
-        };
-
-        window.onfocus = () => {
-            this.start();
-        };
+        window.addEventListener("blur", this.stop);
+        window.addEventListener("focus", this.start);
     }
 
     justTick() {
         if (this.isRunning) {
             this.emit("tick");
+        }
+        if (this.isDestroyed) {
+            this.destroy(); // one more time free it for garbage collector
+            return;
         }
         requestAnimationFrame(this.tick);
     }
@@ -47,6 +47,10 @@ export default class Clock extends EventEmitter {
         if (this.isRunning) {
             this.emit("tick");
         }
+        if (this.isDestroyed) {
+            this.destroy(); // one more time free it for garbage collector
+            return;
+        }
         requestAnimationFrame(this.tick);
     }
 
@@ -56,5 +60,13 @@ export default class Clock extends EventEmitter {
 
     stop() {
         this.isRunning = false;
+    }
+
+    destroy() {
+        this.stop();
+        this.isDestroyed = true;
+        window.removeEventListener("blur", this.stop);
+        window.removeEventListener("focus", this.start);
+        delete this;
     }
 }
